@@ -1,0 +1,189 @@
+create table if not exists public.wishlists (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  title text not null default 'My Wishlist',
+  share_token text unique default encode(gen_random_bytes(12), 'hex'),
+  is_public boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.wishlists add column if not exists share_token text;
+alter table public.wishlists add column if not exists is_public boolean not null default true;
+alter table public.wishlists alter column share_token set default encode(gen_random_bytes(12), 'hex');
+update public.wishlists
+set share_token = encode(gen_random_bytes(12), 'hex')
+where share_token is null or share_token = '';
+alter table public.wishlists alter column share_token set not null;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'wishlists_share_token_key'
+  ) then
+    alter table public.wishlists add constraint wishlists_share_token_key unique (share_token);
+  end if;
+end
+$$;
+
+create table if not exists public.wishes (
+  id text primary key,
+  wishlist_id uuid not null references public.wishlists(id) on delete cascade,
+  title text not null,
+  note text not null,
+  tag text not null default 'Без категории',
+  price text not null default '',
+  url text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists set_wishlists_updated_at on public.wishlists;
+create trigger set_wishlists_updated_at
+before update on public.wishlists
+for each row execute procedure public.set_updated_at();
+
+drop trigger if exists set_wishes_updated_at on public.wishes;
+create trigger set_wishes_updated_at
+before update on public.wishes
+for each row execute procedure public.set_updated_at();
+
+alter table public.wishlists enable row level security;
+alter table public.wishes enable row level security;
+
+drop policy if exists "wishlists_select_own" on public.wishlists;
+create policy "wishlists_select_own"
+on public.wishlists
+for select
+to authenticated
+using (owner_id = auth.uid());
+
+drop policy if exists "wishlists_insert_own" on public.wishlists;
+create policy "wishlists_insert_own"
+on public.wishlists
+for insert
+to authenticated
+with check (owner_id = auth.uid());
+
+drop policy if exists "wishlists_update_own" on public.wishlists;
+create policy "wishlists_update_own"
+on public.wishlists
+for update
+to authenticated
+using (owner_id = auth.uid())
+with check (owner_id = auth.uid());
+
+drop policy if exists "wishlists_delete_own" on public.wishlists;
+create policy "wishlists_delete_own"
+on public.wishlists
+for delete
+to authenticated
+using (owner_id = auth.uid());
+
+drop policy if exists "wishes_select_owned_wishlist" on public.wishes;
+create policy "wishes_select_owned_wishlist"
+on public.wishes
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.wishlists
+    where wishlists.id = wishes.wishlist_id
+      and wishlists.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "wishes_insert_owned_wishlist" on public.wishes;
+create policy "wishes_insert_owned_wishlist"
+on public.wishes
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.wishlists
+    where wishlists.id = wishes.wishlist_id
+      and wishlists.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "wishes_update_owned_wishlist" on public.wishes;
+create policy "wishes_update_owned_wishlist"
+on public.wishes
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.wishlists
+    where wishlists.id = wishes.wishlist_id
+      and wishlists.owner_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.wishlists
+    where wishlists.id = wishes.wishlist_id
+      and wishlists.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "wishes_delete_owned_wishlist" on public.wishes;
+create policy "wishes_delete_owned_wishlist"
+on public.wishes
+for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.wishlists
+    where wishlists.id = wishes.wishlist_id
+      and wishlists.owner_id = auth.uid()
+  )
+);
+
+create or replace function public.get_shared_wishlist(p_share_token text)
+returns table (
+  id text,
+  wishlist_id uuid,
+  title text,
+  note text,
+  tag text,
+  price text,
+  url text,
+  created_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    w.id,
+    w.wishlist_id,
+    w.title,
+    w.note,
+    w.tag,
+    w.price,
+    w.url,
+    w.created_at
+  from public.wishes w
+  join public.wishlists wl on wl.id = w.wishlist_id
+  where wl.share_token = p_share_token
+    and wl.is_public = true
+  order by w.created_at desc;
+$$;
+
+grant execute on function public.get_shared_wishlist(text) to anon, authenticated;

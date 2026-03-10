@@ -1,598 +1,295 @@
 ﻿import { useEffect, useState } from "react";
-
-const STORAGE_KEY = "birthday-wishlist-items-v1";
-const CONTRIBUTIONS_KEY = "birthday-wishlist-contributions-v1";
-const USER_KEY = "birthday-wishlist-user-v1";
-const ADMIN_AUTH_KEY = "birthday-wishlist-admin-auth-v1";
-const ADMIN_LOGIN = "admin";
-const ADMIN_PASSWORD = "admin";
-
-const defaultWishes = [
-  {
-    id: "wish-headphones",
-    title: "Наушники с шумоподавлением",
-    note: "Для работы, прогулок и путешествий. Люблю минималистичный дизайн и мягкие амбушюры.",
-    tag: "Техника",
-    price: "15 000-25 000 руб."
-  },
-  {
-    id: "wish-lego",
-    title: "LEGO или красивый конструктор",
-    note: "Что-то атмосферное, что можно собрать вечером под музыку и потом оставить как декор.",
-    tag: "Хобби",
-    price: "5 000-15 000 руб."
-  },
-  {
-    id: "wish-books",
-    title: "Сертификат в книжный магазин",
-    note: "Идеальный вариант, если не хочется угадывать с конкретной книгой.",
-    tag: "Книги",
-    price: "2 000-5 000 руб."
-  },
-  {
-    id: "wish-game",
-    title: "Настольная игра для компании",
-    note: "Люблю игры, которые быстро объясняются и реально собирают всех за столом.",
-    tag: "Вечера с друзьями",
-    price: "2 500-7 000 руб."
-  },
-  {
-    id: "wish-desk",
-    title: "Аксессуар для рабочего стола",
-    note: "Лампа, подставка, органайзер или что-то, что делает стол удобнее и аккуратнее.",
-    tag: "Комфорт",
-    price: "1 500-8 000 руб."
-  },
-  {
-    id: "wish-donate",
-    title: "Донат на мечту",
-    note: "Если хочется подарить свободу выбора, можно поддержать мою большую цель.",
-    tag: "Гибкий вариант",
-    price: "Любая сумма"
-  }
-];
-
-const rules = [
-  "Если выбираешь вещь сам, лучше в спокойных цветах и без слишком ярких принтов.",
-  "Если подарок крупный, можно скооперироваться с кем-то и подарить вместе.",
-  "Если сомневаешься, сертификат или просто вклад в мечту всегда работают."
-];
-
-const emptyForm = {
-  title: "",
-  note: "",
-  tag: "",
-  price: "",
-  url: ""
-};
-
-const emptyRegistrationForm = {
-  firstName: "",
-  lastName: "",
-  isIncognito: false
-};
-
-const emptyAdminAuthForm = {
-  login: "",
-  password: ""
-};
-
-function readStoredWishes() {
-  if (typeof window === "undefined") {
-    return defaultWishes;
-  }
-
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    return defaultWishes;
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return defaultWishes;
-    }
-
-    const sanitized = parsed
-      .filter((item) => item && typeof item.title === "string" && typeof item.note === "string")
-      .map((item) => ({
-        id: item.id || `wish-${Date.now()}-${Math.random()}`,
-        title: item.title,
-        note: item.note,
-        tag: typeof item.tag === "string" ? item.tag : "Без категории",
-        price:
-          typeof item.price === "string"
-            ? item.price
-            : typeof item.accent === "string"
-              ? item.accent
-              : "",
-        url: typeof item.url === "string" ? item.url : ""
-      }));
-
-    return sanitized.length > 0 ? sanitized : defaultWishes;
-  } catch {
-    return defaultWishes;
-  }
-}
-
-function readStoredContributions() {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  const raw = localStorage.getItem(CONTRIBUTIONS_KEY);
-  if (!raw) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") {
-      return {};
-    }
-
-    return Object.entries(parsed).reduce((acc, [wishId, value]) => {
-      if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-        acc[wishId] = [{ name: "Инкогнито", amount: value, at: new Date().toISOString() }];
-        return acc;
-      }
-
-      if (!Array.isArray(value)) {
-        return acc;
-      }
-
-      const entries = value.filter(
-        (entry) =>
-          entry &&
-          typeof entry.name === "string" &&
-          typeof entry.amount === "number" &&
-          Number.isFinite(entry.amount) &&
-          entry.amount > 0
-      );
-
-      if (entries.length > 0) {
-        acc[wishId] = entries;
-      }
-
-      return acc;
-    }, {});
-  } catch {
-    return {};
-  }
-}
-
-function readStoredUser() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const raw = localStorage.getItem(USER_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || typeof parsed.name !== "string") {
-      return null;
-    }
-
-    return {
-      id:
-        typeof parsed.id === "string" && parsed.id
-          ? parsed.id
-          : typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-            ? crypto.randomUUID()
-            : `user-${Date.now()}`,
-      name: parsed.name,
-      isIncognito: Boolean(parsed.isIncognito)
-    };
-  } catch {
-    return null;
-  }
-}
-
-function createWish(form) {
-  return {
-    id:
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `wish-${Date.now()}`,
-    title: form.title.trim(),
-    note: form.note.trim(),
-    tag: form.tag.trim() || "Без категории",
-    price: form.price.trim(),
-    url: form.url.trim()
-  };
-}
-
-function mapWishToForm(wish) {
-  return {
-    title: wish.title || "",
-    note: wish.note || "",
-    tag: wish.tag || "",
-    price: wish.price || "",
-    url: wish.url || ""
-  };
-}
-
-function parseTargetFromPrice(price) {
-  if (!price) {
-    return null;
-  }
-
-  const matches = [...price.matchAll(/\d[\d\s]*/g)];
-  if (matches.length === 0) {
-    return null;
-  }
-
-  const values = matches
-    .map((match) => Number(match[0].replace(/\s/g, "")))
-    .filter((value) => Number.isFinite(value) && value > 0);
-
-  if (values.length === 0) {
-    return null;
-  }
-
-  return values[values.length - 1];
-}
-
-function getWishDonated(contributions, wishId) {
-  const entries = contributions[wishId] || [];
-  return entries.reduce((sum, entry) => sum + entry.amount, 0);
-}
-
-function getWishParticipants(contributions, wishId) {
-  const entries = contributions[wishId] || [];
-  const totalsByPerson = entries.reduce((acc, entry) => {
-    const key = entry.userId ? `id:${entry.userId}` : `name:${entry.name}`;
-    if (!acc[key]) {
-      acc[key] = {
-        key,
-        name: entry.name,
-        userId: entry.userId || null,
-        total: 0
-      };
-    }
-    acc[key].total += entry.amount;
-    return acc;
-  }, {});
-
-  return Object.values(totalsByPerson)
-    .sort((a, b) => b.total - a.total);
-}
-
-function formatMoney(value) {
-  return new Intl.NumberFormat("ru-RU").format(Math.round(value));
-}
-
-function normalizeName(value) {
-  return value.trim().replace(/\s+/g, " ");
-}
-
-function parseDonationAmount(value) {
-  return Number(value.replace(/[^\d.,]/g, "").replace(",", "."));
-}
-
-function getUserDisplayName(user) {
-  if (!user) {
-    return "";
-  }
-
-  return user.isIncognito ? "Инкогнито" : user.name;
-}
-
-function getPageFromHash() {
-  if (typeof window === "undefined") {
-    return "wishlist";
-  }
-
-  return window.location.hash === "#/admin" ? "admin" : "wishlist";
-}
-
-function WishlistPage({ wishes, contributions, onOpenWish, onOpenAdmin }) {
-  return (
-    <>
-      <section className="hero-card">
-        <p className="eyebrow">Birthday wishlist</p>
-        <div className="hero-grid">
-          <div>
-            <p className="hero-kicker">Мой день рождения</p>
-            <h1>Вишлист, чтобы не гадать с подарком</h1>
-            <p className="hero-copy">
-              Я собрал список вещей, которые меня правда порадуют. Здесь есть и конкретные идеи,
-              и более гибкие варианты, если хочется выбрать что-то удобное.
-            </p>
-
-            <div className="hero-actions">
-              <a href="#wishlist" className="button-primary">
-                Смотреть желания
-              </a>
-              <a href="#gift-guide" className="button-secondary">
-                Как лучше подарить
-              </a>
-            </div>
-          </div>
-
-          <aside className="date-panel">
-            <span className="date-label">Дата</span>
-            <strong>День рождения скоро</strong>
-            <p>Буду рад любому вниманию, а этот список просто помогает выбрать проще.</p>
-            <p className="date-note">
-              Так как мой выбор сильно бьет по карману, при желании вы можете поучаствовать в моем подарке.
-            </p>
-          </aside>
-        </div>
-      </section>
-
-      <section className="wishlist-section" id="wishlist">
-        <div className="section-head">
-          <p className="section-label">Wishlist</p>
-          <h2>Что можно подарить</h2>
-          <p>
-            Ниже собраны варианты от самых конкретных до универсальных. Можно выбрать один пункт
-            или использовать список как ориентир.
-          </p>
-        </div>
-
-        <div className="wish-grid">
-          {wishes.map((wish) => {
-            const target = parseTargetFromPrice(wish.price);
-            const donated = getWishDonated(contributions, wish.id);
-            const progressPercent = target ? Math.min(100, Math.round((donated / target) * 100)) : 0;
-
-            return (
-              <button
-                type="button"
-                className="wish-card wish-card-open"
-                key={wish.id}
-                onClick={() => onOpenWish(wish.id)}
-              >
-                <div className="wish-topline">
-                  <span className="wish-tag">{wish.tag}</span>
-                  <span className="wish-price">{wish.price || "Цена не указана"}</span>
-                </div>
-                <h3>{wish.title}</h3>
-                <p>{wish.note}</p>
-                <div className="wish-footer">
-                  <div className="wish-progress">
-                    <div className="wish-progress-track">
-                      <span className="wish-progress-fill" style={{ width: `${progressPercent}%` }} />
-                    </div>
-                    <p className="wish-progress-text">
-                      {target
-                        ? `${formatMoney(donated)} / ${formatMoney(target)} руб.`
-                        : `${formatMoney(donated)} руб. собрано`}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="guide-section" id="gift-guide">
-        <div className="guide-card">
-          <div className="section-head compact">
-            <p className="section-label">Gift guide</p>
-            <h2>Небольшие пожелания</h2>
-          </div>
-
-          <div className="rules-list">
-            {rules.map((rule) => (
-              <div className="rule-item" key={rule}>
-                <span className="rule-index">+</span>
-                <p>{rule}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="contact-card">
-          <p className="section-label">Сюрприз тоже ок</p>
-          <h2>Главное, чтобы от души</h2>
-          <p>
-            Даже если ты выберешь что-то вне списка, мне будет приятно. Этот сайт нужен только для
-            того, чтобы сделать выбор легче.
-          </p>
-          <div className="contact-note">
-            <span>Подсказка</span>
-            <p>Можно добавить сюда свой Telegram, карту или ссылку на маркетплейс.</p>
-          </div>
-        </div>
-      </section>
-
-      <div className="bottom-admin-nav">
-        <button type="button" className="tiny-admin-button" onClick={onOpenAdmin}>
-          Админка
-        </button>
-      </div>
-    </>
-  );
-}
-
-function AdminPage({
-  wishes,
-  form,
-  editingWishId,
-  onInputChange,
-  onFormSubmit,
-  onDeleteWish,
-  onStartEdit,
-  onCancelEdit,
-  onReset,
-  onOpenWishlist
-}) {
-  return (
-    <section className="admin-section" id="admin">
-      <div className="admin-card">
-        <div className="section-head compact">
-          <p className="section-label">Admin</p>
-          <h2>Управление вишлистом</h2>
-          <p>Добавляй новые подарки, и они сразу появятся в основном списке.</p>
-        </div>
-
-        <div className="admin-top-actions">
-          <button type="button" className="button-secondary" onClick={onOpenWishlist}>
-            Вернуться на главную
-          </button>
-        </div>
-
-        <form className="admin-form" onSubmit={onFormSubmit}>
-          <label>
-            Название подарка*
-            <input
-              type="text"
-              name="title"
-              value={form.title}
-              onChange={onInputChange}
-              placeholder="Например: Сертификат в Steam"
-              required
-            />
-          </label>
-
-          <label>
-            Описание*
-            <textarea
-              name="note"
-              value={form.note}
-              onChange={onInputChange}
-              placeholder="Коротко: что это и почему хочется"
-              rows={4}
-              required
-            />
-          </label>
-
-          <div className="admin-form-row">
-            <label>
-              Тег
-              <input
-                type="text"
-                name="tag"
-                value={form.tag}
-                onChange={onInputChange}
-                placeholder="Категория"
-              />
-            </label>
-
-            <label>
-              Цена
-              <input
-                type="text"
-                name="price"
-                value={form.price}
-                onChange={onInputChange}
-                placeholder="Например: 3 500 руб."
-              />
-            </label>
-          </div>
-
-          <label>
-            Ссылка на подарок
-            <input
-              type="url"
-              name="url"
-              value={form.url}
-              onChange={onInputChange}
-              placeholder="https://..."
-            />
-          </label>
-
-          <div className="admin-actions">
-            <button type="submit" className="button-primary">
-              {editingWishId ? "Сохранить изменения" : "Добавить подарок"}
-            </button>
-            {editingWishId ? (
-              <button type="button" className="button-secondary" onClick={onCancelEdit}>
-                Отмена редактирования
-              </button>
-            ) : null}
-            <button type="button" className="button-secondary" onClick={onReset}>
-              Сбросить к шаблону
-            </button>
-          </div>
-        </form>
-
-        <div className="admin-list">
-          <p className="section-label">Текущий список</p>
-          {wishes.map((wish) => (
-            <div className="admin-list-item" key={wish.id}>
-              <div>
-                <strong>{wish.title}</strong>
-                <p>{wish.note}</p>
-                {wish.url ? (
-                  <a className="admin-item-link" href={wish.url} target="_blank" rel="noreferrer">
-                    {wish.url}
-                  </a>
-                ) : null}
-              </div>
-              <div className="admin-item-actions">
-                <button type="button" className="edit-button" onClick={() => onStartEdit(wish)}>
-                  Редактировать
-                </button>
-                <button type="button" className="delete-button" onClick={() => onDeleteWish(wish.id)}>
-                  Удалить
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
+import { supabase } from "./supabase";
+import {
+  CONTRIBUTIONS_KEY,
+  rules as defaultRules,
+  emptyAuthForm,
+  emptyForm,
+  emptyProfileForm
+} from "./config/constants";
+import {
+  createWish,
+  formatMoney,
+  getProfileFormFromUser,
+  getRouteFromHash,
+  getUserDisplayName,
+  getWishDonated,
+  getWishParticipants,
+  mapWishToForm,
+  normalizeName,
+  parseDdMmYyyyToStorageDate,
+  parseDonationAmount,
+  parseTargetFromPrice,
+  readStoredContributions,
+  sanitizeWishes
+} from "./lib/helpers";
+import { readRulesForWishlist, writeRulesForWishlist } from "./lib/rulesStorage";
+import { AuthPage } from "./components/pages/AuthPage";
+import { DashboardPage } from "./components/pages/DashboardPage";
+import { WishlistPage } from "./components/pages/WishlistPage";
 export default function App() {
-  const [wishes, setWishes] = useState(readStoredWishes);
-  const [contributions, setContributions] = useState(readStoredContributions);
-  const [currentUser, setCurrentUser] = useState(readStoredUser);
+  const initialRoute = getRouteFromHash();
+  const [wishes, setWishes] = useState([]);
+  const [contributions, setContributions] = useState(() => readStoredContributions(CONTRIBUTIONS_KEY));
+  const [currentUser, setCurrentUser] = useState(null);
+  const [wishlists, setWishlists] = useState([]);
+  const [isWishlistsLoading, setIsWishlistsLoading] = useState(false);
+  const [wishlistsError, setWishlistsError] = useState("");
+  const [isWishlistSubmitting, setIsWishlistSubmitting] = useState(false);
+  const [wishlistToDelete, setWishlistToDelete] = useState(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState(emptyProfileForm);
+  const [profileError, setProfileError] = useState("");
+  const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+  const [currentWishlistId, setCurrentWishlistId] = useState(null);
+  const [currentShareToken, setCurrentShareToken] = useState(null);
+  const [sharedWishes, setSharedWishes] = useState([]);
+  const [sharedError, setSharedError] = useState("");
+  const [shareCopied, setShareCopied] = useState("");
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [wishesError, setWishesError] = useState("");
+  const [isWishSubmitting, setIsWishSubmitting] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
+  const [authForm, setAuthForm] = useState(emptyAuthForm);
+  const [authError, setAuthError] = useState("");
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingWishId, setEditingWishId] = useState(null);
-  const [page, setPage] = useState(getPageFromHash);
-  const [isAdminAuthorized, setIsAdminAuthorized] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    return sessionStorage.getItem(ADMIN_AUTH_KEY) === "1";
-  });
-  const [isAdminAuthOpen, setIsAdminAuthOpen] = useState(false);
-  const [adminAuthForm, setAdminAuthForm] = useState(emptyAdminAuthForm);
-  const [adminAuthError, setAdminAuthError] = useState("");
+  const [isWishEditorOpen, setIsWishEditorOpen] = useState(false);
+  const [wishlistRules, setWishlistRules] = useState(defaultRules);
+  const [page, setPage] = useState(initialRoute.page);
+  const [shareToken, setShareToken] = useState(initialRoute.shareToken);
 
   const [openedWishId, setOpenedWishId] = useState(null);
   const [donationWish, setDonationWish] = useState(null);
   const [donationAmount, setDonationAmount] = useState("");
   const [donationError, setDonationError] = useState("");
 
-  const [registeringWish, setRegisteringWish] = useState(null);
-  const [registrationForm, setRegistrationForm] = useState(emptyRegistrationForm);
-  const [registrationError, setRegistrationError] = useState("");
+  function saveRulesForWishlist(nextRules) {
+    setWishlistRules(writeRulesForWishlist(currentWishlistId, nextRules));
+  }
+
+  async function loadWishlistsForUser(userId) {
+    setIsWishlistsLoading(true);
+    setWishlistsError("");
+
+    const { data, error } = await supabase
+      .from("wishlists")
+      .select("id, title, share_token, created_at")
+      .eq("owner_id", userId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      setWishlistsError("Не удалось загрузить вишлисты.");
+      setWishlists([]);
+      setIsWishlistsLoading(false);
+      return [];
+    }
+
+    setWishlists(data || []);
+    setIsWishlistsLoading(false);
+    return data || [];
+  }
+
+  async function loadWishes(wishlistId) {
+    setWishesError("");
+
+    const { data, error } = await supabase
+      .from("wishes")
+      .select("id, wishlist_id, title, note, tag, price, url, created_at")
+      .eq("wishlist_id", wishlistId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setWishesError("Не удалось загрузить список подарков.");
+      setWishes([]);
+      return;
+    }
+
+    setWishes(sanitizeWishes(data));
+  }
+
+  async function loadSharedWishes(token) {
+    if (!token) {
+      setSharedWishes([]);
+      setSharedError("Некорректная ссылка.");
+      return;
+    }
+
+    setSharedError("");
+    const { data, error } = await supabase.rpc("get_shared_wishlist", {
+      p_share_token: token
+    });
+
+    if (error) {
+      setSharedError("Не удалось открыть вишлист по ссылке.");
+      setSharedWishes([]);
+      return;
+    }
+
+    const sanitized = sanitizeWishes(data);
+    setSharedWishes(sanitized);
+    if (sanitized.length === 0) {
+      setSharedError("Список пуст или ссылка недействительна.");
+    }
+  }
+
+  async function copyShareLink() {
+    if (!currentShareToken || typeof window === "undefined") {
+      return;
+    }
+
+    const url = `${window.location.origin}${window.location.pathname}#/shared/${currentShareToken}`;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied("Ссылка скопирована");
+      setTimeout(() => setShareCopied(""), 1800);
+    } catch {
+      setShareCopied("Не удалось скопировать ссылку");
+      setTimeout(() => setShareCopied(""), 2000);
+    }
+  }
+
+  async function copyWishlistShareLink(wishlist) {
+    if (!wishlist?.share_token || typeof window === "undefined") {
+      return;
+    }
+
+    const url = `${window.location.origin}${window.location.pathname}#/shared/${wishlist.share_token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied("Ссылка скопирована");
+      setTimeout(() => setShareCopied(""), 1800);
+    } catch {
+      setShareCopied("Не удалось скопировать ссылку");
+      setTimeout(() => setShareCopied(""), 2000);
+    }
+  }
+
+  async function selectWishlist(wishlist) {
+    if (!wishlist?.id) {
+      return;
+    }
+    setCurrentWishlistId(wishlist.id);
+    setCurrentShareToken(wishlist.share_token || null);
+    setWishlistRules(readRulesForWishlist(wishlist.id));
+    await loadWishes(wishlist.id);
+  }
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(wishes));
-  }, [wishes]);
+    let mounted = true;
+
+    async function loadSession() {
+      const { data } = await supabase.auth.getSession();
+      const sessionUser = data.session?.user || null;
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!sessionUser) {
+        setCurrentUser(null);
+        setWishlists([]);
+        setCurrentWishlistId(null);
+        setCurrentShareToken(null);
+        setWishes([]);
+        setWishlistRules(defaultRules.slice(0, 5));
+        setIsAuthLoading(false);
+        return;
+      }
+
+      const firstName = sessionUser.user_metadata?.first_name || "";
+      const lastName = sessionUser.user_metadata?.last_name || "";
+      const name = [firstName, lastName].filter(Boolean).join(" ").trim() || sessionUser.email || "Пользователь";
+
+      setCurrentUser({
+        id: sessionUser.id,
+        name,
+        firstName,
+        lastName,
+        birthday: sessionUser.user_metadata?.birth_date || "",
+        isIncognito: false
+      });
+
+      const lists = await loadWishlistsForUser(sessionUser.id);
+      if (!mounted) {
+        return;
+      }
+
+      if (lists.length > 0) {
+        await selectWishlist(lists[0]);
+      } else {
+        setCurrentWishlistId(null);
+        setCurrentShareToken(null);
+        setWishes([]);
+      }
+
+      if (!window.location.hash || window.location.hash === "#/") {
+        window.location.hash = "#/dashboard";
+      }
+      setIsAuthLoading(false);
+    }
+
+    loadSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const sessionUser = session?.user || null;
+      if (!sessionUser) {
+        setCurrentUser(null);
+        setWishlists([]);
+        setCurrentWishlistId(null);
+        setCurrentShareToken(null);
+        setWishes([]);
+        setWishlistRules(defaultRules.slice(0, 5));
+        return;
+      }
+
+      const firstName = sessionUser.user_metadata?.first_name || "";
+      const lastName = sessionUser.user_metadata?.last_name || "";
+      const name = [firstName, lastName].filter(Boolean).join(" ").trim() || sessionUser.email || "Пользователь";
+
+      setCurrentUser({
+        id: sessionUser.id,
+        name,
+        firstName,
+        lastName,
+        birthday: sessionUser.user_metadata?.birth_date || "",
+        isIncognito: false
+      });
+
+      loadWishlistsForUser(sessionUser.id)
+        .then((lists) => {
+          if (lists.length > 0) {
+            return selectWishlist(lists[0]);
+          }
+          setCurrentWishlistId(null);
+          setCurrentShareToken(null);
+          setWishes([]);
+          return null;
+        })
+        .catch(() => {
+          setWishlistsError("Не удалось загрузить вишлисты.");
+          setWishes([]);
+        });
+    });
+
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(CONTRIBUTIONS_KEY, JSON.stringify(contributions));
   }, [contributions]);
 
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
-    }
-  }, [currentUser]);
-
-  useEffect(() => {
     function handleHashChange() {
-      const nextPage = getPageFromHash();
-      if (nextPage === "admin" && !isAdminAuthorized) {
-        setPage("wishlist");
-        window.location.hash = "#/";
-        openAdminAuthModal();
-        return;
-      }
-      setPage(nextPage);
+      const route = getRouteFromHash();
+      setPage(route.page);
+      setShareToken(route.shareToken);
     }
 
     window.addEventListener("hashchange", handleHashChange);
@@ -602,9 +299,290 @@ export default function App() {
     }
 
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, [isAdminAuthorized]);
+  }, []);
 
-  function onInputChange(event) {
+  useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+
+    if (page === "wishlist" && !currentWishlistId) {
+      window.location.hash = "#/dashboard";
+    }
+  }, [page, currentWishlistId, currentUser]);
+
+  useEffect(() => {
+    if (page !== "shared") {
+      return;
+    }
+    loadSharedWishes(shareToken);
+  }, [page, shareToken]);
+
+  useEffect(() => {
+    setIsHeaderMenuOpen(false);
+  }, [page]);
+
+  function onAuthInputChange(event) {
+    const { name, value } = event.target;
+    setAuthForm((prev) => ({ ...prev, [name]: value }));
+    if (authError) {
+      setAuthError("");
+    }
+  }
+
+  function onAuthModeChange(nextMode) {
+    setAuthMode(nextMode);
+    setAuthError("");
+    setAuthForm(emptyAuthForm);
+  }
+
+  async function submitAuth(event) {
+    event.preventDefault();
+
+    setAuthError("");
+    setIsAuthSubmitting(true);
+
+    try {
+      const email = authForm.email.trim().toLowerCase();
+      const password = authForm.password;
+
+      if (!email || !password) {
+        throw new Error("Укажи email и пароль.");
+      }
+
+      if (authMode === "register") {
+        const firstName = authForm.firstName.trim();
+        const lastName = authForm.lastName.trim();
+        const birthday = parseDdMmYyyyToStorageDate(authForm.birthday);
+        if (!firstName || !lastName) {
+          throw new Error("Укажи имя и фамилию.");
+        }
+        if (!birthday) {
+          throw new Error("Укажи дату рождения в формате ДД-ММ-ГГГГ.");
+        }
+        if (authForm.password !== authForm.confirmPassword) {
+          throw new Error("Пароли не совпадают.");
+        }
+
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              birth_date: birthday
+            }
+          }
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (!data.session) {
+          setAuthError("Проверь email и подтверди регистрацию, затем войди.");
+          setAuthMode("login");
+          return;
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        if (error) {
+          throw new Error("Неверный email или пароль.");
+        }
+      }
+
+      setAuthForm(emptyAuthForm);
+    } catch (error) {
+      setAuthError(error.message || "Ошибка авторизации.");
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  }
+
+  function logout() {
+    supabase.auth.signOut();
+    setPage("dashboard");
+    window.location.hash = "#/dashboard";
+  }
+
+  function openProfileModal() {
+    setProfileForm(getProfileFormFromUser(currentUser));
+    setProfileError("");
+    setIsProfileOpen(true);
+  }
+
+  function closeProfileModal() {
+    setIsProfileOpen(false);
+    setProfileError("");
+    setProfileForm(emptyProfileForm);
+  }
+
+  function onProfileInputChange(event) {
+    const { name, value } = event.target;
+    setProfileForm((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+    if (profileError) {
+      setProfileError("");
+    }
+  }
+
+  async function submitProfile(event) {
+    event.preventDefault();
+    if (!currentUser) {
+      return;
+    }
+
+    const firstName = normalizeName(profileForm.firstName);
+    const lastName = normalizeName(profileForm.lastName);
+    const birthday = parseDdMmYyyyToStorageDate(profileForm.birthday);
+
+    if (!firstName || !lastName) {
+      setProfileError("Укажи имя и фамилию.");
+      return;
+    }
+    if (!birthday) {
+      setProfileError("Укажи дату рождения в формате ДД-ММ-ГГГГ.");
+      return;
+    }
+
+    setIsProfileSubmitting(true);
+    setProfileError("");
+
+    const { error: authError } = await supabase.auth.updateUser({
+      data: {
+        first_name: firstName,
+        last_name: lastName,
+        birth_date: birthday
+      }
+    });
+
+    if (authError) {
+      setProfileError("Не удалось обновить профиль.");
+      setIsProfileSubmitting(false);
+      return;
+    }
+
+    const { error: profileUpdateError } = await supabase
+      .from("users")
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+        birthday
+      })
+      .eq("id", currentUser.id);
+
+    if (profileUpdateError) {
+      setProfileError("Профиль auth обновлен, но таблица users не обновилась.");
+      setIsProfileSubmitting(false);
+      return;
+    }
+
+    setCurrentUser((prev) => ({
+      ...prev,
+      name: [firstName, lastName].join(" "),
+      firstName,
+      lastName,
+      birthday
+    }));
+    setIsProfileSubmitting(false);
+    closeProfileModal();
+  }
+
+  async function createWishlist(rawTitle) {
+    if (!currentUser) {
+      return;
+    }
+
+    const title = String(rawTitle || "").trim();
+    if (!title) {
+      return;
+    }
+
+    setIsWishlistSubmitting(true);
+    setWishlistsError("");
+
+    const { data, error } = await supabase
+      .from("wishlists")
+      .insert({
+        owner_id: currentUser.id,
+        title
+      })
+      .select("id, title, share_token, created_at")
+      .single();
+
+    if (error) {
+      setWishlistsError("Не удалось создать вишлист.");
+      setIsWishlistSubmitting(false);
+      return;
+    }
+
+    const next = [...wishlists, data];
+    setWishlists(next);
+    await selectWishlist(data);
+    setIsWishlistSubmitting(false);
+    window.location.hash = "#/wishlist";
+  }
+
+  async function openWishlistFromDashboard(wishlist) {
+    await selectWishlist(wishlist);
+    window.location.hash = "#/wishlist";
+  }
+
+  function requestDeleteWishlist(wishlist) {
+    if (!wishlist?.id) {
+      return;
+    }
+    setWishlistToDelete(wishlist);
+  }
+
+  function cancelDeleteWishlist() {
+    if (isWishlistSubmitting) {
+      return;
+    }
+    setWishlistToDelete(null);
+  }
+
+  async function confirmDeleteWishlist() {
+    if (!wishlistToDelete?.id || !currentUser) {
+      return;
+    }
+
+    setIsWishlistSubmitting(true);
+    setWishlistsError("");
+
+    const { error } = await supabase.from("wishlists").delete().eq("id", wishlistToDelete.id);
+    if (error) {
+      setWishlistsError("Не удалось удалить вишлист.");
+      setIsWishlistSubmitting(false);
+      return;
+    }
+
+    const nextWishlists = wishlists.filter((item) => item.id !== wishlistToDelete.id);
+    setWishlists(nextWishlists);
+
+    if (currentWishlistId === wishlistToDelete.id) {
+      if (nextWishlists.length > 0) {
+        await selectWishlist(nextWishlists[0]);
+      } else {
+        setCurrentWishlistId(null);
+        setCurrentShareToken(null);
+        setWishes([]);
+        setWishlistRules(defaultRules.slice(0, 5));
+      }
+      window.location.hash = "#/dashboard";
+    }
+
+    setWishlistToDelete(null);
+    setIsWishlistSubmitting(false);
+  }
+
+  function onWishInputChange(event) {
     const { name, value } = event.target;
     setForm((prev) => ({
       ...prev,
@@ -612,35 +590,86 @@ export default function App() {
     }));
   }
 
-  function onFormSubmit(event) {
-    event.preventDefault();
+  async function onFormSubmit(event) {
+    if (event?.preventDefault) {
+      event.preventDefault();
+    }
+
+    if (!currentWishlistId) {
+      setWishesError("Список подарков еще не готов.");
+      return;
+    }
 
     if (!form.title.trim() || !form.note.trim()) {
       return;
     }
 
-    if (editingWishId) {
-      setWishes((prev) =>
-        prev.map((wish) =>
-          wish.id === editingWishId
-            ? {
-                ...wish,
-                ...createWish(form),
-                id: wish.id
-              }
-            : wish
-        )
-      );
-      setEditingWishId(null);
-    } else {
-      const nextWish = createWish(form);
-      setWishes((prev) => [nextWish, ...prev]);
-    }
+    setIsWishSubmitting(true);
+    setWishesError("");
 
-    setForm(emptyForm);
+    try {
+      if (editingWishId) {
+        const nextWish = {
+          ...createWish(form),
+          id: editingWishId
+        };
+
+        const { data, error } = await supabase
+          .from("wishes")
+          .update({
+            title: nextWish.title,
+            note: nextWish.note,
+            tag: nextWish.tag,
+            price: nextWish.price,
+            url: nextWish.url
+          })
+          .eq("id", editingWishId)
+          .select("id, title, note, tag, price, url")
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        setWishes((prev) => prev.map((wish) => (wish.id === editingWishId ? sanitizeWishes([data])[0] : wish)));
+        setEditingWishId(null);
+      } else {
+        const nextWish = createWish(form);
+        const { data, error } = await supabase
+          .from("wishes")
+          .insert({
+            ...nextWish,
+            wishlist_id: currentWishlistId
+          })
+          .select("id, wishlist_id, title, note, tag, price, url")
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        setWishes((prev) => [sanitizeWishes([data])[0], ...prev]);
+      }
+
+      setForm(emptyForm);
+      setEditingWishId(null);
+      setIsWishEditorOpen(false);
+    } catch {
+      setWishesError("Не удалось сохранить подарок.");
+    } finally {
+      setIsWishSubmitting(false);
+    }
   }
 
-  function deleteWish(id) {
+  async function deleteWish(id) {
+    setWishesError("");
+
+    const { error } = await supabase.from("wishes").delete().eq("id", id);
+    if (error) {
+      setWishesError("Не удалось удалить подарок.");
+      return;
+    }
+
     setWishes((prev) => prev.filter((wish) => wish.id !== id));
 
     setContributions((prev) => {
@@ -652,6 +681,7 @@ export default function App() {
     if (editingWishId === id) {
       setEditingWishId(null);
       setForm(emptyForm);
+      setIsWishEditorOpen(false);
     }
 
     if (openedWishId === id) {
@@ -662,25 +692,27 @@ export default function App() {
       closeDonationModal();
     }
 
-    if (registeringWish?.id === id) {
-      closeRegistrationModal();
-    }
   }
 
-  function startEditWish(wish) {
+  function openWishEditModal(wish) {
     setEditingWishId(wish.id);
     setForm(mapWishToForm(wish));
+    setIsWishEditorOpen(true);
   }
 
-  function cancelEditWish() {
+  function openWishCreateModal() {
     setEditingWishId(null);
     setForm(emptyForm);
+    setIsWishEditorOpen(true);
   }
 
-  function resetDefaultWishes() {
-    setWishes(defaultWishes);
+  function closeWishEditorModal() {
+    if (isWishSubmitting) {
+      return;
+    }
     setEditingWishId(null);
     setForm(emptyForm);
+    setIsWishEditorOpen(false);
   }
 
   function openWishModal(wishId) {
@@ -689,18 +721,6 @@ export default function App() {
 
   function closeWishModal() {
     setOpenedWishId(null);
-  }
-
-  function openRegistrationModal(wish) {
-    setRegisteringWish(wish);
-    setRegistrationError("");
-    setRegistrationForm(emptyRegistrationForm);
-  }
-
-  function closeRegistrationModal() {
-    setRegisteringWish(null);
-    setRegistrationError("");
-    setRegistrationForm(emptyRegistrationForm);
   }
 
   function openDonationModal(wish) {
@@ -713,60 +733,6 @@ export default function App() {
     setDonationWish(null);
     setDonationAmount("");
     setDonationError("");
-  }
-
-  function participateInWish(wish) {
-    if (!currentUser) {
-      openRegistrationModal(wish);
-      return;
-    }
-
-    openDonationModal(wish);
-  }
-
-  function onRegistrationInput(event) {
-    const { name, value } = event.target;
-    setRegistrationForm((prev) => ({
-      ...prev,
-      [name]: value
-    }));
-  }
-
-  function onRegistrationToggle() {
-    setRegistrationForm((prev) => ({
-      ...prev,
-      isIncognito: !prev.isIncognito
-    }));
-  }
-
-  function submitRegistration(event) {
-    event.preventDefault();
-
-    let user;
-    if (registrationForm.isIncognito) {
-      user = { name: "Инкогнито", isIncognito: true };
-    } else {
-      const firstName = normalizeName(registrationForm.firstName);
-      const lastName = normalizeName(registrationForm.lastName);
-
-      if (!firstName) {
-        setRegistrationError("Укажи имя или выбери режим инкогнито.");
-        return;
-      }
-
-      user = {
-        name: [firstName, lastName].filter(Boolean).join(" "),
-        isIncognito: false
-      };
-    }
-
-    setCurrentUser(user);
-
-    if (registeringWish) {
-      openDonationModal(registeringWish);
-    }
-
-    closeRegistrationModal();
   }
 
   function submitDonation(event) {
@@ -834,50 +800,8 @@ export default function App() {
     closeDonationModal();
   }
 
-  function openAdminPage() {
-    if (isAdminAuthorized) {
-      window.location.hash = "#/admin";
-      return;
-    }
-    openAdminAuthModal();
-  }
-
-  function openWishlistPage() {
-    window.location.hash = "#/";
-  }
-
-  function openAdminAuthModal() {
-    setIsAdminAuthOpen(true);
-    setAdminAuthError("");
-    setAdminAuthForm(emptyAdminAuthForm);
-  }
-
-  function closeAdminAuthModal() {
-    setIsAdminAuthOpen(false);
-    setAdminAuthError("");
-    setAdminAuthForm(emptyAdminAuthForm);
-  }
-
-  function onAdminAuthInputChange(event) {
-    const { name, value } = event.target;
-    setAdminAuthForm((prev) => ({
-      ...prev,
-      [name]: value
-    }));
-  }
-
-  function submitAdminAuth(event) {
-    event.preventDefault();
-
-    if (adminAuthForm.login !== ADMIN_LOGIN || adminAuthForm.password !== ADMIN_PASSWORD) {
-      setAdminAuthError("Неверный логин или пароль.");
-      return;
-    }
-
-    setIsAdminAuthorized(true);
-    sessionStorage.setItem(ADMIN_AUTH_KEY, "1");
-    closeAdminAuthModal();
-    window.location.hash = "#/admin";
+  function openDashboardPage() {
+    window.location.hash = "#/dashboard";
   }
 
   function removeMyParticipation(wishId) {
@@ -911,11 +835,32 @@ export default function App() {
     });
   }
 
-  const openedWish = wishes.find((wish) => wish.id === openedWishId) || null;
+  if (isAuthLoading) {
+    return null;
+  }
+
+  if (!currentUser && page !== "shared") {
+    return (
+      <AuthPage
+        mode={authMode}
+        form={authForm}
+        error={authError}
+        submitting={isAuthSubmitting}
+        onModeChange={onAuthModeChange}
+        onInputChange={onAuthInputChange}
+        onSubmit={submitAuth}
+      />
+    );
+  }
+
+  const activeWishes = page === "shared" ? sharedWishes : wishes;
+  const openedWish = activeWishes.find((wish) => wish.id === openedWishId) || null;
   const openedWishTarget = openedWish ? parseTargetFromPrice(openedWish.price) : null;
   const openedWishDonated = openedWish ? getWishDonated(contributions, openedWish.id) : 0;
   const openedWishParticipants = openedWish ? getWishParticipants(contributions, openedWish.id) : [];
-  const currentUserName = getUserDisplayName(currentUser);
+  const currentUserName =
+    [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ").trim() ||
+    getUserDisplayName(currentUser);
 
   function isCurrentUserParticipant(person) {
     if (!currentUser) {
@@ -931,6 +876,7 @@ export default function App() {
   const openedWishProgressPercent = openedWishTarget
     ? Math.min(100, Math.round((openedWishDonated / openedWishTarget) * 100))
     : 0;
+  const isSharedView = page === "shared";
   const openedWishCompleted = Boolean(openedWishTarget) && openedWishDonated >= openedWishTarget;
   const donationWishTarget = donationWish ? parseTargetFromPrice(donationWish.price) : null;
   const donationWishDonated = donationWish ? getWishDonated(contributions, donationWish.id) : 0;
@@ -938,31 +884,152 @@ export default function App() {
     ? Math.max(0, donationWishTarget - donationWishDonated)
     : 0;
 
+  const showUserBar = Boolean(currentUser) && page !== "shared";
+  const canManage = page === "wishlist";
+
   return (
     <div className="page-shell">
       <div className="glow glow-left" />
       <div className="glow glow-right" />
 
       <main className="layout">
-        {page === "admin" ? (
-          <AdminPage
-            wishes={wishes}
-            form={form}
-            editingWishId={editingWishId}
-            onInputChange={onInputChange}
-            onFormSubmit={onFormSubmit}
-            onDeleteWish={deleteWish}
-            onStartEdit={startEditWish}
-            onCancelEdit={cancelEditWish}
-            onReset={resetDefaultWishes}
-            onOpenWishlist={openWishlistPage}
+        {showUserBar ? (
+          <div className="auth-userbar">
+            {canManage ? (
+              <button
+                type="button"
+                className="header-back-button"
+                aria-label="Назад к вишлистам"
+                onClick={() => {
+                  setIsHeaderMenuOpen(false);
+                  openDashboardPage();
+                }}
+              >
+                <svg
+                  className="header-back-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path d="M11 5L4 12L11 19" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" />
+                  <path d="M5 12H20" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" />
+                </svg>
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              className="auth-userbar-name auth-userbar-name-button"
+              onClick={() => {
+                setIsHeaderMenuOpen(false);
+                openProfileModal();
+              }}
+            >
+              {currentUserName}
+            </button>
+
+            <div className="header-menu">
+              <button
+                type="button"
+                className="burger-button"
+                aria-label="Открыть меню"
+                onClick={() => setIsHeaderMenuOpen((prev) => !prev)}
+              >
+                ☰
+              </button>
+
+              {isHeaderMenuOpen ? (
+                <div className="header-menu-dropdown">
+                  {canManage ? (
+                    <button
+                      type="button"
+                      className="header-menu-item"
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        copyShareLink();
+                      }}
+                    >
+                      Поделиться ссылкой
+                    </button>
+                  ) : null}
+                  {page !== "dashboard" ? (
+                    <button
+                      type="button"
+                      className="header-menu-item"
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        openDashboardPage();
+                      }}
+                    >
+                      Мои вишлисты
+                    </button>
+                  ) : null}
+                  {canManage ? (
+                    <button
+                      type="button"
+                      className="header-menu-item"
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        openWishCreateModal();
+                      }}
+                    >
+                      Добавить подарок
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="header-menu-item"
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      logout();
+                    }}
+                  >
+                    Выйти
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {showUserBar && shareCopied ? <p className="status-banner">{shareCopied}</p> : null}
+
+        {page === "shared" && sharedError ? <p className="status-banner status-banner-error">{sharedError}</p> : null}
+        {page !== "shared" && wishesError ? <p className="status-banner status-banner-error">{wishesError}</p> : null}
+
+        {page === "dashboard" ? (
+          <DashboardPage
+            wishlists={wishlists}
+            currentWishlistId={currentWishlistId}
+            isLoading={isWishlistsLoading}
+            isSubmitting={isWishlistSubmitting}
+            error={wishlistsError}
+            onCreateWishlist={createWishlist}
+            onOpenWishlist={openWishlistFromDashboard}
+            onCopyShareLink={copyWishlistShareLink}
+            onDeleteWishlist={requestDeleteWishlist}
           />
         ) : (
           <WishlistPage
-            wishes={wishes}
+            wishes={activeWishes}
             contributions={contributions}
             onOpenWish={openWishModal}
-            onOpenAdmin={openAdminPage}
+            birthday={page === "shared" ? "" : currentUser?.birthday || ""}
+            ownerFirstName={page === "shared" ? "" : currentUser?.firstName || ""}
+            canEdit={page !== "shared"}
+            rules={page === "shared" ? defaultRules : wishlistRules}
+            wishForm={form}
+            editingWishId={editingWishId}
+            isWishEditorOpen={isWishEditorOpen}
+            isWishSubmitting={isWishSubmitting}
+            onWishFormChange={onWishInputChange}
+            onWishFormSubmit={onFormSubmit}
+            onOpenWishCreate={openWishCreateModal}
+            onOpenWishEdit={openWishEditModal}
+            onCloseWishEditor={closeWishEditorModal}
+            onDeleteWish={deleteWish}
+            onSaveRules={saveRulesForWishlist}
           />
         )}
       </main>
@@ -1018,10 +1085,10 @@ export default function App() {
               <button
                 type="button"
                 className="wish-donate-button"
-                onClick={() => participateInWish(openedWish)}
-                disabled={openedWishCompleted}
+                onClick={() => openDonationModal(openedWish)}
+                disabled={openedWishCompleted || isSharedView}
               >
-                {openedWishCompleted ? "Собрано" : "Поучаствовать"}
+                {isSharedView ? "Только просмотр" : openedWishCompleted ? "Собрано" : "Поучаствовать"}
               </button>
               {openedWish.url ? (
                 <a className="wish-shop-link" href={openedWish.url} target="_blank" rel="noreferrer">
@@ -1036,54 +1103,54 @@ export default function App() {
         </div>
       ) : null}
 
-      {registeringWish ? (
-        <div className="donation-modal-backdrop" onClick={closeRegistrationModal}>
+      {isProfileOpen ? (
+        <div className="donation-modal-backdrop" onClick={closeProfileModal}>
           <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Кто участвует</h3>
-            <p className="donation-modal-title">{registeringWish.title}</p>
+            <h3>Профиль</h3>
+            <p className="donation-modal-title">Редактирование данных аккаунта</p>
 
-            <form className="donation-form" onSubmit={submitRegistration}>
+            <form className="donation-form" onSubmit={submitProfile}>
               <label>
                 Имя
                 <input
                   type="text"
                   name="firstName"
-                  value={registrationForm.firstName}
-                  onChange={onRegistrationInput}
+                  value={profileForm.firstName}
+                  onChange={onProfileInputChange}
                   placeholder="Имя"
-                  disabled={registrationForm.isIncognito}
                 />
               </label>
 
               <label>
-                Фамилия (необязательно)
+                Фамилия
                 <input
                   type="text"
                   name="lastName"
-                  value={registrationForm.lastName}
-                  onChange={onRegistrationInput}
+                  value={profileForm.lastName}
+                  onChange={onProfileInputChange}
                   placeholder="Фамилия"
-                  disabled={registrationForm.isIncognito}
                 />
               </label>
 
-              <label className="checkbox-row">
+              <label>
+                Дата рождения
                 <input
-                  type="checkbox"
-                  checked={registrationForm.isIncognito}
-                  onChange={onRegistrationToggle}
+                  type="text"
+                  name="birthday"
+                  value={profileForm.birthday}
+                  onChange={onProfileInputChange}
+                  placeholder="ДД-ММ-ГГГГ"
                 />
-                Участвовать как инкогнито
               </label>
 
-              {registrationError ? <p className="donation-error">{registrationError}</p> : null}
+              {profileError ? <p className="donation-error">{profileError}</p> : null}
 
               <div className="donation-actions">
-                <button type="button" className="button-secondary" onClick={closeRegistrationModal}>
+                <button type="button" className="button-secondary" onClick={closeProfileModal}>
                   Отмена
                 </button>
-                <button type="submit" className="button-primary">
-                  Продолжить
+                <button type="submit" className="button-primary" disabled={isProfileSubmitting}>
+                  {isProfileSubmitting ? "Сохраняем..." : "Сохранить"}
                 </button>
               </div>
             </form>
@@ -1136,50 +1203,30 @@ export default function App() {
         </div>
       ) : null}
 
-      {isAdminAuthOpen ? (
-        <div className="donation-modal-backdrop" onClick={closeAdminAuthModal}>
+      {wishlistToDelete ? (
+        <div className="donation-modal-backdrop" onClick={cancelDeleteWishlist}>
           <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Вход в админку</h3>
-            <p className="donation-modal-title">Введите логин и пароль</p>
+            <h3>Удалить вишлист?</h3>
+            <p className="donation-modal-title">
+              {`Удалить вишлист "${wishlistToDelete.title}"? Это удалит и все подарки внутри.`}
+            </p>
 
-            <form className="donation-form" onSubmit={submitAdminAuth}>
-              <label>
-                Логин
-                <input
-                  type="text"
-                  name="login"
-                  value={adminAuthForm.login}
-                  onChange={onAdminAuthInputChange}
-                  placeholder="Логин"
-                  autoFocus
-                />
-              </label>
-
-              <label>
-                Пароль
-                <input
-                  type="password"
-                  name="password"
-                  value={adminAuthForm.password}
-                  onChange={onAdminAuthInputChange}
-                  placeholder="Пароль"
-                />
-              </label>
-
-              {adminAuthError ? <p className="donation-error">{adminAuthError}</p> : null}
-
-              <div className="donation-actions">
-                <button type="button" className="button-secondary" onClick={closeAdminAuthModal}>
-                  Отмена
-                </button>
-                <button type="submit" className="button-primary">
-                  Войти
-                </button>
-              </div>
-            </form>
+            <div className="donation-actions">
+              <button type="button" className="button-secondary" onClick={cancelDeleteWishlist} disabled={isWishlistSubmitting}>
+                Отмена
+              </button>
+              <button type="button" className="delete-button" onClick={confirmDeleteWishlist} disabled={isWishlistSubmitting}>
+                {isWishlistSubmitting ? "Удаляем..." : "Удалить"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
+
     </div>
   );
 }
+
+
+
+

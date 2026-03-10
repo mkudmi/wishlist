@@ -1,0 +1,291 @@
+import { emptyProfileForm } from "../config/constants";
+
+export function sanitizeWishes(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return items
+    .filter((item) => item && typeof item.title === "string" && typeof item.note === "string")
+    .map((item) => ({
+      id: item.id || `wish-${Date.now()}-${Math.random()}`,
+      title: item.title,
+      note: item.note,
+      tag: typeof item.tag === "string" ? item.tag : "Без категории",
+      price:
+        typeof item.price === "string"
+          ? item.price
+          : typeof item.accent === "string"
+            ? item.accent
+            : "",
+      url: typeof item.url === "string" ? item.url : ""
+    }));
+}
+
+export function readStoredContributions(storageKey) {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const raw = localStorage.getItem(storageKey);
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return {};
+    }
+
+    return Object.entries(parsed).reduce((acc, [wishId, value]) => {
+      if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+        acc[wishId] = [{ name: "Инкогнито", amount: value, at: new Date().toISOString() }];
+        return acc;
+      }
+
+      if (!Array.isArray(value)) {
+        return acc;
+      }
+
+      const entries = value.filter(
+        (entry) =>
+          entry &&
+          typeof entry.name === "string" &&
+          typeof entry.amount === "number" &&
+          Number.isFinite(entry.amount) &&
+          entry.amount > 0
+      );
+
+      if (entries.length > 0) {
+        acc[wishId] = entries;
+      }
+
+      return acc;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
+export function createWish(form) {
+  return {
+    id:
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `wish-${Date.now()}`,
+    title: form.title.trim(),
+    note: form.note.trim(),
+    tag: form.tag.trim() || "Без категории",
+    price: form.price.trim(),
+    url: form.url.trim()
+  };
+}
+
+export function mapWishToForm(wish) {
+  return {
+    title: wish.title || "",
+    note: wish.note || "",
+    tag: wish.tag || "",
+    price: wish.price || "",
+    url: wish.url || ""
+  };
+}
+
+export function parseTargetFromPrice(price) {
+  if (!price) {
+    return null;
+  }
+  const matches = [...price.matchAll(/\d[\d\s]*/g)];
+  if (matches.length === 0) {
+    return null;
+  }
+  const values = matches
+    .map((match) => Number(match[0].replace(/\s/g, "")))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (values.length === 0) {
+    return null;
+  }
+  return values[values.length - 1];
+}
+
+export function getWishDonated(contributions, wishId) {
+  const entries = contributions[wishId] || [];
+  return entries.reduce((sum, entry) => sum + entry.amount, 0);
+}
+
+export function getWishParticipants(contributions, wishId) {
+  const entries = contributions[wishId] || [];
+  const totalsByPerson = entries.reduce((acc, entry) => {
+    const key = entry.userId ? `id:${entry.userId}` : `name:${entry.name}`;
+    if (!acc[key]) {
+      acc[key] = {
+        key,
+        name: entry.name,
+        userId: entry.userId || null,
+        total: 0
+      };
+    }
+    acc[key].total += entry.amount;
+    return acc;
+  }, {});
+
+  return Object.values(totalsByPerson).sort((a, b) => b.total - a.total);
+}
+
+export function formatMoney(value) {
+  return new Intl.NumberFormat("ru-RU").format(Math.round(value));
+}
+
+export function normalizeName(value) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+export function parseDonationAmount(value) {
+  return Number(value.replace(/[^\d.,]/g, "").replace(",", "."));
+}
+
+export function getUserDisplayName(user) {
+  if (!user) {
+    return "";
+  }
+  return user.isIncognito ? "Инкогнито" : user.name;
+}
+
+export function formatDateToDdMmYyyy(storageDate) {
+  if (!storageDate || !/^\d{4}-\d{2}-\d{2}$/.test(storageDate)) {
+    return "";
+  }
+  const [year, month, day] = storageDate.split("-");
+  return `${day}-${month}-${year}`;
+}
+
+export function parseDdMmYyyyToStorageDate(displayDate) {
+  if (!displayDate || typeof displayDate !== "string") {
+    return null;
+  }
+  const normalized = displayDate.trim().replace(/\./g, "-").replace(/\//g, "-");
+  const match = normalized.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!match) {
+    return null;
+  }
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) {
+    return null;
+  }
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function toGenitiveFirstName(name) {
+  const value = String(name || "").trim();
+  if (!value) {
+    return "";
+  }
+  const lower = value.toLowerCase();
+  const last = lower.slice(-1);
+  const preLast = lower.slice(-2, -1);
+  const hushing = "гкхжчшщц";
+  if (last === "й" || last === "ь") {
+    return `${value.slice(0, -1)}я`;
+  }
+  if (last === "я") {
+    return `${value.slice(0, -1)}и`;
+  }
+  if (last === "а") {
+    const suffix = hushing.includes(preLast) ? "и" : "ы";
+    return `${value.slice(0, -1)}${suffix}`;
+  }
+  if ("бвгджзйклмнпрстфхцчшщ".includes(last)) {
+    return `${value}а`;
+  }
+  return value;
+}
+
+export function getProfileFormFromUser(user) {
+  if (!user) {
+    return emptyProfileForm;
+  }
+  if (user.firstName || user.lastName) {
+    return {
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      birthday: formatDateToDdMmYyyy(user.birthday || "")
+    };
+  }
+  const parts = String(user.name || "").trim().split(/\s+/);
+  return {
+    firstName: parts[0] || "",
+    lastName: parts.slice(1).join(" "),
+    birthday: formatDateToDdMmYyyy(user.birthday || "")
+  };
+}
+
+export function getBirthdayCountdownInfo(birthday) {
+  const storageBirthday = /^\d{2}-\d{2}-\d{4}$/.test(birthday || "")
+    ? parseDdMmYyyyToStorageDate(birthday)
+    : birthday;
+
+  if (!storageBirthday || !/^\d{4}-\d{2}-\d{2}$/.test(storageBirthday)) {
+    return { label: "ДД-ММ", remaining: "Осталось --д" };
+  }
+
+  const [yearString, monthString, dayString] = storageBirthday.split("-");
+  const month = Number(monthString);
+  const day = Number(dayString);
+  const year = Number(yearString);
+  if (!Number.isFinite(month) || !Number.isFinite(day) || !Number.isFinite(year)) {
+    return { label: "ДД-ММ", remaining: "Осталось --д" };
+  }
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let nextBirthday = new Date(todayStart.getFullYear(), month - 1, day);
+  if (nextBirthday < todayStart) {
+    nextBirthday = new Date(todayStart.getFullYear() + 1, month - 1, day);
+  }
+
+  const diffDays = Math.round((nextBirthday - todayStart) / (1000 * 60 * 60 * 24));
+  const label = new Date(2000, month - 1, day).toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "long"
+  });
+  if (diffDays === 0) {
+    return { label, remaining: "Осталось 0 дней" };
+  }
+
+  const mod10 = diffDays % 10;
+  const mod100 = diffDays % 100;
+  let suffix = "дней";
+  if (mod10 === 1 && mod100 !== 11) {
+    suffix = "день";
+  } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    suffix = "дня";
+  }
+  const verb = suffix === "день" ? "Остался" : "Осталось";
+  return { label, remaining: `${verb} ${diffDays} ${suffix}` };
+}
+
+export function getRouteFromHash() {
+  if (typeof window === "undefined") {
+    return { page: "dashboard", shareToken: null };
+  }
+
+  const raw = window.location.hash || "#/";
+  if (raw === "#/dashboard" || raw === "#/") {
+    return { page: "dashboard", shareToken: null };
+  }
+  if (raw === "#/wishlist") {
+    return { page: "wishlist", shareToken: null };
+  }
+  const sharedMatch = raw.match(/^#\/shared\/([a-zA-Z0-9_-]+)$/);
+  if (sharedMatch) {
+    return { page: "shared", shareToken: sharedMatch[1] };
+  }
+  return { page: "dashboard", shareToken: null };
+}
