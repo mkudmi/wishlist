@@ -1025,15 +1025,17 @@ h3 {
 }
 
 .auth-layout {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .auth-card {
-  width: min(560px, 100%);
+  width: min(520px, 100%);
   margin: 0 auto;
-  padding: clamp(24px, 4vw, 38px);
+  padding: clamp(16px, 2.8vw, 24px);
   border-radius: 30px;
   border: 1px solid rgba(95, 67, 39, 0.14);
   background:
@@ -1044,20 +1046,55 @@ h3 {
     inset 0 1px 0 rgba(255, 255, 255, 0.84);
 }
 
+.auth-title {
+  font-family: "Playfair Display", serif;
+  font-size: clamp(2.5rem, 5.4vw, 4.2rem);
+  line-height: 0.98;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+
 .auth-subtitle {
-  margin-top: 10px;
+  margin-top: 6px;
   color: #73543f;
+  font-size: 0.96rem;
+  line-height: 1.35;
 }
 
 .auth-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 24px;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 .auth-form {
-  margin-top: 20px;
+  margin-top: 10px;
+  gap: 7px;
+}
+
+.auth-switch .button-primary,
+.auth-switch .button-secondary {
+  min-height: 42px;
+}
+
+.auth-form label {
+  gap: 5px;
+  font-size: 0.92rem;
+}
+
+.auth-form input {
+  padding: 8px 10px;
+  min-height: 38px;
+}
+
+.auth-form .donation-actions {
+  margin-top: 2px;
+}
+
+.auth-form .button-primary {
+  min-height: 42px;
 }
 
 .auth-userbar {
@@ -1282,6 +1319,21 @@ h3 {
 
   .auth-switch {
     grid-template-columns: 1fr;
+  }
+
+  .auth-layout {
+    min-height: 100dvh;
+    align-items: flex-start;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .auth-card {
+    padding: 14px;
+  }
+
+  .auth-title {
+    font-size: clamp(2rem, 9vw, 2.8rem);
   }
 
   .auth-userbar {

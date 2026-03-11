@@ -1,4 +1,4 @@
-export function AuthPage({
+﻿export function AuthPage({
   mode,
   form,
   error,
@@ -16,7 +16,7 @@ export function AuthPage({
 
       <main className="layout auth-layout">
         <section className="auth-card">
-          <h1>{isLogin ? "Вход в аккаунт" : "Регистрация"}</h1>
+          <h1 className="auth-title">{isLogin ? "Вход в аккаунт" : "Регистрация"}</h1>
           <p className="auth-subtitle">Для доступа к списку подарков авторизуйтесь.</p>
 
           <div className="auth-switch">
@@ -120,4 +120,3 @@ export function AuthPage({
     </div>
   );
 }
-
