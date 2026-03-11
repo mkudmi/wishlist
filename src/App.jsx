@@ -2,6 +2,7 @@
 import { supabase } from "./supabase";
 import {
   CONTRIBUTIONS_KEY,
+  celebrationOptions,
   rules as defaultRules,
   emptyAuthForm,
   emptyForm,
@@ -23,7 +24,19 @@ import {
   readStoredContributions,
   sanitizeWishes
 } from "./lib/helpers";
+import { buildAppUser } from "./lib/authUser";
 import { readRulesForWishlist, writeRulesForWishlist } from "./lib/rulesStorage";
+import {
+  createWishRecord,
+  createWishlistRecord,
+  deleteWishRecord,
+  deleteWishlistRecord,
+  fetchSharedWishesByToken,
+  fetchWishlistsByOwner,
+  fetchWishesByWishlist,
+  updateProfileRecord,
+  updateWishRecord
+} from "./lib/wishlistApi";
 import { AuthPage } from "./components/pages/AuthPage";
 import { DashboardPage } from "./components/pages/DashboardPage";
 import { WishlistPage } from "./components/pages/WishlistPage";
@@ -74,11 +87,7 @@ export default function App() {
     setIsWishlistsLoading(true);
     setWishlistsError("");
 
-    const { data, error } = await supabase
-      .from("wishlists")
-      .select("id, title, share_token, created_at")
-      .eq("owner_id", userId)
-      .order("created_at", { ascending: true });
+    const { data, error } = await fetchWishlistsByOwner(userId);
 
     if (error) {
       setWishlistsError("Не удалось загрузить вишлисты.");
@@ -95,11 +104,7 @@ export default function App() {
   async function loadWishes(wishlistId) {
     setWishesError("");
 
-    const { data, error } = await supabase
-      .from("wishes")
-      .select("id, wishlist_id, title, note, tag, price, url, created_at")
-      .eq("wishlist_id", wishlistId)
-      .order("created_at", { ascending: false });
+    const { data, error } = await fetchWishesByWishlist(wishlistId);
 
     if (error) {
       setWishesError("Не удалось загрузить список подарков.");
@@ -118,9 +123,7 @@ export default function App() {
     }
 
     setSharedError("");
-    const { data, error } = await supabase.rpc("get_shared_wishlist", {
-      p_share_token: token
-    });
+    const { data, error } = await fetchSharedWishesByToken(token);
 
     if (error) {
       setSharedError("Не удалось открыть вишлист по ссылке.");
@@ -200,18 +203,7 @@ export default function App() {
         return;
       }
 
-      const firstName = sessionUser.user_metadata?.first_name || "";
-      const lastName = sessionUser.user_metadata?.last_name || "";
-      const name = [firstName, lastName].filter(Boolean).join(" ").trim() || sessionUser.email || "Пользователь";
-
-      setCurrentUser({
-        id: sessionUser.id,
-        name,
-        firstName,
-        lastName,
-        birthday: sessionUser.user_metadata?.birth_date || "",
-        isIncognito: false
-      });
+      setCurrentUser(buildAppUser(sessionUser));
 
       const lists = await loadWishlistsForUser(sessionUser.id);
       if (!mounted) {
@@ -246,18 +238,7 @@ export default function App() {
         return;
       }
 
-      const firstName = sessionUser.user_metadata?.first_name || "";
-      const lastName = sessionUser.user_metadata?.last_name || "";
-      const name = [firstName, lastName].filter(Boolean).join(" ").trim() || sessionUser.email || "Пользователь";
-
-      setCurrentUser({
-        id: sessionUser.id,
-        name,
-        firstName,
-        lastName,
-        birthday: sessionUser.user_metadata?.birth_date || "",
-        isIncognito: false
-      });
+      setCurrentUser(buildAppUser(sessionUser));
 
       loadWishlistsForUser(sessionUser.id)
         .then((lists) => {
@@ -468,14 +449,11 @@ export default function App() {
       return;
     }
 
-    const { error: profileUpdateError } = await supabase
-      .from("users")
-      .update({
-        first_name: firstName,
-        last_name: lastName,
-        birthday
-      })
-      .eq("id", currentUser.id);
+    const { error: profileUpdateError } = await updateProfileRecord(currentUser.id, {
+      first_name: firstName,
+      last_name: lastName,
+      birthday
+    });
 
     if (profileUpdateError) {
       setProfileError("Профиль auth обновлен, но таблица users не обновилась.");
@@ -494,32 +472,43 @@ export default function App() {
     closeProfileModal();
   }
 
-  async function createWishlist(rawTitle) {
+  async function createWishlist(payload) {
     if (!currentUser) {
-      return;
+      return false;
     }
 
-    const title = String(rawTitle || "").trim();
+    const title = String(payload?.title || "").trim();
+    const celebrationType = String(payload?.celebrationType || "birthday");
+    const customCelebration = String(payload?.customCelebration || "").trim();
+    const eventDate = String(payload?.eventDate || "").trim();
+
     if (!title) {
-      return;
+      return false;
+    }
+    if (celebrationType === "custom" && !customCelebration) {
+      setWishlistsError("Укажи свой вариант праздника.");
+      return false;
+    }
+    if (celebrationType !== "birthday" && !eventDate) {
+      setWishlistsError("Укажи дату события.");
+      return false;
     }
 
     setIsWishlistSubmitting(true);
     setWishlistsError("");
 
-    const { data, error } = await supabase
-      .from("wishlists")
-      .insert({
-        owner_id: currentUser.id,
-        title
-      })
-      .select("id, title, share_token, created_at")
-      .single();
+    const { data, error } = await createWishlistRecord({
+      owner_id: currentUser.id,
+      title,
+      celebration_type: celebrationType,
+      custom_celebration: celebrationType === "custom" ? customCelebration : null,
+      event_date: celebrationType === "birthday" ? null : eventDate
+    });
 
     if (error) {
       setWishlistsError("Не удалось создать вишлист.");
       setIsWishlistSubmitting(false);
-      return;
+      return false;
     }
 
     const next = [...wishlists, data];
@@ -527,6 +516,7 @@ export default function App() {
     await selectWishlist(data);
     setIsWishlistSubmitting(false);
     window.location.hash = "#/wishlist";
+    return true;
   }
 
   async function openWishlistFromDashboard(wishlist) {
@@ -556,7 +546,7 @@ export default function App() {
     setIsWishlistSubmitting(true);
     setWishlistsError("");
 
-    const { error } = await supabase.from("wishlists").delete().eq("id", wishlistToDelete.id);
+    const { error } = await deleteWishlistRecord(wishlistToDelete.id);
     if (error) {
       setWishlistsError("Не удалось удалить вишлист.");
       setIsWishlistSubmitting(false);
@@ -614,18 +604,13 @@ export default function App() {
           id: editingWishId
         };
 
-        const { data, error } = await supabase
-          .from("wishes")
-          .update({
-            title: nextWish.title,
-            note: nextWish.note,
-            tag: nextWish.tag,
-            price: nextWish.price,
-            url: nextWish.url
-          })
-          .eq("id", editingWishId)
-          .select("id, title, note, tag, price, url")
-          .single();
+        const { data, error } = await updateWishRecord(editingWishId, {
+          title: nextWish.title,
+          note: nextWish.note,
+          tag: nextWish.tag,
+          price: nextWish.price,
+          url: nextWish.url
+        });
 
         if (error) {
           throw error;
@@ -635,14 +620,10 @@ export default function App() {
         setEditingWishId(null);
       } else {
         const nextWish = createWish(form);
-        const { data, error } = await supabase
-          .from("wishes")
-          .insert({
-            ...nextWish,
-            wishlist_id: currentWishlistId
-          })
-          .select("id, wishlist_id, title, note, tag, price, url")
-          .single();
+        const { data, error } = await createWishRecord({
+          ...nextWish,
+          wishlist_id: currentWishlistId
+        });
 
         if (error) {
           throw error;
@@ -664,7 +645,7 @@ export default function App() {
   async function deleteWish(id) {
     setWishesError("");
 
-    const { error } = await supabase.from("wishes").delete().eq("id", id);
+    const { error } = await deleteWishRecord(id);
     if (error) {
       setWishesError("Не удалось удалить подарок.");
       return;
@@ -854,6 +835,7 @@ export default function App() {
   }
 
   const activeWishes = page === "shared" ? sharedWishes : wishes;
+  const currentWishlist = wishlists.find((wishlist) => wishlist.id === currentWishlistId) || null;
   const openedWish = activeWishes.find((wish) => wish.id === openedWishId) || null;
   const openedWishTarget = openedWish ? parseTargetFromPrice(openedWish.price) : null;
   const openedWishDonated = openedWish ? getWishDonated(contributions, openedWish.id) : 0;
@@ -861,6 +843,12 @@ export default function App() {
   const currentUserName =
     [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ").trim() ||
     getUserDisplayName(currentUser);
+  const currentCelebrationType = currentWishlist?.celebration_type || "birthday";
+  const celebrationTitle =
+    currentCelebrationType === "custom"
+      ? currentWishlist?.custom_celebration || "Мой праздник"
+      : celebrationOptions.find((item) => item.value === currentCelebrationType)?.label || "Мой день рождения";
+  const countdownDate = currentCelebrationType === "birthday" ? currentUser?.birthday || "" : currentWishlist?.event_date || "";
 
   function isCurrentUserParticipant(person) {
     if (!currentUser) {
@@ -1015,7 +1003,9 @@ export default function App() {
             wishes={activeWishes}
             contributions={contributions}
             onOpenWish={openWishModal}
-            birthday={page === "shared" ? "" : currentUser?.birthday || ""}
+            countdownDate={page === "shared" ? "" : countdownDate}
+            isRecurringEvent={page === "shared" ? true : currentCelebrationType === "birthday"}
+            eventTitle={page === "shared" ? "Мой день рождения" : celebrationTitle}
             ownerFirstName={page === "shared" ? "" : currentUser?.firstName || ""}
             canEdit={page !== "shared"}
             rules={page === "shared" ? defaultRules : wishlistRules}

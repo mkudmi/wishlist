@@ -1,5 +1,14 @@
 ﻿export const CONTRIBUTIONS_KEY = "birthday-wishlist-contributions-v1";
 
+export const celebrationOptions = [
+  { value: "birthday", label: "Мой день рождения" },
+  { value: "housewarming", label: "Новоселье" },
+  { value: "wedding", label: "Свадьба" },
+  { value: "anniversary", label: "Годовщина" },
+  { value: "new_year", label: "Новый год" },
+  { value: "custom", label: "Свой вариант" }
+];
+
 export const rules = [
   "Если выбираешь вещь сам, лучше в спокойных цветах и без слишком ярких принтов.",
   "Если подарок крупный, можно скооперироваться с кем-то и подарить вместе.",

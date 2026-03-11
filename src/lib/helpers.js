@@ -1,4 +1,4 @@
-import { emptyProfileForm } from "../config/constants";
+﻿import { emptyProfileForm } from "../config/constants";
 
 export function sanitizeWishes(items) {
   if (!Array.isArray(items)) {
@@ -226,16 +226,15 @@ export function getProfileFormFromUser(user) {
   };
 }
 
-export function getBirthdayCountdownInfo(birthday) {
-  const storageBirthday = /^\d{2}-\d{2}-\d{4}$/.test(birthday || "")
-    ? parseDdMmYyyyToStorageDate(birthday)
-    : birthday;
+export function getEventCountdownInfo(dateValue, options = {}) {
+  const recurring = options.recurring !== false;
+  const storageDate = /^\d{2}-\d{2}-\d{4}$/.test(dateValue || "") ? parseDdMmYyyyToStorageDate(dateValue) : dateValue;
 
-  if (!storageBirthday || !/^\d{4}-\d{2}-\d{2}$/.test(storageBirthday)) {
+  if (!storageDate || !/^\d{4}-\d{2}-\d{2}$/.test(storageDate)) {
     return { label: "ДД-ММ", remaining: "Осталось --д" };
   }
 
-  const [yearString, monthString, dayString] = storageBirthday.split("-");
+  const [yearString, monthString, dayString] = storageDate.split("-");
   const month = Number(monthString);
   const day = Number(dayString);
   const year = Number(yearString);
@@ -245,22 +244,27 @@ export function getBirthdayCountdownInfo(birthday) {
 
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  let nextBirthday = new Date(todayStart.getFullYear(), month - 1, day);
-  if (nextBirthday < todayStart) {
-    nextBirthday = new Date(todayStart.getFullYear() + 1, month - 1, day);
+  let nextDate = new Date(year, month - 1, day);
+
+  if (recurring) {
+    nextDate = new Date(todayStart.getFullYear(), month - 1, day);
+    if (nextDate < todayStart) {
+      nextDate = new Date(todayStart.getFullYear() + 1, month - 1, day);
+    }
   }
 
-  const diffDays = Math.round((nextBirthday - todayStart) / (1000 * 60 * 60 * 24));
-  const label = new Date(2000, month - 1, day).toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "long"
-  });
-  if (diffDays === 0) {
-    return { label, remaining: "Осталось 0 дней" };
+  const diffDays = Math.ceil((nextDate - todayStart) / (1000 * 60 * 60 * 24));
+  const label = recurring
+    ? new Date(2000, month - 1, day).toLocaleDateString("ru-RU", { day: "2-digit", month: "long" })
+    : new Date(year, month - 1, day).toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
+
+  if (!recurring && diffDays < 0) {
+    return { label, remaining: "Событие прошло" };
   }
 
-  const mod10 = diffDays % 10;
-  const mod100 = diffDays % 100;
+  const safeDays = diffDays < 0 ? 0 : diffDays;
+  const mod10 = safeDays % 10;
+  const mod100 = safeDays % 100;
   let suffix = "дней";
   if (mod10 === 1 && mod100 !== 11) {
     suffix = "день";
@@ -268,7 +272,7 @@ export function getBirthdayCountdownInfo(birthday) {
     suffix = "дня";
   }
   const verb = suffix === "день" ? "Остался" : "Осталось";
-  return { label, remaining: `${verb} ${diffDays} ${suffix}` };
+  return { label, remaining: `${verb} ${safeDays} ${suffix}` };
 }
 
 export function getRouteFromHash() {

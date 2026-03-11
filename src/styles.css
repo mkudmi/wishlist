@@ -822,6 +822,16 @@ h3 {
   color: #241f1a;
 }
 
+.donation-form select {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(95, 67, 39, 0.2);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  color: #241f1a;
+}
+
 .donation-form textarea {
   width: 100%;
   border-radius: 12px;
@@ -842,6 +852,70 @@ h3 {
 .donation-form textarea:focus {
   outline: 2px solid rgba(185, 100, 39, 0.25);
   border-color: rgba(185, 100, 39, 0.45);
+}
+
+.donation-form select:focus {
+  outline: 2px solid rgba(185, 100, 39, 0.25);
+  border-color: rgba(185, 100, 39, 0.45);
+}
+
+.custom-select {
+  position: relative;
+}
+
+.custom-select-trigger {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(95, 67, 39, 0.2);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #241f1a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.custom-select-arrow {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  border-radius: 12px;
+  border: 1px solid rgba(95, 67, 39, 0.18);
+  background: rgba(255, 252, 247, 0.98);
+  box-shadow: 0 12px 28px rgba(63, 40, 22, 0.16);
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+}
+
+.custom-select-item {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  text-align: left;
+  background: transparent;
+  color: #5f4327;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+
+.custom-select-item:hover {
+  background: rgba(245, 234, 220, 0.9);
+}
+
+.custom-select-item-active {
+  background: rgba(185, 100, 39, 0.14);
+  color: #8e4b1a;
+  font-weight: 700;
 }
 
 .donation-error {

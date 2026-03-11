@@ -1,7 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import {
   formatMoney,
-  getBirthdayCountdownInfo,
+  getEventCountdownInfo,
   getWishDonated,
   parseTargetFromPrice,
   toGenitiveFirstName
@@ -11,7 +11,9 @@ export function WishlistPage({
   wishes,
   contributions,
   onOpenWish,
-  birthday,
+  countdownDate,
+  isRecurringEvent,
+  eventTitle,
   ownerFirstName,
   canEdit,
   rules,
@@ -37,9 +39,10 @@ export function WishlistPage({
     }
   }
 
-  const birthdayInfo = getBirthdayCountdownInfo(birthday);
+  const eventInfo = getEventCountdownInfo(countdownDate, { recurring: isRecurringEvent });
   const genitiveName = toGenitiveFirstName(ownerFirstName);
-  const heroKicker = genitiveName ? `День рождения ${genitiveName}` : "День рождения";
+  const fallbackBirthday = genitiveName ? `День рождения ${genitiveName}` : "Мой день рождения";
+  const heroKicker = eventTitle || fallbackBirthday;
 
   const [isRulesEditorOpen, setIsRulesEditorOpen] = useState(false);
   const [rulesDraft, setRulesDraft] = useState(() => rules.slice(0, 5));
@@ -103,8 +106,8 @@ export function WishlistPage({
           </div>
 
           <aside className="date-panel">
-            <span className="date-label">{birthdayInfo.label}</span>
-            <strong>{birthdayInfo.remaining}</strong>
+            <span className="date-label">{eventInfo.label}</span>
+            <strong>{eventInfo.remaining}</strong>
             <p className="date-note">При желании можно поучаствовать в одном подарке вместе с друзьями.</p>
           </aside>
         </div>

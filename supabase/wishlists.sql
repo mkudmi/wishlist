@@ -2,6 +2,9 @@ create table if not exists public.wishlists (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
   title text not null default 'My Wishlist',
+  celebration_type text not null default 'birthday',
+  custom_celebration text,
+  event_date date,
   share_token text unique default encode(gen_random_bytes(12), 'hex'),
   is_public boolean not null default true,
   created_at timestamptz not null default now(),
@@ -10,6 +13,9 @@ create table if not exists public.wishlists (
 
 alter table public.wishlists add column if not exists share_token text;
 alter table public.wishlists add column if not exists is_public boolean not null default true;
+alter table public.wishlists add column if not exists celebration_type text not null default 'birthday';
+alter table public.wishlists add column if not exists custom_celebration text;
+alter table public.wishlists add column if not exists event_date date;
 alter table public.wishlists alter column share_token set default encode(gen_random_bytes(12), 'hex');
 update public.wishlists
 set share_token = encode(gen_random_bytes(12), 'hex')
