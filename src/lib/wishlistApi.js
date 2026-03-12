@@ -24,6 +24,18 @@ export function fetchSharedWishlistMetaByToken(token) {
   return supabase.rpc("get_shared_wishlist_meta", { p_share_token: token }).single();
 }
 
+export function fetchReservationsByWishlist(wishlistId) {
+  return supabase
+    .from("wish_reservations")
+    .select("id, wish_id, wishlist_id, contributor_name, contributor_user_id, amount, created_at")
+    .eq("wishlist_id", wishlistId)
+    .order("created_at", { ascending: true });
+}
+
+export function fetchSharedReservationsByToken(token) {
+  return supabase.rpc("get_shared_wishlist_reservations", { p_share_token: token });
+}
+
 export function createWishlistRecord(payload) {
   return supabase
     .from("wishlists")
@@ -43,6 +55,22 @@ export function updateWishlistRecord(wishlistId, payload) {
     .eq("id", wishlistId)
     .select("id, title, celebration_type, custom_celebration, event_date, share_token, created_at")
     .single();
+}
+
+export function createWishReservationRecord(payload) {
+  return supabase
+    .from("wish_reservations")
+    .insert(payload)
+    .select("id, wish_id, wishlist_id, contributor_name, contributor_user_id, amount, created_at")
+    .single();
+}
+
+export function deleteMyWishReservations(wishId, userId) {
+  return supabase
+    .from("wish_reservations")
+    .delete()
+    .eq("wish_id", wishId)
+    .eq("contributor_user_id", userId);
 }
 
 export function createWishRecord(payload) {

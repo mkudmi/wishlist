@@ -294,6 +294,36 @@ export function getRouteFromHash() {
   return { page: "dashboard", shareToken: null };
 }
 
+export function groupReservationsByWish(items) {
+  if (!Array.isArray(items)) {
+    return {};
+  }
+
+  return items.reduce((acc, item) => {
+    if (!item?.wish_id || !item?.contributor_name) {
+      return acc;
+    }
+
+    const amount = Number(item.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return acc;
+    }
+
+    if (!acc[item.wish_id]) {
+      acc[item.wish_id] = [];
+    }
+
+    acc[item.wish_id].push({
+      name: item.contributor_name,
+      userId: item.contributor_user_id || null,
+      amount,
+      at: item.created_at || new Date().toISOString()
+    });
+
+    return acc;
+  }, {});
+}
+
 export function createShareToken() {
   if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
     const bytes = crypto.getRandomValues(new Uint8Array(12));

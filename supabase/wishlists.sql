@@ -45,6 +45,16 @@ create table if not exists public.wishes (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.wish_reservations (
+  id uuid primary key default gen_random_uuid(),
+  wish_id text not null references public.wishes(id) on delete cascade,
+  wishlist_id uuid not null references public.wishlists(id) on delete cascade,
+  contributor_name text not null,
+  contributor_user_id uuid references auth.users(id) on delete set null,
+  amount numeric(12, 2) not null check (amount > 0),
+  created_at timestamptz not null default now()
+);
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -67,6 +77,7 @@ for each row execute procedure public.set_updated_at();
 
 alter table public.wishlists enable row level security;
 alter table public.wishes enable row level security;
+alter table public.wish_reservations enable row level security;
 
 drop policy if exists "wishlists_select_own" on public.wishlists;
 create policy "wishlists_select_own"
@@ -161,6 +172,61 @@ using (
   )
 );
 
+drop policy if exists "wish_reservations_select_owned_wishlist" on public.wish_reservations;
+create policy "wish_reservations_select_owned_wishlist"
+on public.wish_reservations
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.wishlists wl
+    where wl.id = wish_reservations.wishlist_id
+      and wl.owner_id = auth.uid()
+  )
+);
+
+drop policy if exists "wish_reservations_select_public_wishlist" on public.wish_reservations;
+create policy "wish_reservations_select_public_wishlist"
+on public.wish_reservations
+for select
+to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.wishlists wl
+    where wl.id = wish_reservations.wishlist_id
+      and wl.is_public = true
+  )
+);
+
+drop policy if exists "wish_reservations_insert_public_wishlist" on public.wish_reservations;
+create policy "wish_reservations_insert_public_wishlist"
+on public.wish_reservations
+for insert
+to anon, authenticated
+with check (
+  exists (
+    select 1
+    from public.wishes w
+    join public.wishlists wl on wl.id = w.wishlist_id
+    where w.id = wish_reservations.wish_id
+      and wl.id = wish_reservations.wishlist_id
+      and wl.is_public = true
+  )
+  and (
+    contributor_user_id is null
+    or contributor_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "wish_reservations_delete_own_entry" on public.wish_reservations;
+create policy "wish_reservations_delete_own_entry"
+on public.wish_reservations
+for delete
+to authenticated
+using (contributor_user_id = auth.uid());
+
 create or replace function public.get_shared_wishlist(p_share_token text)
 returns table (
   id text,
@@ -193,6 +259,37 @@ as $$
 $$;
 
 grant execute on function public.get_shared_wishlist(text) to anon, authenticated;
+
+create or replace function public.get_shared_wishlist_reservations(p_share_token text)
+returns table (
+  id uuid,
+  wish_id text,
+  wishlist_id uuid,
+  contributor_name text,
+  contributor_user_id uuid,
+  amount numeric,
+  created_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    wr.id,
+    wr.wish_id,
+    wr.wishlist_id,
+    wr.contributor_name,
+    wr.contributor_user_id,
+    wr.amount,
+    wr.created_at
+  from public.wish_reservations wr
+  join public.wishlists wl on wl.id = wr.wishlist_id
+  where wl.share_token = p_share_token
+    and wl.is_public = true
+  order by wr.created_at asc;
+$$;
+
+grant execute on function public.get_shared_wishlist_reservations(text) to anon, authenticated;
 
 create or replace function public.get_shared_wishlist_meta(p_share_token text)
 returns table (
