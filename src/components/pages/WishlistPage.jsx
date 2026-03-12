@@ -41,8 +41,13 @@ export function WishlistPage({
 
   const eventInfo = getEventCountdownInfo(countdownDate, { recurring: isRecurringEvent });
   const genitiveName = toGenitiveFirstName(ownerFirstName);
+  const normalizedEventTitle = String(eventTitle || "").replace(/^Мой\s+/i, "").trim();
   const fallbackBirthday = genitiveName ? `День рождения ${genitiveName}` : "Мой день рождения";
-  const heroKicker = eventTitle || fallbackBirthday;
+  const heroKicker = normalizedEventTitle
+    ? genitiveName
+      ? `${normalizedEventTitle} ${genitiveName}`
+      : normalizedEventTitle
+    : fallbackBirthday;
 
   const [isRulesEditorOpen, setIsRulesEditorOpen] = useState(false);
   const [rulesDraft, setRulesDraft] = useState(() => rules.slice(0, 5));

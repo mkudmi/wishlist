@@ -913,10 +913,8 @@ export default function App() {
       : celebrationOptions.find((item) => item.value === currentCelebrationType)?.label || "Мой день рождения";
   const sharedCelebrationTitle =
     sharedCelebrationType === "custom"
-      ? sharedWishlistMeta?.custom_celebration || sharedWishlistMeta?.title || "Мой праздник"
-      : sharedWishlistMeta?.title ||
-        celebrationOptions.find((item) => item.value === sharedCelebrationType)?.label ||
-        "Мой день рождения";
+      ? sharedWishlistMeta?.custom_celebration || "Мой праздник"
+      : celebrationOptions.find((item) => item.value === sharedCelebrationType)?.label || "Мой день рождения";
   const countdownDate = currentCelebrationType === "birthday" ? currentUser?.birthday || "" : currentWishlist?.event_date || "";
   const sharedCountdownDate =
     sharedCelebrationType === "birthday" ? sharedWishlistMeta?.owner_birthday || "" : sharedWishlistMeta?.event_date || "";
