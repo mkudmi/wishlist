@@ -32,6 +32,15 @@ export function deleteWishlistRecord(wishlistId) {
   return supabase.from("wishlists").delete().eq("id", wishlistId);
 }
 
+export function updateWishlistRecord(wishlistId, payload) {
+  return supabase
+    .from("wishlists")
+    .update(payload)
+    .eq("id", wishlistId)
+    .select("id, title, celebration_type, custom_celebration, event_date, share_token, created_at")
+    .single();
+}
+
 export function createWishRecord(payload) {
   return supabase
     .from("wishes")

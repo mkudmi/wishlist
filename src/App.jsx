@@ -10,12 +10,14 @@ import {
 } from "./config/constants";
 import {
   createWish,
+  createShareToken,
   formatMoney,
   getProfileFormFromUser,
   getRouteFromHash,
   getUserDisplayName,
   getWishDonated,
   getWishParticipants,
+  buildSharedWishlistUrl,
   mapWishToForm,
   normalizeName,
   parseDdMmYyyyToStorageDate,
@@ -35,6 +37,7 @@ import {
   fetchWishlistsByOwner,
   fetchWishesByWishlist,
   updateProfileRecord,
+  updateWishlistRecord,
   updateWishRecord
 } from "./lib/wishlistApi";
 import { AuthPage } from "./components/pages/AuthPage";
@@ -139,11 +142,19 @@ export default function App() {
   }
 
   async function copyShareLink() {
-    if (!currentShareToken || typeof window === "undefined") {
+    if (!currentWishlistId) {
       return;
     }
 
-    const url = `${window.location.origin}${window.location.pathname}#/shared/${currentShareToken}`;
+    const currentWishlist = wishlists.find((wishlist) => wishlist.id === currentWishlistId) || null;
+    const shareToken = await ensureWishlistShareToken(currentWishlist);
+    if (!shareToken) {
+      setShareCopied("Не удалось подготовить ссылку");
+      setTimeout(() => setShareCopied(""), 2000);
+      return;
+    }
+
+    const url = buildSharedWishlistUrl(shareToken);
 
     try {
       await navigator.clipboard.writeText(url);
@@ -156,11 +167,18 @@ export default function App() {
   }
 
   async function copyWishlistShareLink(wishlist) {
-    if (!wishlist?.share_token || typeof window === "undefined") {
+    if (!wishlist) {
       return;
     }
 
-    const url = `${window.location.origin}${window.location.pathname}#/shared/${wishlist.share_token}`;
+    const shareToken = await ensureWishlistShareToken(wishlist);
+    if (!shareToken) {
+      setShareCopied("Не удалось подготовить ссылку");
+      setTimeout(() => setShareCopied(""), 2000);
+      return;
+    }
+
+    const url = buildSharedWishlistUrl(shareToken);
     try {
       await navigator.clipboard.writeText(url);
       setShareCopied("Ссылка скопирована");
@@ -169,6 +187,31 @@ export default function App() {
       setShareCopied("Не удалось скопировать ссылку");
       setTimeout(() => setShareCopied(""), 2000);
     }
+  }
+
+  async function ensureWishlistShareToken(wishlist) {
+    if (!wishlist?.id) {
+      return null;
+    }
+
+    if (wishlist.share_token) {
+      return wishlist.share_token;
+    }
+
+    const nextToken = createShareToken();
+    const { data, error } = await updateWishlistRecord(wishlist.id, { share_token: nextToken });
+
+    if (error || !data?.share_token) {
+      return null;
+    }
+
+    setWishlists((prev) => prev.map((item) => (item.id === wishlist.id ? data : item)));
+
+    if (currentWishlistId === wishlist.id) {
+      setCurrentShareToken(data.share_token);
+    }
+
+    return data.share_token;
   }
 
   async function selectWishlist(wishlist) {

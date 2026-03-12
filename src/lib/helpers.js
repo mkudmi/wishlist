@@ -293,3 +293,22 @@ export function getRouteFromHash() {
   }
   return { page: "dashboard", shareToken: null };
 }
+
+export function createShareToken() {
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  return `${Date.now().toString(16)}${Math.random().toString(16).slice(2, 12)}`;
+}
+
+export function buildSharedWishlistUrl(shareToken) {
+  if (!shareToken || typeof window === "undefined") {
+    return "";
+  }
+
+  const url = new URL(window.location.href);
+  url.hash = `/shared/${shareToken}`;
+  return url.toString();
+}
