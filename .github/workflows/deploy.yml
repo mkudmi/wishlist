@@ -60,6 +60,7 @@ jobs:
           RELEASE_ID: ${{ github.sha }}
         run: |
           ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "\
+            test -f '$DEPLOY_PATH/releases/$RELEASE_ID/index.html' && \
             ln -sfn '$DEPLOY_PATH/releases/$RELEASE_ID' '$DEPLOY_PATH/current' && \
-            find '$DEPLOY_PATH/releases' -mindepth 1 -maxdepth 1 -type d | sort | head -n -5 | xargs -r rm -rf \
+            ls -1dt '$DEPLOY_PATH'/releases/* 2>/dev/null | tail -n +6 | xargs -r rm -rf \
           "
