@@ -3,8 +3,8 @@ export function buildAppUser(sessionUser) {
     return null;
   }
 
-  const firstName = sessionUser.user_metadata?.first_name || "";
-  const lastName = sessionUser.user_metadata?.last_name || "";
+  const firstName = sessionUser.first_name || "";
+  const lastName = sessionUser.last_name || "";
   const name = [firstName, lastName].filter(Boolean).join(" ").trim() || sessionUser.email || "Пользователь";
 
   return {
@@ -12,7 +12,7 @@ export function buildAppUser(sessionUser) {
     name,
     firstName,
     lastName,
-    birthday: sessionUser.user_metadata?.birth_date || "",
+    birthday: sessionUser.birthday || "",
     isIncognito: false
   };
 }

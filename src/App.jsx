@@ -1,5 +1,4 @@
 ﻿import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
 import {
   celebrationOptions,
   rules as defaultRules,
@@ -35,6 +34,10 @@ import {
   deleteWishRecord,
   deleteWishlistRecord,
   deleteMyWishReservations,
+  fetchCurrentUser,
+  loginUser,
+  logoutUser,
+  registerUser,
   fetchReservationsByWishlist,
   fetchSharedReservationsByToken,
   fetchSharedWishlistMetaByToken,
@@ -276,8 +279,7 @@ export default function App() {
     let mounted = true;
 
     async function loadSession() {
-      const { data } = await supabase.auth.getSession();
-      const sessionUser = data.session?.user || null;
+      const { data: sessionUser } = await fetchCurrentUser();
 
       if (!mounted) {
         return;
@@ -294,9 +296,10 @@ export default function App() {
         return;
       }
 
-      setCurrentUser(buildAppUser(sessionUser));
+      const appUser = buildAppUser(sessionUser);
+      setCurrentUser(appUser);
 
-      const lists = await loadWishlistsForUser(sessionUser.id);
+      const lists = await loadWishlistsForUser(appUser.id);
       if (!mounted) {
         return;
       }
@@ -317,39 +320,8 @@ export default function App() {
 
     loadSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      const sessionUser = session?.user || null;
-      if (!sessionUser) {
-        setCurrentUser(null);
-        setWishlists([]);
-        setCurrentWishlistId(null);
-        setCurrentShareToken(null);
-        setWishes([]);
-        setWishlistRules(defaultRules.slice(0, 5));
-        return;
-      }
-
-      setCurrentUser(buildAppUser(sessionUser));
-
-      loadWishlistsForUser(sessionUser.id)
-        .then((lists) => {
-          if (lists.length > 0) {
-            return selectWishlist(lists[0]);
-          }
-          setCurrentWishlistId(null);
-          setCurrentShareToken(null);
-          setWishes([]);
-          return null;
-        })
-        .catch(() => {
-          setWishlistsError("Не удалось загрузить вишлисты.");
-          setWishes([]);
-        });
-    });
-
     return () => {
       mounted = false;
-      listener.subscription.unsubscribe();
     };
   }, []);
 
@@ -432,37 +404,46 @@ export default function App() {
           throw new Error("Пароли не совпадают.");
         }
 
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await registerUser({
           email,
           password,
-          options: {
-            data: {
-              first_name: firstName,
-              last_name: lastName,
-              birth_date: birthday
-            }
-          }
+          firstName,
+          lastName,
+          birthday
         });
 
         if (error) {
           throw new Error(error.message);
         }
-
-        if (!data.session) {
-          setAuthError("Проверь email и подтверди регистрацию, затем войди.");
-          setAuthMode("login");
-          return;
-        }
+        setCurrentUser(buildAppUser(data));
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await loginUser({
           email,
           password
         });
         if (error) {
           throw new Error("Неверный email или пароль.");
         }
+        setCurrentUser(buildAppUser(data));
       }
 
+      const current = await fetchCurrentUser();
+      const user = current.data ? buildAppUser(current.data) : null;
+      if (!user) {
+        throw new Error("Не удалось получить пользователя.");
+      }
+      setCurrentUser(user);
+
+      const lists = await loadWishlistsForUser(user.id);
+      if (lists.length > 0) {
+        await selectWishlist(lists[0]);
+      } else {
+        setCurrentWishlistId(null);
+        setCurrentShareToken(null);
+        setWishes([]);
+      }
+
+      window.location.hash = "#/dashboard";
       setAuthForm(emptyAuthForm);
     } catch (error) {
       setAuthError(error.message || "Ошибка авторизации.");
@@ -471,8 +452,14 @@ export default function App() {
     }
   }
 
-  function logout() {
-    supabase.auth.signOut();
+  async function logout() {
+    await logoutUser();
+    setCurrentUser(null);
+    setWishlists([]);
+    setCurrentWishlistId(null);
+    setCurrentShareToken(null);
+    setWishes([]);
+    setWishlistRules(defaultRules.slice(0, 5));
     setPage("dashboard");
     window.location.hash = "#/dashboard";
   }
@@ -522,20 +509,6 @@ export default function App() {
     setIsProfileSubmitting(true);
     setProfileError("");
 
-    const { error: authError } = await supabase.auth.updateUser({
-      data: {
-        first_name: firstName,
-        last_name: lastName,
-        birth_date: birthday
-      }
-    });
-
-    if (authError) {
-      setProfileError("Не удалось обновить профиль.");
-      setIsProfileSubmitting(false);
-      return;
-    }
-
     const { error: profileUpdateError } = await updateProfileRecord(currentUser.id, {
       first_name: firstName,
       last_name: lastName,
@@ -543,7 +516,7 @@ export default function App() {
     });
 
     if (profileUpdateError) {
-      setProfileError("Профиль auth обновлен, но таблица users не обновилась.");
+      setProfileError("Не удалось обновить профиль.");
       setIsProfileSubmitting(false);
       return;
     }
@@ -1375,7 +1348,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
-

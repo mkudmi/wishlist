@@ -1,99 +1,206 @@
-import { supabase } from "../supabase";
+const AUTH_TOKEN_KEY = "wishlist-auth-token-v1";
 
-export function fetchWishlistsByOwner(ownerId) {
-  return supabase
-    .from("wishlists")
-    .select("id, title, celebration_type, custom_celebration, event_date, share_token, created_at")
-    .eq("owner_id", ownerId)
-    .order("created_at", { ascending: true });
+function getApiBaseUrl() {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:8080`;
+  }
+  return "http://127.0.0.1:8080";
+}
+
+const API_BASE = getApiBaseUrl();
+
+export function getAuthToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setAuthToken(token) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (!token) {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    return;
+  }
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+function toApiError(message) {
+  return { message: message || "API request failed" };
+}
+
+async function request(path, options = {}) {
+  const token = getAuthToken();
+  const headers = {
+    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...(options.headers || {})
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      method: options.method || "GET",
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+
+    let payload = null;
+    const text = await response.text();
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = null;
+      }
+    }
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: toApiError(payload?.error || `${response.status} ${response.statusText}`)
+      };
+    }
+
+    return {
+      data: payload,
+      error: null
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: toApiError(error?.message || "Network error")
+    };
+  }
+}
+
+export async function registerUser(payload) {
+  const result = await request("/api/auth/register", {
+    method: "POST",
+    body: payload
+  });
+  if (result.data?.token) {
+    setAuthToken(result.data.token);
+  }
+  return {
+    data: result.data?.user || null,
+    error: result.error
+  };
+}
+
+export async function loginUser(payload) {
+  const result = await request("/api/auth/login", {
+    method: "POST",
+    body: payload
+  });
+  if (result.data?.token) {
+    setAuthToken(result.data.token);
+  }
+  return {
+    data: result.data?.user || null,
+    error: result.error
+  };
+}
+
+export async function logoutUser() {
+  const result = await request("/api/auth/logout", { method: "POST" });
+  setAuthToken(null);
+  return result;
+}
+
+export function fetchCurrentUser() {
+  return request("/api/auth/me");
+}
+
+export function fetchWishlistsByOwner(_ownerId) {
+  return request("/api/wishlists");
 }
 
 export function fetchWishesByWishlist(wishlistId) {
-  return supabase
-    .from("wishes")
-    .select("id, wishlist_id, title, note, tag, price, url, created_at")
-    .eq("wishlist_id", wishlistId)
-    .order("created_at", { ascending: false });
+  return request(`/api/wishlists/${wishlistId}/wishes`);
 }
 
 export function fetchSharedWishesByToken(token) {
-  return supabase.rpc("get_shared_wishlist", { p_share_token: token });
+  return request(`/api/shared/${token}/wishes`);
 }
 
-export function fetchSharedWishlistMetaByToken(token) {
-  return supabase.rpc("get_shared_wishlist_meta", { p_share_token: token }).single();
+export async function fetchSharedWishlistMetaByToken(token) {
+  const result = await request(`/api/shared/${token}/meta`);
+  return result;
 }
 
 export function fetchReservationsByWishlist(wishlistId) {
-  return supabase
-    .from("wish_reservations")
-    .select("id, wish_id, wishlist_id, contributor_name, contributor_user_id, amount, created_at")
-    .eq("wishlist_id", wishlistId)
-    .order("created_at", { ascending: true });
+  return request(`/api/wishlists/${wishlistId}/reservations`);
 }
 
 export function fetchSharedReservationsByToken(token) {
-  return supabase.rpc("get_shared_wishlist_reservations", { p_share_token: token });
+  return request(`/api/shared/${token}/reservations`);
 }
 
 export function createWishlistRecord(payload) {
-  return supabase
-    .from("wishlists")
-    .insert(payload)
-    .select("id, title, celebration_type, custom_celebration, event_date, share_token, created_at")
-    .single();
+  return request("/api/wishlists", {
+    method: "POST",
+    body: payload
+  });
 }
 
 export function deleteWishlistRecord(wishlistId) {
-  return supabase.from("wishlists").delete().eq("id", wishlistId);
+  return request(`/api/wishlists/${wishlistId}`, {
+    method: "DELETE"
+  });
 }
 
 export function updateWishlistRecord(wishlistId, payload) {
-  return supabase
-    .from("wishlists")
-    .update(payload)
-    .eq("id", wishlistId)
-    .select("id, title, celebration_type, custom_celebration, event_date, share_token, created_at")
-    .single();
+  return request(`/api/wishlists/${wishlistId}`, {
+    method: "PATCH",
+    body: payload
+  });
 }
 
 export function createWishReservationRecord(payload) {
-  return supabase
-    .from("wish_reservations")
-    .insert(payload)
-    .select("id, wish_id, wishlist_id, contributor_name, contributor_user_id, amount, created_at")
-    .single();
+  return request("/api/reservations", {
+    method: "POST",
+    body: payload
+  });
 }
 
-export function deleteMyWishReservations(wishId, userId) {
-  return supabase
-    .from("wish_reservations")
-    .delete()
-    .eq("wish_id", wishId)
-    .eq("contributor_user_id", userId);
+export function deleteMyWishReservations(wishId, _userId) {
+  return request(`/api/wishes/${wishId}/my-reservations`, {
+    method: "DELETE"
+  });
 }
 
 export function createWishRecord(payload) {
-  return supabase
-    .from("wishes")
-    .insert(payload)
-    .select("id, wishlist_id, title, note, tag, price, url")
-    .single();
+  return request("/api/wishes", {
+    method: "POST",
+    body: payload
+  });
 }
 
 export function updateWishRecord(wishId, payload) {
-  return supabase
-    .from("wishes")
-    .update(payload)
-    .eq("id", wishId)
-    .select("id, title, note, tag, price, url")
-    .single();
+  return request(`/api/wishes/${wishId}`, {
+    method: "PATCH",
+    body: payload
+  });
 }
 
 export function deleteWishRecord(wishId) {
-  return supabase.from("wishes").delete().eq("id", wishId);
+  return request(`/api/wishes/${wishId}`, {
+    method: "DELETE"
+  });
 }
 
-export function updateProfileRecord(userId, payload) {
-  return supabase.from("users").update(payload).eq("id", userId);
+export function updateProfileRecord(_userId, payload) {
+  return request("/api/auth/me", {
+    method: "PATCH",
+    body: payload
+  });
 }

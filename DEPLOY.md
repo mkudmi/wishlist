@@ -19,8 +19,7 @@
 - `DEPLOY_USER`: `root`
 - `DEPLOY_PATH`: `/var/www/wishlist`
 - `DEPLOY_SSH_KEY`: приватный SSH-ключ для деплоя
-- `VITE_SUPABASE_URL`: значение из локального `.env`
-- `VITE_SUPABASE_ANON_KEY`: значение из локального `.env`
+- `VITE_API_URL`: URL вашего backend API (например, `http://109.73.202.216:8080`)
 
 ## Сервер
 
