@@ -1,4 +1,5 @@
 const AUTH_TOKEN_KEY = "wishlist-auth-token-v1";
+const GUEST_SESSION_KEY = "wishlist-guest-session-v1";
 
 function getApiBaseUrl() {
   const envUrl = import.meta.env.VITE_API_URL;
@@ -31,12 +32,33 @@ export function setAuthToken(token) {
   localStorage.setItem(AUTH_TOKEN_KEY, token);
 }
 
+function makeGuestSessionId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `guest-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function getOrCreateGuestSessionId() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const existing = localStorage.getItem(GUEST_SESSION_KEY);
+  if (existing) {
+    return existing;
+  }
+  const created = makeGuestSessionId();
+  localStorage.setItem(GUEST_SESSION_KEY, created);
+  return created;
+}
+
 function toApiError(message) {
   return { message: message || "API request failed" };
 }
 
 async function request(path, options = {}) {
   const token = getAuthToken();
+  const guestSessionId = getOrCreateGuestSessionId();
   const headers = {
     ...(options.body ? { "Content-Type": "application/json" } : {}),
     ...(options.headers || {})
@@ -44,6 +66,9 @@ async function request(path, options = {}) {
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+  if (guestSessionId) {
+    headers["X-Guest-Session-Id"] = guestSessionId;
   }
 
   try {
@@ -120,7 +145,7 @@ export function fetchCurrentUser() {
   return request("/api/auth/me");
 }
 
-export function fetchWishlistsByOwner(_ownerId) {
+export function fetchWishlistsByOwner() {
   return request("/api/wishlists");
 }
 
@@ -143,6 +168,33 @@ export function fetchReservationsByWishlist(wishlistId) {
 
 export function fetchSharedReservationsByToken(token) {
   return request(`/api/shared/${token}/reservations`);
+}
+
+export async function fetchRulesByWishlist(wishlistId) {
+  const result = await request(`/api/wishlists/${wishlistId}/rules`);
+  return {
+    data: result.data?.rules || [],
+    error: result.error
+  };
+}
+
+export async function fetchSharedRulesByToken(token) {
+  const result = await request(`/api/shared/${token}/rules`);
+  return {
+    data: result.data?.rules || [],
+    error: result.error
+  };
+}
+
+export async function updateRulesByWishlist(wishlistId, rules) {
+  const result = await request(`/api/wishlists/${wishlistId}/rules`, {
+    method: "PUT",
+    body: { rules }
+  });
+  return {
+    data: result.data?.rules || [],
+    error: result.error
+  };
 }
 
 export function createWishlistRecord(payload) {
@@ -172,7 +224,7 @@ export function createWishReservationRecord(payload) {
   });
 }
 
-export function deleteMyWishReservations(wishId, _userId) {
+export function deleteMyWishReservations(wishId) {
   return request(`/api/wishes/${wishId}/my-reservations`, {
     method: "DELETE"
   });
@@ -198,7 +250,7 @@ export function deleteWishRecord(wishId) {
   });
 }
 
-export function updateProfileRecord(_userId, payload) {
+export function updateProfileRecord(payload) {
   return request("/api/auth/me", {
     method: "PATCH",
     body: payload

@@ -19,6 +19,7 @@ import {
   copyTextToClipboard,
   mapWishToForm,
   normalizeName,
+  normalizeRulesList,
   groupReservationsByWish,
   parseDdMmYyyyToStorageDate,
   parseDonationAmount,
@@ -26,7 +27,6 @@ import {
   sanitizeWishes
 } from "./lib/helpers";
 import { buildAppUser } from "./lib/authUser";
-import { readRulesForWishlist, writeRulesForWishlist } from "./lib/rulesStorage";
 import {
   createWishRecord,
   createWishlistRecord,
@@ -35,16 +35,20 @@ import {
   deleteWishlistRecord,
   deleteMyWishReservations,
   fetchCurrentUser,
+  getOrCreateGuestSessionId,
   loginUser,
   logoutUser,
   registerUser,
   fetchReservationsByWishlist,
   fetchSharedReservationsByToken,
+  fetchSharedRulesByToken,
   fetchSharedWishlistMetaByToken,
   fetchSharedWishesByToken,
+  fetchRulesByWishlist,
   fetchWishlistsByOwner,
   fetchWishesByWishlist,
   updateProfileRecord,
+  updateRulesByWishlist,
   updateWishlistRecord,
   updateWishRecord
 } from "./lib/wishlistApi";
@@ -69,6 +73,7 @@ export default function App() {
   const [currentWishlistId, setCurrentWishlistId] = useState(null);
   const [currentShareToken, setCurrentShareToken] = useState(null);
   const [sharedWishes, setSharedWishes] = useState([]);
+  const [sharedRules, setSharedRules] = useState(defaultRules);
   const [sharedWishlistMeta, setSharedWishlistMeta] = useState(null);
   const [sharedError, setSharedError] = useState("");
   const [shareCopied, setShareCopied] = useState("");
@@ -88,20 +93,31 @@ export default function App() {
 
   const [openedWishId, setOpenedWishId] = useState(null);
   const [donationWish, setDonationWish] = useState(null);
+  const [donationMode, setDonationMode] = useState("contribute");
   const [donationAmount, setDonationAmount] = useState("");
   const [donationName, setDonationName] = useState("");
   const [donationError, setDonationError] = useState("");
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
+  const [guestSessionId] = useState(() => getOrCreateGuestSessionId());
 
-  function saveRulesForWishlist(nextRules) {
-    setWishlistRules(writeRulesForWishlist(currentWishlistId, nextRules));
+  async function saveRulesForWishlist(nextRules) {
+    if (!currentWishlistId) {
+      return;
+    }
+    const normalized = normalizeRulesList(nextRules);
+    const { data, error } = await updateRulesByWishlist(currentWishlistId, normalized);
+    if (error) {
+      setWishesError("Не удалось сохранить пожелания.");
+      return;
+    }
+    setWishlistRules(normalizeRulesList(data));
   }
 
-  async function loadWishlistsForUser(userId) {
+  async function loadWishlistsForUser() {
     setIsWishlistsLoading(true);
     setWishlistsError("");
 
-    const { data, error } = await fetchWishlistsByOwner(userId);
+    const { data, error } = await fetchWishlistsByOwner();
 
     if (error) {
       setWishlistsError("Не удалось загрузить вишлисты.");
@@ -144,10 +160,24 @@ export default function App() {
     setContributions(groupReservationsByWish(data));
   }
 
+  async function loadRulesForWishlist(wishlistId) {
+    if (!wishlistId) {
+      setWishlistRules(defaultRules.slice(0, 5));
+      return;
+    }
+    const { data, error } = await fetchRulesByWishlist(wishlistId);
+    if (error) {
+      setWishlistRules(defaultRules.slice(0, 5));
+      return;
+    }
+    setWishlistRules(normalizeRulesList(data));
+  }
+
   async function loadSharedWishes(token) {
     if (!token) {
       setSharedWishes([]);
       setSharedWishlistMeta(null);
+      setSharedRules(defaultRules.slice(0, 5));
       setContributions({});
       setSharedError("Некорректная ссылка.");
       return;
@@ -157,16 +187,19 @@ export default function App() {
     const [
       { data: meta, error: metaError },
       { data, error },
+      { data: rulesData, error: rulesError },
       { data: reservations, error: reservationsError }
     ] = await Promise.all([
       fetchSharedWishlistMetaByToken(token),
       fetchSharedWishesByToken(token),
+      fetchSharedRulesByToken(token),
       fetchSharedReservationsByToken(token)
     ]);
 
     if (metaError || !meta) {
       setSharedWishlistMeta(null);
       setSharedWishes([]);
+      setSharedRules(defaultRules.slice(0, 5));
       setContributions({});
       setSharedError("Не удалось открыть вишлист по ссылке.");
       return;
@@ -177,12 +210,14 @@ export default function App() {
     if (error) {
       setSharedError("Не удалось открыть вишлист по ссылке.");
       setSharedWishes([]);
+      setSharedRules(defaultRules.slice(0, 5));
       setContributions({});
       return;
     }
 
     const sanitized = sanitizeWishes(data);
     setSharedWishes(sanitized);
+    setSharedRules(rulesError ? defaultRules.slice(0, 5) : normalizeRulesList(rulesData));
     setContributions(reservationsError ? {} : groupReservationsByWish(reservations));
   }
 
@@ -271,8 +306,7 @@ export default function App() {
     }
     setCurrentWishlistId(wishlist.id);
     setCurrentShareToken(wishlist.share_token || null);
-    setWishlistRules(readRulesForWishlist(wishlist.id));
-    await Promise.all([loadWishes(wishlist.id), loadReservationsForWishlist(wishlist.id)]);
+    await Promise.all([loadWishes(wishlist.id), loadReservationsForWishlist(wishlist.id), loadRulesForWishlist(wishlist.id)]);
   }
 
   useEffect(() => {
@@ -299,7 +333,7 @@ export default function App() {
       const appUser = buildAppUser(sessionUser);
       setCurrentUser(appUser);
 
-      const lists = await loadWishlistsForUser(appUser.id);
+      const lists = await loadWishlistsForUser();
       if (!mounted) {
         return;
       }
@@ -434,7 +468,7 @@ export default function App() {
       }
       setCurrentUser(user);
 
-      const lists = await loadWishlistsForUser(user.id);
+      const lists = await loadWishlistsForUser();
       if (lists.length > 0) {
         await selectWishlist(lists[0]);
       } else {
@@ -509,7 +543,7 @@ export default function App() {
     setIsProfileSubmitting(true);
     setProfileError("");
 
-    const { error: profileUpdateError } = await updateProfileRecord(currentUser.id, {
+    const { error: profileUpdateError } = await updateProfileRecord({
       first_name: firstName,
       last_name: lastName,
       birthday
@@ -764,8 +798,9 @@ export default function App() {
     setOpenedWishId(null);
   }
 
-  function openDonationModal(wish) {
+  function openDonationModal(wish, mode = "contribute") {
     setDonationWish(wish);
+    setDonationMode(mode);
     setDonationAmount("");
     setDonationName(currentUser ? getUserDisplayName(currentUser) : "");
     setDonationError("");
@@ -773,10 +808,27 @@ export default function App() {
 
   function closeDonationModal() {
     setDonationWish(null);
+    setDonationMode("contribute");
     setDonationAmount("");
     setDonationName("");
     setDonationError("");
     setIsDonationSubmitting(false);
+  }
+
+  function appendContributionEntry(wishId, entry) {
+    setContributions((prev) => ({
+      ...prev,
+      [wishId]: [
+        ...(prev[wishId] || []),
+        {
+          name: entry.contributor_name,
+          userId: entry.contributor_user_id || null,
+          guestSessionId: entry.guest_session_id || null,
+          amount: Number(entry.amount),
+          at: entry.created_at || new Date().toISOString()
+        }
+      ]
+    }));
   }
 
   async function submitDonation(event) {
@@ -816,18 +868,56 @@ export default function App() {
       return;
     }
 
-    setContributions((prev) => ({
-      ...prev,
-      [donationWish.id]: [
-        ...(prev[donationWish.id] || []),
-        {
-          name: data.contributor_name,
-          userId: data.contributor_user_id || null,
-          amount: Number(data.amount),
-          at: data.created_at || new Date().toISOString()
-        }
-      ]
-    }));
+    appendContributionEntry(donationWish.id, data);
+
+    closeDonationModal();
+  }
+
+  async function submitReservation(event) {
+    event.preventDefault();
+
+    if (!donationWish) {
+      return;
+    }
+
+    const contributorName = donationName.trim();
+    if (!contributorName) {
+      setDonationError("Укажи имя.");
+      return;
+    }
+
+    const target = parseTargetFromPrice(donationWish.price);
+    if (!target) {
+      setDonationError("Нельзя забронировать полностью: у подарка не указана сумма.");
+      return;
+    }
+
+    const donated = getWishDonated(contributions, donationWish.id);
+    const remaining = target - donated;
+    if (remaining <= 0) {
+      setDonationError("Этот подарок уже полностью собран.");
+      return;
+    }
+
+    setIsDonationSubmitting(true);
+    setDonationError("");
+
+    const wishlistId = page === "shared" ? sharedWishlistMeta?.id : currentWishlistId;
+    const { data, error } = await createWishReservationRecord({
+      wish_id: donationWish.id,
+      wishlist_id: wishlistId,
+      contributor_name: contributorName,
+      contributor_user_id: currentUser?.id || null,
+      amount: remaining
+    });
+
+    if (error || !data) {
+      setDonationError("Не удалось сохранить бронь.");
+      setIsDonationSubmitting(false);
+      return;
+    }
+
+    appendContributionEntry(donationWish.id, data);
 
     closeDonationModal();
   }
@@ -872,18 +962,7 @@ export default function App() {
       return;
     }
 
-    setContributions((prev) => ({
-      ...prev,
-      [donationWish.id]: [
-        ...(prev[donationWish.id] || []),
-        {
-          name: data.contributor_name,
-          userId: data.contributor_user_id || null,
-          amount: Number(data.amount),
-          at: data.created_at || new Date().toISOString()
-        }
-      ]
-    }));
+    appendContributionEntry(donationWish.id, data);
 
     closeDonationModal();
   }
@@ -893,11 +972,11 @@ export default function App() {
   }
 
   function removeMyParticipation(wishId) {
-    if (!currentUser) {
+    if (!currentUser && !guestSessionId) {
       return;
     }
 
-    deleteMyWishReservations(wishId, currentUser.id)
+    deleteMyWishReservations(wishId)
       .then(({ error }) => {
         if (error) {
           return;
@@ -905,7 +984,9 @@ export default function App() {
 
         setContributions((prev) => {
           const currentEntries = prev[wishId] || [];
-          const nextEntries = currentEntries.filter((entry) => entry.userId !== currentUser.id);
+          const nextEntries = currentUser
+            ? currentEntries.filter((entry) => entry.userId !== currentUser.id)
+            : currentEntries.filter((entry) => entry.guestSessionId !== guestSessionId);
           const next = { ...prev };
 
           if (nextEntries.length > 0) {
@@ -963,15 +1044,15 @@ export default function App() {
   const sharedOwnerFirstName = sharedWishlistMeta?.owner_first_name || "";
 
   function isCurrentUserParticipant(person) {
-    if (!currentUser) {
-      return false;
-    }
-
-    if (person.userId && currentUser.id) {
+    if (currentUser && person.userId && currentUser.id) {
       return person.userId === currentUser.id;
     }
 
-    return person.name === currentUserName;
+    if (!currentUser && guestSessionId && person.guestSessionId) {
+      return person.guestSessionId === guestSessionId;
+    }
+
+    return Boolean(currentUser) && person.name === currentUserName;
   }
   const openedWishProgressPercent = openedWishTarget
     ? Math.min(100, Math.round((openedWishDonated / openedWishTarget) * 100))
@@ -1120,7 +1201,7 @@ export default function App() {
             eventTitle={page === "shared" ? sharedCelebrationTitle : celebrationTitle}
             ownerFirstName={page === "shared" ? sharedOwnerFirstName : currentUser?.firstName || ""}
             canEdit={page !== "shared"}
-            rules={page === "shared" ? defaultRules : wishlistRules}
+            rules={page === "shared" ? sharedRules : wishlistRules}
             wishForm={form}
             editingWishId={editingWishId}
             isWishEditorOpen={isWishEditorOpen}
@@ -1186,8 +1267,16 @@ export default function App() {
             <div className="wish-actions wish-actions-modal">
               <button
                 type="button"
+                className="button-secondary"
+                onClick={() => openDonationModal(openedWish, "reserve")}
+                disabled={openedWishCompleted || !openedWishTarget}
+              >
+                {openedWishCompleted ? "Собрано" : !openedWishTarget ? "Нет суммы" : "Забронировать"}
+              </button>
+              <button
+                type="button"
                 className="wish-donate-button"
-                onClick={() => openDonationModal(openedWish)}
+                onClick={() => openDonationModal(openedWish, "contribute")}
                 disabled={openedWishCompleted}
               >
                 {openedWishCompleted ? "Собрано" : "Поучаствовать"}
@@ -1263,14 +1352,14 @@ export default function App() {
       {donationWish ? (
         <div className="donation-modal-backdrop" onClick={closeDonationModal}>
           <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Поучаствовать в подарке</h3>
+            <h3>{donationMode === "reserve" ? "Забронировать подарок" : "Поучаствовать в подарке"}</h3>
             <p className="donation-modal-title">{donationWish.title}</p>
             <p className="donation-modal-subtitle">
-              Участвует: {currentUser ? getUserDisplayName(currentUser) : donationName.trim() || "Гость"}
+              {donationMode === "reserve" ? "Кто бронирует подарок" : `Участвует: ${currentUser ? getUserDisplayName(currentUser) : donationName.trim() || "Гость"}`}
             </p>
 
-            <form className="donation-form" onSubmit={submitDonation}>
-              {!currentUser ? (
+            <form className="donation-form" onSubmit={donationMode === "reserve" ? submitReservation : submitDonation}>
+              {donationMode === "reserve" || !currentUser ? (
                 <label>
                   Твое имя
                   <input
@@ -1288,33 +1377,35 @@ export default function App() {
                 </label>
               ) : null}
 
-              <label>
-                Сумма
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={donationAmount}
-                  onChange={(event) => {
-                    setDonationAmount(event.target.value);
-                    if (donationError) {
-                      setDonationError("");
-                    }
-                  }}
-                  placeholder="Например: 1000"
-                  autoFocus={Boolean(currentUser)}
-                />
-              </label>
+              {donationMode !== "reserve" ? (
+                <label>
+                  Сумма
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={donationAmount}
+                    onChange={(event) => {
+                      setDonationAmount(event.target.value);
+                      if (donationError) {
+                        setDonationError("");
+                      }
+                    }}
+                    placeholder="Например: 1000"
+                    autoFocus={Boolean(currentUser)}
+                  />
+                </label>
+              ) : null}
 
               {donationError ? <p className="donation-error">{donationError}</p> : null}
 
               <div className="donation-actions">
-                {donationWishTarget && donationWishRemaining > 0 ? (
+                {donationMode !== "reserve" && donationWishTarget && donationWishRemaining > 0 ? (
                   <button type="button" className="button-secondary" onClick={donateFullRemaining} disabled={isDonationSubmitting}>
                     Закрыть все ({formatMoney(donationWishRemaining)} руб.)
                   </button>
                 ) : null}
                 <button type="submit" className="button-primary" disabled={isDonationSubmitting}>
-                  {isDonationSubmitting ? "Сохраняем..." : "Добавить"}
+                  {isDonationSubmitting ? "Сохраняем..." : donationMode === "reserve" ? "Забронировать" : "Добавить"}
                 </button>
                 <button type="button" className="button-secondary" onClick={closeDonationModal} disabled={isDonationSubmitting}>
                   Отмена

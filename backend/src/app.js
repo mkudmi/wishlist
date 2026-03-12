@@ -21,6 +21,16 @@ function normalizeName(value) {
   return String(value || "").trim();
 }
 
+function normalizeRulesList(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
 function createShareToken() {
   return crypto.randomBytes(12).toString("hex");
 }
@@ -90,6 +100,28 @@ function getBearerToken(req) {
   return auth.slice(7).trim() || null;
 }
 
+function getGuestSessionId(req) {
+  const fromHeader = String(req.headers["x-guest-session-id"] || "").trim();
+  const fromBody = String(req.body?.guest_session_id || "").trim();
+  return fromHeader || fromBody || null;
+}
+
+async function getAuthUserFromToken(token) {
+  if (!token) {
+    return null;
+  }
+  const tokenHash = hashToken(token);
+  const { rows } = await pool.query(
+    `SELECT u.id, u.email, u.first_name, u.last_name, u.birthday, u.created_at
+     FROM user_sessions s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.token_hash = $1 AND s.expires_at > NOW()
+     LIMIT 1;`,
+    [tokenHash]
+  );
+  return rows[0] || null;
+}
+
 async function requireAuth(req, res, next) {
   try {
     const token = getBearerToken(req);
@@ -97,21 +129,12 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ error: "unauthorized" });
     }
 
-    const tokenHash = hashToken(token);
-    const { rows } = await pool.query(
-      `SELECT u.id, u.email, u.first_name, u.last_name, u.birthday, u.created_at
-       FROM user_sessions s
-       JOIN users u ON u.id = s.user_id
-       WHERE s.token_hash = $1 AND s.expires_at > NOW()
-       LIMIT 1;`,
-      [tokenHash]
-    );
-
-    if (!rows[0]) {
+    const authUser = await getAuthUserFromToken(token);
+    if (!authUser) {
       return res.status(401).json({ error: "unauthorized" });
     }
 
-    req.authUser = rows[0];
+    req.authUser = authUser;
     return next();
   } catch (error) {
     return next(error);
@@ -365,6 +388,45 @@ app.get("/api/wishlists/:wishlistId/wishes", requireAuth, async (req, res, next)
   }
 });
 
+app.get("/api/wishlists/:wishlistId/rules", requireAuth, async (req, res, next) => {
+  try {
+    const { wishlistId } = req.params;
+    const access = await pool.query("SELECT id FROM wishlists WHERE id = $1 AND owner_id = $2", [wishlistId, req.authUser.id]);
+    if (!access.rows[0]) {
+      return res.status(404).json({ error: "wishlist not found" });
+    }
+
+    const { rows } = await pool.query("SELECT rules FROM wishlist_rules WHERE wishlist_id = $1 LIMIT 1", [wishlistId]);
+    return res.json({ rules: rows[0]?.rules || [] });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.put("/api/wishlists/:wishlistId/rules", requireAuth, async (req, res, next) => {
+  try {
+    const { wishlistId } = req.params;
+    const access = await pool.query("SELECT id FROM wishlists WHERE id = $1 AND owner_id = $2", [wishlistId, req.authUser.id]);
+    if (!access.rows[0]) {
+      return res.status(404).json({ error: "wishlist not found" });
+    }
+
+    const rules = normalizeRulesList(req.body?.rules);
+    const { rows } = await pool.query(
+      `INSERT INTO wishlist_rules (wishlist_id, rules)
+       VALUES ($1, $2)
+       ON CONFLICT (wishlist_id)
+       DO UPDATE SET rules = EXCLUDED.rules
+       RETURNING rules;`,
+      [wishlistId, rules]
+    );
+
+    return res.json({ rules: rows[0]?.rules || [] });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.post("/api/wishes", requireAuth, async (req, res, next) => {
   try {
     const wishlistId = req.body?.wishlist_id;
@@ -460,7 +522,7 @@ app.get("/api/wishlists/:wishlistId/reservations", requireAuth, async (req, res,
     }
 
     const { rows } = await pool.query(
-      `SELECT id, wish_id, wishlist_id, contributor_name, contributor_user_id, amount::float8 AS amount, created_at
+      `SELECT id, wish_id, wishlist_id, contributor_name, contributor_user_id, guest_session_id, amount::float8 AS amount, created_at
        FROM wish_reservations
        WHERE wishlist_id = $1
        ORDER BY created_at ASC;`,
@@ -473,11 +535,27 @@ app.get("/api/wishlists/:wishlistId/reservations", requireAuth, async (req, res,
   }
 });
 
-app.delete("/api/wishes/:wishId/my-reservations", requireAuth, async (req, res, next) => {
+app.delete("/api/wishes/:wishId/my-reservations", async (req, res, next) => {
   try {
-    await pool.query("DELETE FROM wish_reservations WHERE wish_id = $1 AND contributor_user_id = $2", [
+    const token = getBearerToken(req);
+    const authUser = await getAuthUserFromToken(token);
+    const guestSessionId = getGuestSessionId(req);
+
+    if (authUser) {
+      await pool.query("DELETE FROM wish_reservations WHERE wish_id = $1 AND contributor_user_id = $2", [
+        req.params.wishId,
+        authUser.id
+      ]);
+      return res.status(204).end();
+    }
+
+    if (!guestSessionId) {
+      return res.status(400).json({ error: "guest_session_id is required for anonymous delete" });
+    }
+
+    await pool.query("DELETE FROM wish_reservations WHERE wish_id = $1 AND guest_session_id = $2", [
       req.params.wishId,
-      req.authUser.id
+      guestSessionId
     ]);
     res.status(204).end();
   } catch (error) {
@@ -492,6 +570,7 @@ app.post("/api/reservations", async (req, res, next) => {
     const contributorName = normalizeName(req.body?.contributor_name);
     const contributorUserId = req.body?.contributor_user_id || null;
     const amount = Number(req.body?.amount);
+    const guestSessionId = getGuestSessionId(req);
 
     if (!wishId || !wishlistId || !contributorName || !Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ error: "invalid payload" });
@@ -510,31 +589,23 @@ app.post("/api/reservations", async (req, res, next) => {
     }
 
     const token = getBearerToken(req);
-    let authUser = null;
-    if (token) {
-      const tokenHash = hashToken(token);
-      const { rows } = await pool.query(
-        `SELECT u.id
-         FROM user_sessions s
-         JOIN users u ON u.id = s.user_id
-         WHERE s.token_hash = $1 AND s.expires_at > NOW()
-         LIMIT 1;`,
-        [tokenHash]
-      );
-      authUser = rows[0] || null;
-    }
+    const authUser = await getAuthUserFromToken(token);
 
     if (!checkRows[0].is_public && !authUser) {
       return res.status(403).json({ error: "forbidden" });
     }
+    if (!authUser && !guestSessionId) {
+      return res.status(400).json({ error: "guest_session_id is required for anonymous contribution" });
+    }
 
     const safeContributorUserId = authUser?.id || contributorUserId;
+    const safeGuestSessionId = authUser ? null : guestSessionId;
 
     const { rows } = await pool.query(
-      `INSERT INTO wish_reservations (wish_id, wishlist_id, contributor_name, contributor_user_id, amount)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, wish_id, wishlist_id, contributor_name, contributor_user_id, amount::float8 AS amount, created_at;`,
-      [wishId, wishlistId, contributorName, safeContributorUserId, amount]
+      `INSERT INTO wish_reservations (wish_id, wishlist_id, contributor_name, contributor_user_id, guest_session_id, amount)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, wish_id, wishlist_id, contributor_name, contributor_user_id, guest_session_id, amount::float8 AS amount, created_at;`,
+      [wishId, wishlistId, contributorName, safeContributorUserId, safeGuestSessionId, amount]
     );
 
     res.status(201).json(rows[0]);
@@ -585,7 +656,7 @@ app.get("/api/shared/:token/meta", async (req, res, next) => {
 app.get("/api/shared/:token/reservations", async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT wr.id, wr.wish_id, wr.wishlist_id, wr.contributor_name, wr.contributor_user_id, wr.amount::float8 AS amount, wr.created_at
+      `SELECT wr.id, wr.wish_id, wr.wishlist_id, wr.contributor_name, wr.contributor_user_id, wr.guest_session_id, wr.amount::float8 AS amount, wr.created_at
        FROM wish_reservations wr
        JOIN wishlists wl ON wl.id = wr.wishlist_id
        WHERE wl.share_token = $1 AND wl.is_public = true
@@ -596,6 +667,27 @@ app.get("/api/shared/:token/reservations", async (req, res, next) => {
     res.json(rows);
   } catch (error) {
     next(error);
+  }
+});
+
+app.get("/api/shared/:token/rules", async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT wr.rules
+       FROM wishlists wl
+       LEFT JOIN wishlist_rules wr ON wr.wishlist_id = wl.id
+       WHERE wl.share_token = $1 AND wl.is_public = true
+       LIMIT 1;`,
+      [req.params.token]
+    );
+
+    if (!rows[0]) {
+      return res.status(404).json({ error: "shared wishlist not found" });
+    }
+
+    return res.json({ rules: rows[0].rules || [] });
+  } catch (error) {
+    return next(error);
   }
 });
 

@@ -1,6 +1,4 @@
-﻿export const CONTRIBUTIONS_KEY = "birthday-wishlist-contributions-v1";
-
-export const celebrationOptions = [
+﻿export const celebrationOptions = [
   { value: "birthday", label: "Мой день рождения" },
   { value: "housewarming", label: "Новоселье" },
   { value: "wedding", label: "Свадьба" },

@@ -1,4 +1,4 @@
-﻿import { emptyProfileForm } from "../config/constants";
+﻿import { emptyProfileForm, rules as defaultRules } from "../config/constants";
 
 export function sanitizeWishes(items) {
   if (!Array.isArray(items)) {
@@ -22,50 +22,17 @@ export function sanitizeWishes(items) {
     }));
 }
 
-export function readStoredContributions(storageKey) {
-  if (typeof window === "undefined") {
-    return {};
+export function normalizeRulesList(items) {
+  if (!Array.isArray(items)) {
+    return defaultRules.slice(0, 5);
   }
 
-  const raw = localStorage.getItem(storageKey);
-  if (!raw) {
-    return {};
-  }
+  const normalized = items
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .slice(0, 5);
 
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") {
-      return {};
-    }
-
-    return Object.entries(parsed).reduce((acc, [wishId, value]) => {
-      if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-        acc[wishId] = [{ name: "Инкогнито", amount: value, at: new Date().toISOString() }];
-        return acc;
-      }
-
-      if (!Array.isArray(value)) {
-        return acc;
-      }
-
-      const entries = value.filter(
-        (entry) =>
-          entry &&
-          typeof entry.name === "string" &&
-          typeof entry.amount === "number" &&
-          Number.isFinite(entry.amount) &&
-          entry.amount > 0
-      );
-
-      if (entries.length > 0) {
-        acc[wishId] = entries;
-      }
-
-      return acc;
-    }, {});
-  } catch {
-    return {};
-  }
+  return normalized.length > 0 ? normalized : defaultRules.slice(0, 5);
 }
 
 export function createWish(form) {
@@ -117,12 +84,13 @@ export function getWishDonated(contributions, wishId) {
 export function getWishParticipants(contributions, wishId) {
   const entries = contributions[wishId] || [];
   const totalsByPerson = entries.reduce((acc, entry) => {
-    const key = entry.userId ? `id:${entry.userId}` : `name:${entry.name}`;
+    const key = entry.userId ? `id:${entry.userId}` : entry.guestSessionId ? `guest:${entry.guestSessionId}` : `name:${entry.name}`;
     if (!acc[key]) {
       acc[key] = {
         key,
         name: entry.name,
         userId: entry.userId || null,
+        guestSessionId: entry.guestSessionId || null,
         total: 0
       };
     }
@@ -153,11 +121,30 @@ export function getUserDisplayName(user) {
 }
 
 export function formatDateToDdMmYyyy(storageDate) {
-  if (!storageDate || !/^\d{4}-\d{2}-\d{2}$/.test(storageDate)) {
+  const normalized = normalizeStorageDate(storageDate);
+  if (!normalized) {
     return "";
   }
-  const [year, month, day] = storageDate.split("-");
+  const [year, month, day] = normalized.split("-");
   return `${day}-${month}-${year}`;
+}
+
+export function normalizeStorageDate(value) {
+  const source = String(value || "").trim();
+  if (!source) {
+    return "";
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(source)) {
+    return source;
+  }
+
+  const maybeIsoDate = source.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(maybeIsoDate)) {
+    return maybeIsoDate;
+  }
+
+  return "";
 }
 
 export function parseDdMmYyyyToStorageDate(displayDate) {
@@ -228,7 +215,10 @@ export function getProfileFormFromUser(user) {
 
 export function getEventCountdownInfo(dateValue, options = {}) {
   const recurring = options.recurring !== false;
-  const storageDate = /^\d{2}-\d{2}-\d{4}$/.test(dateValue || "") ? parseDdMmYyyyToStorageDate(dateValue) : dateValue;
+  const rawValue = String(dateValue || "");
+  const storageDate = /^\d{2}-\d{2}-\d{4}$/.test(rawValue)
+    ? parseDdMmYyyyToStorageDate(rawValue)
+    : normalizeStorageDate(rawValue);
 
   if (!storageDate || !/^\d{4}-\d{2}-\d{2}$/.test(storageDate)) {
     return { label: "ДД-ММ", remaining: "Осталось --д" };
@@ -316,6 +306,7 @@ export function groupReservationsByWish(items) {
     acc[item.wish_id].push({
       name: item.contributor_name,
       userId: item.contributor_user_id || null,
+      guestSessionId: item.guest_session_id || null,
       amount,
       at: item.created_at || new Date().toISOString()
     });
