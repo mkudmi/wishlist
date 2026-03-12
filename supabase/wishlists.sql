@@ -193,3 +193,29 @@ as $$
 $$;
 
 grant execute on function public.get_shared_wishlist(text) to anon, authenticated;
+
+create or replace function public.get_shared_wishlist_meta(p_share_token text)
+returns table (
+  id uuid,
+  title text,
+  celebration_type text,
+  custom_celebration text,
+  event_date date
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    wl.id,
+    wl.title,
+    wl.celebration_type,
+    wl.custom_celebration,
+    wl.event_date
+  from public.wishlists wl
+  where wl.share_token = p_share_token
+    and wl.is_public = true
+  limit 1;
+$$;
+
+grant execute on function public.get_shared_wishlist_meta(text) to anon, authenticated;

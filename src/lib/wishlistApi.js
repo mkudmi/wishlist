@@ -20,6 +20,10 @@ export function fetchSharedWishesByToken(token) {
   return supabase.rpc("get_shared_wishlist", { p_share_token: token });
 }
 
+export function fetchSharedWishlistMetaByToken(token) {
+  return supabase.rpc("get_shared_wishlist_meta", { p_share_token: token }).single();
+}
+
 export function createWishlistRecord(payload) {
   return supabase
     .from("wishlists")

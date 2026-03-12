@@ -34,6 +34,7 @@ import {
   createWishlistRecord,
   deleteWishRecord,
   deleteWishlistRecord,
+  fetchSharedWishlistMetaByToken,
   fetchSharedWishesByToken,
   fetchWishlistsByOwner,
   fetchWishesByWishlist,
@@ -62,6 +63,7 @@ export default function App() {
   const [currentWishlistId, setCurrentWishlistId] = useState(null);
   const [currentShareToken, setCurrentShareToken] = useState(null);
   const [sharedWishes, setSharedWishes] = useState([]);
+  const [sharedWishlistMeta, setSharedWishlistMeta] = useState(null);
   const [sharedError, setSharedError] = useState("");
   const [shareCopied, setShareCopied] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -122,12 +124,25 @@ export default function App() {
   async function loadSharedWishes(token) {
     if (!token) {
       setSharedWishes([]);
+      setSharedWishlistMeta(null);
       setSharedError("Некорректная ссылка.");
       return;
     }
 
     setSharedError("");
-    const { data, error } = await fetchSharedWishesByToken(token);
+    const [{ data: meta, error: metaError }, { data, error }] = await Promise.all([
+      fetchSharedWishlistMetaByToken(token),
+      fetchSharedWishesByToken(token)
+    ]);
+
+    if (metaError || !meta) {
+      setSharedWishlistMeta(null);
+      setSharedWishes([]);
+      setSharedError("Не удалось открыть вишлист по ссылке.");
+      return;
+    }
+
+    setSharedWishlistMeta(meta);
 
     if (error) {
       setSharedError("Не удалось открыть вишлист по ссылке.");
@@ -137,9 +152,6 @@ export default function App() {
 
     const sanitized = sanitizeWishes(data);
     setSharedWishes(sanitized);
-    if (sanitized.length === 0) {
-      setSharedError("Список пуст или ссылка недействительна.");
-    }
   }
 
   async function copyShareLink() {
@@ -894,11 +906,19 @@ export default function App() {
     [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ").trim() ||
     getUserDisplayName(currentUser);
   const currentCelebrationType = currentWishlist?.celebration_type || "birthday";
+  const sharedCelebrationType = sharedWishlistMeta?.celebration_type || "birthday";
   const celebrationTitle =
     currentCelebrationType === "custom"
       ? currentWishlist?.custom_celebration || "Мой праздник"
       : celebrationOptions.find((item) => item.value === currentCelebrationType)?.label || "Мой день рождения";
+  const sharedCelebrationTitle =
+    sharedCelebrationType === "custom"
+      ? sharedWishlistMeta?.custom_celebration || sharedWishlistMeta?.title || "Мой праздник"
+      : sharedWishlistMeta?.title ||
+        celebrationOptions.find((item) => item.value === sharedCelebrationType)?.label ||
+        "Мой день рождения";
   const countdownDate = currentCelebrationType === "birthday" ? currentUser?.birthday || "" : currentWishlist?.event_date || "";
+  const sharedCountdownDate = sharedCelebrationType === "birthday" ? "" : sharedWishlistMeta?.event_date || "";
 
   function isCurrentUserParticipant(person) {
     if (!currentUser) {
@@ -1053,9 +1073,9 @@ export default function App() {
             wishes={activeWishes}
             contributions={contributions}
             onOpenWish={openWishModal}
-            countdownDate={page === "shared" ? "" : countdownDate}
-            isRecurringEvent={page === "shared" ? true : currentCelebrationType === "birthday"}
-            eventTitle={page === "shared" ? "Мой день рождения" : celebrationTitle}
+            countdownDate={page === "shared" ? sharedCountdownDate : countdownDate}
+            isRecurringEvent={page === "shared" ? sharedCelebrationType === "birthday" : currentCelebrationType === "birthday"}
+            eventTitle={page === "shared" ? sharedCelebrationTitle : celebrationTitle}
             ownerFirstName={page === "shared" ? "" : currentUser?.firstName || ""}
             canEdit={page !== "shared"}
             rules={page === "shared" ? defaultRules : wishlistRules}
