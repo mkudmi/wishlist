@@ -18,6 +18,7 @@ import {
   getWishDonated,
   getWishParticipants,
   buildSharedWishlistUrl,
+  copyTextToClipboard,
   mapWishToForm,
   normalizeName,
   parseDdMmYyyyToStorageDate,
@@ -157,7 +158,10 @@ export default function App() {
     const url = buildSharedWishlistUrl(shareToken);
 
     try {
-      await navigator.clipboard.writeText(url);
+      const copied = await copyTextToClipboard(url);
+      if (!copied) {
+        throw new Error("copy_failed");
+      }
       setShareCopied("Ссылка скопирована");
       setTimeout(() => setShareCopied(""), 1800);
     } catch {
@@ -180,7 +184,10 @@ export default function App() {
 
     const url = buildSharedWishlistUrl(shareToken);
     try {
-      await navigator.clipboard.writeText(url);
+      const copied = await copyTextToClipboard(url);
+      if (!copied) {
+        throw new Error("copy_failed");
+      }
       setShareCopied("Ссылка скопирована");
       setTimeout(() => setShareCopied(""), 1800);
     } catch {
