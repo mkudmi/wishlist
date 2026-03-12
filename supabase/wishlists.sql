@@ -200,7 +200,9 @@ returns table (
   title text,
   celebration_type text,
   custom_celebration text,
-  event_date date
+  event_date date,
+  owner_first_name text,
+  owner_birthday date
 )
 language sql
 security definer
@@ -211,8 +213,11 @@ as $$
     wl.title,
     wl.celebration_type,
     wl.custom_celebration,
-    wl.event_date
+    wl.event_date,
+    u.first_name,
+    u.birthday
   from public.wishlists wl
+  join public.users u on u.id = wl.owner_id
   where wl.share_token = p_share_token
     and wl.is_public = true
   limit 1;

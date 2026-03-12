@@ -918,7 +918,9 @@ export default function App() {
         celebrationOptions.find((item) => item.value === sharedCelebrationType)?.label ||
         "Мой день рождения";
   const countdownDate = currentCelebrationType === "birthday" ? currentUser?.birthday || "" : currentWishlist?.event_date || "";
-  const sharedCountdownDate = sharedCelebrationType === "birthday" ? "" : sharedWishlistMeta?.event_date || "";
+  const sharedCountdownDate =
+    sharedCelebrationType === "birthday" ? sharedWishlistMeta?.owner_birthday || "" : sharedWishlistMeta?.event_date || "";
+  const sharedOwnerFirstName = sharedWishlistMeta?.owner_first_name || "";
 
   function isCurrentUserParticipant(person) {
     if (!currentUser) {
@@ -1076,7 +1078,7 @@ export default function App() {
             countdownDate={page === "shared" ? sharedCountdownDate : countdownDate}
             isRecurringEvent={page === "shared" ? sharedCelebrationType === "birthday" : currentCelebrationType === "birthday"}
             eventTitle={page === "shared" ? sharedCelebrationTitle : celebrationTitle}
-            ownerFirstName={page === "shared" ? "" : currentUser?.firstName || ""}
+            ownerFirstName={page === "shared" ? sharedOwnerFirstName : currentUser?.firstName || ""}
             canEdit={page !== "shared"}
             rules={page === "shared" ? defaultRules : wishlistRules}
             wishForm={form}
