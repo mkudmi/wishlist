@@ -18,31 +18,6 @@ export function sanitizeWishes(items) {
           : typeof item.accent === "string"
             ? item.accent
             : "",
-      manualPrice: typeof item.manual_price === "string" ? item.manual_price : typeof item.manualPrice === "string" ? item.manualPrice : "",
-      detectedPrice:
-        typeof item.detected_price === "string" ? item.detected_price : typeof item.detectedPrice === "string" ? item.detectedPrice : "",
-      priceSource:
-        typeof item.price_source === "string" ? item.price_source : typeof item.priceSource === "string" ? item.priceSource : "manual",
-      priceCheckStatus:
-        typeof item.price_check_status === "string"
-          ? item.price_check_status
-          : typeof item.priceCheckStatus === "string"
-            ? item.priceCheckStatus
-            : "idle",
-      priceCheckError:
-        typeof item.price_check_error === "string"
-          ? item.price_check_error
-          : typeof item.priceCheckError === "string"
-            ? item.priceCheckError
-            : "",
-      priceCurrency:
-        typeof item.price_currency === "string" ? item.price_currency : typeof item.priceCurrency === "string" ? item.priceCurrency : "RUB",
-      lastPriceCheckAt:
-        typeof item.last_price_check_at === "string"
-          ? item.last_price_check_at
-          : typeof item.lastPriceCheckAt === "string"
-            ? item.lastPriceCheckAt
-            : null,
       url: typeof item.url === "string" ? item.url : ""
     }));
 }
@@ -79,7 +54,7 @@ export function mapWishToForm(wish) {
     title: wish.title || "",
     note: wish.note || "",
     tag: wish.tag || "",
-    price: wish.manualPrice || wish.manual_price || wish.price || "",
+    price: wish.price || "",
     url: wish.url || ""
   };
 }

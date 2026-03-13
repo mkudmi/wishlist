@@ -4,7 +4,6 @@ import morgan from "morgan";
 import crypto from "crypto";
 import { pool } from "./db.js";
 import { config } from "./config.js";
-import { getWishSelectFields, syncWishPriceById } from "./services/wishPriceSync.js";
 
 const app = express();
 
@@ -13,20 +12,6 @@ app.use(express.json({ limit: "1mb" }));
 app.use(morgan("combined"));
 
 const SESSION_TTL_DAYS = 30;
-
-async function readWishById(wishId) {
-  const { rows } = await pool.query(`SELECT ${getWishSelectFields()} FROM wishes WHERE id = $1 LIMIT 1`, [wishId]);
-  return rows[0] || null;
-}
-
-async function syncWishForResponse(wishId, fallbackWish) {
-  try {
-    return (await syncWishPriceById(wishId)) || fallbackWish;
-  } catch (error) {
-    console.error(`Price sync failed for wish ${wishId}`, error);
-    return (await readWishById(wishId)) || fallbackWish;
-  }
-}
 
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
@@ -390,7 +375,7 @@ app.get("/api/wishlists/:wishlistId/wishes", requireAuth, async (req, res, next)
     }
 
     const { rows } = await pool.query(
-      `SELECT ${getWishSelectFields()}
+      `SELECT id, wishlist_id, title, note, tag, price, url, created_at
        FROM wishes
        WHERE wishlist_id = $1
        ORDER BY created_at DESC;`,
@@ -461,19 +446,13 @@ app.post("/api/wishes", requireAuth, async (req, res, next) => {
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO wishes (wishlist_id, title, note, tag, price, manual_price, url, price_source, price_check_status, price_currency)
-       VALUES ($1, $2, $3, $4, $5, $5, $6, 'manual', CASE WHEN NULLIF($6, '') IS NULL THEN 'idle' ELSE 'pending' END, 'RUB')
-       RETURNING ${getWishSelectFields()};`,
+      `INSERT INTO wishes (wishlist_id, title, note, tag, price, url)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, wishlist_id, title, note, tag, price, url, created_at;`,
       [wishlistId, title, note, tag, price, url]
     );
 
-    const wish = rows[0];
-    if (!url) {
-      return res.status(201).json(wish);
-    }
-
-    const syncedWish = await syncWishForResponse(wish.id, wish);
-    return res.status(201).json(syncedWish);
+    res.status(201).json(rows[0]);
   } catch (error) {
     next(error);
   }
@@ -502,30 +481,13 @@ app.patch("/api/wishes/:id", requireAuth, async (req, res, next) => {
 
     const { rows } = await pool.query(
       `UPDATE wishes
-       SET title = $2,
-           note = $3,
-           tag = $4,
-           price = $5,
-           manual_price = $5,
-           url = $6,
-           detected_price = '',
-           price_source = 'manual',
-           price_check_status = CASE WHEN NULLIF($6, '') IS NULL THEN 'idle' ELSE 'pending' END,
-           price_check_error = '',
-           price_currency = 'RUB',
-           last_price_check_at = NULL
+       SET title = $2, note = $3, tag = $4, price = $5, url = $6
        WHERE id = $1
-       RETURNING ${getWishSelectFields()};`,
+       RETURNING id, wishlist_id, title, note, tag, price, url, created_at;`,
       [id, title, note, tag, price, url]
     );
 
-    const wish = rows[0];
-    if (!url) {
-      return res.json(wish);
-    }
-
-    const syncedWish = await syncWishForResponse(id, wish);
-    return res.json(syncedWish);
+    res.json(rows[0]);
   } catch (error) {
     next(error);
   }
@@ -655,7 +617,7 @@ app.post("/api/reservations", async (req, res, next) => {
 app.get("/api/shared/:token/wishes", async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT ${getWishSelectFields("w")}
+      `SELECT w.id, w.wishlist_id, w.title, w.note, w.tag, w.price, w.url, w.created_at
        FROM wishes w
        JOIN wishlists wl ON wl.id = w.wishlist_id
        WHERE wl.share_token = $1 AND wl.is_public = true
