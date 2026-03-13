@@ -276,6 +276,7 @@ h3 {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 288px;
   border-radius: 24px;
   padding: 22px;
   animation: fade-up 0.7s ease-out both;
@@ -322,7 +323,6 @@ h3 {
   flex: 1;
   flex-direction: column;
   width: 100%;
-  min-height: 100%;
   border: 0;
   background: transparent;
   text-align: left;
@@ -379,6 +379,14 @@ h3 {
 
 .wish-card p {
   overflow-wrap: anywhere;
+}
+
+.wish-note {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .wish-shop-link {
@@ -2026,6 +2034,7 @@ h3 {
 
   .wish-card {
     padding: 18px;
+    min-height: 280px;
   }
 
   h1 {

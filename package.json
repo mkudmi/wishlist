@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --open /#/",
+    "dev:all": "concurrently -k -n frontend,backend \"npm run dev\" \"npm run server:dev\"",
     "build": "vite build",
     "preview": "vite preview",
     "server:dev": "node --watch backend/src/index.js",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.2.1",
     "vite": "^5.4.11"
   }
 }

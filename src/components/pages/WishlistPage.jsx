@@ -145,7 +145,7 @@ export function WishlistPage({
                     <span className="wish-price">{wish.price || "Цена не указана"}</span>
                   </div>
                   <h3>{wish.title}</h3>
-                  <p>{wish.note}</p>
+                  <p className="wish-note">{wish.note}</p>
                   <div className="wish-footer">
                     <div className="wish-progress">
                       <div className="wish-progress-track">
