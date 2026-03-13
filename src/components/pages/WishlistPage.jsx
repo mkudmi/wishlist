@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { useRef } from "react";
 import {
   formatMoney,
   getEventCountdownInfo,
@@ -51,6 +52,7 @@ export function WishlistPage({
 
   const [isRulesEditorOpen, setIsRulesEditorOpen] = useState(false);
   const [rulesDraft, setRulesDraft] = useState(() => rules.slice(0, 5));
+  const wishEditorBackdropPressedRef = useRef(false);
 
   useEffect(() => {
     if (!isRulesEditorOpen) {
@@ -251,7 +253,19 @@ export function WishlistPage({
       ) : null}
 
       {canEdit && isWishEditorOpen ? (
-        <div className="donation-modal-backdrop" onClick={onCloseWishEditor}>
+        <div
+          className="donation-modal-backdrop"
+          onMouseDown={(event) => {
+            wishEditorBackdropPressedRef.current = event.target === event.currentTarget;
+          }}
+          onClick={(event) => {
+            const shouldClose = wishEditorBackdropPressedRef.current && event.target === event.currentTarget;
+            wishEditorBackdropPressedRef.current = false;
+            if (shouldClose) {
+              onCloseWishEditor();
+            }
+          }}
+        >
           <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
             <h3>{editingWishId ? "Редактирование подарка" : "Новый подарок"}</h3>
             <p className="donation-modal-title">Заполни поля и сохрани изменения</p>
