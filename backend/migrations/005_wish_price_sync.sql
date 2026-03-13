@@ -1,0 +1,13 @@
+ALTER TABLE wishes
+ADD COLUMN IF NOT EXISTS manual_price TEXT NOT NULL DEFAULT '',
+ADD COLUMN IF NOT EXISTS detected_price TEXT NOT NULL DEFAULT '',
+ADD COLUMN IF NOT EXISTS price_source TEXT NOT NULL DEFAULT 'manual',
+ADD COLUMN IF NOT EXISTS price_check_status TEXT NOT NULL DEFAULT 'idle',
+ADD COLUMN IF NOT EXISTS price_check_error TEXT NOT NULL DEFAULT '',
+ADD COLUMN IF NOT EXISTS price_currency TEXT NOT NULL DEFAULT '',
+ADD COLUMN IF NOT EXISTS last_price_check_at TIMESTAMPTZ;
+
+UPDATE wishes
+SET manual_price = price
+WHERE COALESCE(manual_price, '') = '';
+

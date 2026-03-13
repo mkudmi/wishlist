@@ -10,9 +10,11 @@
     "server:dev": "node --watch backend/src/index.js",
     "server:start": "node backend/src/index.js",
     "db:migrate": "node backend/scripts/migrate.js",
-    "db:seed": "node backend/scripts/seed.js"
+    "db:seed": "node backend/scripts/seed.js",
+    "prices:sync": "node backend/scripts/sync-wish-prices.js"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
