@@ -38,6 +38,7 @@ import {
   fetchCurrentUser,
   getOrCreateGuestSessionId,
   loginUser,
+  loginWithGoogleCredential,
   logoutUser,
   registerUser,
   fetchReservationsByWishlist,
@@ -506,6 +507,45 @@ export default function App() {
       setAuthForm(emptyAuthForm);
     } catch (error) {
       setAuthError(error.message || "Ошибка авторизации.");
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  }
+
+  async function submitGoogleAuth(credential) {
+    setAuthError("");
+    setIsAuthSubmitting(true);
+
+    try {
+      if (!credential) {
+        throw new Error("Google не вернул токен входа.");
+      }
+
+      const { error } = await loginWithGoogleCredential(credential);
+      if (error) {
+        throw new Error("Не удалось войти через Google.");
+      }
+
+      const current = await fetchCurrentUser();
+      const user = current.data ? buildAppUser(current.data) : null;
+      if (!user) {
+        throw new Error("Не удалось получить пользователя.");
+      }
+      setCurrentUser(user);
+
+      const lists = await loadWishlistsForUser();
+      if (lists.length > 0) {
+        await selectWishlist(lists[0]);
+      } else {
+        setCurrentWishlistId(null);
+        setCurrentShareToken(null);
+        setWishes([]);
+      }
+
+      navigate("/dashboard");
+      setAuthForm(emptyAuthForm);
+    } catch (error) {
+      setAuthError(error.message || "Ошибка входа через Google.");
     } finally {
       setIsAuthSubmitting(false);
     }
@@ -1088,6 +1128,7 @@ export default function App() {
         onModeChange={onAuthModeChange}
         onInputChange={onAuthInputChange}
         onSubmit={submitAuth}
+        onGoogleAuth={submitGoogleAuth}
       />
     );
   }

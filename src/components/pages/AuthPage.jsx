@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function AuthPage({
   mode,
@@ -7,9 +7,13 @@ export function AuthPage({
   submitting,
   onModeChange,
   onInputChange,
-  onSubmit
+  onSubmit,
+  onGoogleAuth
 }) {
   const isLogin = mode === "login";
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+  const googleButtonRef = useRef(null);
+  const googleInitializedRef = useRef(false);
   const proofItems = [
     { value: "1 ссылка", label: "чтобы отправить всем гостям один понятный список" },
     { value: "0 неловких вопросов", label: "больше не нужно отвечать каждому по отдельности" },
@@ -93,6 +97,72 @@ export function AuthPage({
     setIsAuthModalOpen(false);
   }
 
+  useEffect(() => {
+    if (!googleClientId || typeof window === "undefined") {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    function initializeGoogleButton() {
+      if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) {
+        return;
+      }
+
+      if (!googleInitializedRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (response) => {
+            if (response?.credential) {
+              await onGoogleAuth(response.credential);
+            }
+          }
+        });
+        googleInitializedRef.current = true;
+      }
+
+      googleButtonRef.current.innerHTML = "";
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        text: "continue_with",
+        shape: "pill",
+        logo_alignment: "left",
+        width: 320
+      });
+    }
+
+    if (window.google?.accounts?.id) {
+      initializeGoogleButton();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const existingScript = document.querySelector('script[data-google-gsi="true"]');
+    if (existingScript) {
+      existingScript.addEventListener("load", initializeGoogleButton, { once: true });
+      return () => {
+        cancelled = true;
+        existingScript.removeEventListener("load", initializeGoogleButton);
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleGsi = "true";
+    script.addEventListener("load", initializeGoogleButton, { once: true });
+    document.head.appendChild(script);
+
+    return () => {
+      cancelled = true;
+      script.removeEventListener("load", initializeGoogleButton);
+    };
+  }, [googleClientId, onGoogleAuth, isAuthModalOpen]);
+
   function renderAuthCard(cardMode = mode) {
     const cardIsLogin = cardMode === "login";
 
@@ -116,6 +186,17 @@ export function AuthPage({
         </div>
 
         <form className="donation-form auth-form" onSubmit={onSubmit}>
+          {googleClientId ? (
+            <>
+              <div className="auth-google-block">
+                <div className="auth-google-button" ref={googleButtonRef} />
+              </div>
+              <div className="auth-divider" aria-hidden="true">
+                <span>или</span>
+              </div>
+            </>
+          ) : null}
+
           {!cardIsLogin ? (
             <>
               <label>

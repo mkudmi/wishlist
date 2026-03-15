@@ -150,6 +150,20 @@ export async function loginUser(payload) {
   };
 }
 
+export async function loginWithGoogleCredential(credential) {
+  const result = await request("/api/auth/google", {
+    method: "POST",
+    body: { credential }
+  });
+  if (result.data?.token) {
+    setAuthToken(result.data.token);
+  }
+  return {
+    data: result.data?.user || null,
+    error: result.error
+  };
+}
+
 export async function logoutUser() {
   const result = await request("/api/auth/logout", { method: "POST" });
   setAuthToken(null);

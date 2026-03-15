@@ -2,10 +2,12 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
 import { pool } from "./db.js";
 import { config } from "./config.js";
 
 const app = express();
+const googleAuthClient = config.googleClientId ? new OAuth2Client(config.googleClientId) : null;
 
 app.use(cors({ origin: config.corsOrigin === "*" ? true : config.corsOrigin }));
 app.use(express.json({ limit: "1mb" }));
@@ -19,6 +21,19 @@ function normalizeEmail(value) {
 
 function normalizeName(value) {
   return String(value || "").trim();
+}
+
+function splitDisplayName(fullName) {
+  const normalized = normalizeName(fullName);
+  if (!normalized) {
+    return { firstName: "", lastName: "" };
+  }
+
+  const parts = normalized.split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || "",
+    lastName: parts.slice(1).join(" ")
+  };
 }
 
 function normalizeRulesList(items) {
@@ -155,6 +170,22 @@ function mapUser(user) {
   };
 }
 
+async function verifyGoogleCredential(credential) {
+  if (!googleAuthClient || !config.googleClientId) {
+    throw new Error("google auth is not configured");
+  }
+
+  const ticket = await googleAuthClient.verifyIdToken({
+    idToken: credential,
+    audience: config.googleClientId
+  });
+  const payload = ticket.getPayload();
+  if (!payload?.sub || !payload?.email || payload.email_verified !== true) {
+    throw new Error("invalid google credential");
+  }
+  return payload;
+}
+
 app.get("/api/health", async (_req, res, next) => {
   try {
     await pool.query("select 1");
@@ -270,6 +301,95 @@ app.patch("/api/auth/me", requireAuth, async (req, res, next) => {
     return res.json(mapUser(rows[0]));
   } catch (error) {
     next(error);
+  }
+});
+
+app.post("/api/auth/google", async (req, res, next) => {
+  const client = await pool.connect();
+
+  try {
+    const credential = String(req.body?.credential || "").trim();
+    if (!credential) {
+      return res.status(400).json({ error: "credential is required" });
+    }
+    if (!googleAuthClient || !config.googleClientId) {
+      return res.status(503).json({ error: "google auth is not configured" });
+    }
+
+    const googlePayload = await verifyGoogleCredential(credential);
+    const googleId = String(googlePayload.sub);
+    const email = normalizeEmail(googlePayload.email);
+    const givenName = normalizeName(googlePayload.given_name);
+    const familyName = normalizeName(googlePayload.family_name);
+    const fallbackName = splitDisplayName(googlePayload.name);
+    const firstName = givenName || fallbackName.firstName || email.split("@")[0] || "Google";
+    const lastName = familyName || fallbackName.lastName || "";
+
+    await client.query("BEGIN");
+
+    const byGoogleId = await client.query(
+      `SELECT id, email, first_name, last_name, birthday, created_at
+       FROM users
+       WHERE google_id = $1
+       LIMIT 1;`,
+      [googleId]
+    );
+
+    let userRow = byGoogleId.rows[0] || null;
+
+    if (!userRow) {
+      const byEmail = await client.query(
+        `SELECT id, email, first_name, last_name, birthday, created_at, google_id
+         FROM users
+         WHERE email = $1
+         LIMIT 1;`,
+        [email]
+      );
+
+      if (byEmail.rows[0]) {
+        userRow = byEmail.rows[0];
+
+        if (userRow.google_id && userRow.google_id !== googleId) {
+          await client.query("ROLLBACK");
+          return res.status(409).json({ error: "email is already linked to another google account" });
+        }
+
+        const updated = await client.query(
+          `UPDATE users
+           SET google_id = $2,
+               first_name = CASE WHEN first_name = '' THEN $3 ELSE first_name END,
+               last_name = CASE WHEN last_name = '' THEN $4 ELSE last_name END
+           WHERE id = $1
+           RETURNING id, email, first_name, last_name, birthday, created_at;`,
+          [userRow.id, googleId, firstName, lastName]
+        );
+        userRow = updated.rows[0];
+      } else {
+        const inserted = await client.query(
+          `INSERT INTO users (email, password_hash, google_id, first_name, last_name)
+           VALUES ($1, NULL, $2, $3, $4)
+           RETURNING id, email, first_name, last_name, birthday, created_at;`,
+          [email, googleId, firstName, lastName]
+        );
+        userRow = inserted.rows[0];
+      }
+    }
+
+    await client.query("COMMIT");
+
+    const token = await createSession(userRow.id);
+    return res.json({ token, user: mapUser(userRow) });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    if (error?.message === "invalid google credential") {
+      return res.status(401).json({ error: "invalid google credential" });
+    }
+    if (error?.message === "google auth is not configured") {
+      return res.status(503).json({ error: "google auth is not configured" });
+    }
+    return next(error);
+  } finally {
+    client.release();
   }
 });
 

@@ -7,7 +7,8 @@ export const config = {
   host: process.env.HOST || "0.0.0.0",
   port: Number(process.env.PORT || 8080),
   databaseUrl: process.env.DATABASE_URL,
-  corsOrigin: process.env.CORS_ORIGIN || "*"
+  corsOrigin: process.env.CORS_ORIGIN || "*",
+  googleClientId: process.env.GOOGLE_CLIENT_ID || ""
 };
 
 if (!config.databaseUrl) {

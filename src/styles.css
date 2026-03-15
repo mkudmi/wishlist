@@ -1845,6 +1845,44 @@ h3 {
   gap: 7px;
 }
 
+.auth-google-block {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.auth-google-button {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  justify-content: center;
+}
+
+.auth-divider {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 4px 0 6px;
+}
+
+.auth-divider::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid rgba(95, 67, 39, 0.14);
+}
+
+.auth-divider span {
+  position: relative;
+  z-index: 1;
+  padding: 0 10px;
+  background: rgba(255, 250, 245, 0.96);
+  color: #8a6b52;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .auth-switch .button-primary,
 .auth-switch .button-secondary {
   min-height: 42px;
