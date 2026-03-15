@@ -31,6 +31,7 @@ import {
   createWishRecord,
   createWishlistRecord,
   createWishReservationRecord,
+  deleteCurrentUserAccount,
   deleteWishRecord,
   deleteWishlistRecord,
   deleteMyWishReservations,
@@ -69,6 +70,9 @@ export default function App() {
   const [profileForm, setProfileForm] = useState(emptyProfileForm);
   const [profileError, setProfileError] = useState("");
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+  const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
+  const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState("");
+  const [isAccountDeleting, setIsAccountDeleting] = useState(false);
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [currentWishlistId, setCurrentWishlistId] = useState(null);
   const [currentShareToken, setCurrentShareToken] = useState(null);
@@ -509,26 +513,49 @@ export default function App() {
 
   async function logout() {
     await logoutUser();
+    clearAuthenticatedState();
+    navigate("/dashboard");
+  }
+
+  function clearAuthenticatedState() {
     setCurrentUser(null);
     setWishlists([]);
     setCurrentWishlistId(null);
     setCurrentShareToken(null);
     setWishes([]);
+    setContributions({});
     setWishlistRules(defaultRules.slice(0, 5));
+    setSharedWishes([]);
+    setSharedWishlistMeta(null);
+    setSharedRules(defaultRules.slice(0, 5));
+    setShareCopied("");
+    setWishesError("");
+    setProfileError("");
+    setWishlistToDelete(null);
+    setIsHeaderMenuOpen(false);
+    setIsProfileOpen(false);
+    setIsDeleteAccountConfirmOpen(false);
+    setDeleteAccountConfirmation("");
     setPage("dashboard");
-    navigate("/dashboard");
   }
 
   function openProfileModal() {
     setProfileForm(getProfileFormFromUser(currentUser));
     setProfileError("");
+    setIsDeleteAccountConfirmOpen(false);
+    setDeleteAccountConfirmation("");
     setIsProfileOpen(true);
   }
 
   function closeProfileModal() {
+    if (isProfileSubmitting || isAccountDeleting) {
+      return;
+    }
     setIsProfileOpen(false);
     setProfileError("");
     setProfileForm(emptyProfileForm);
+    setIsDeleteAccountConfirmOpen(false);
+    setDeleteAccountConfirmation("");
   }
 
   function onProfileInputChange(event) {
@@ -585,6 +612,31 @@ export default function App() {
     }));
     setIsProfileSubmitting(false);
     closeProfileModal();
+  }
+
+  async function deleteAccount() {
+    if (!currentUser) {
+      return;
+    }
+
+    if (deleteAccountConfirmation.trim().toUpperCase() !== "УДАЛИТЬ") {
+      setProfileError("Введи УДАЛИТЬ для подтверждения.");
+      return;
+    }
+
+    setIsAccountDeleting(true);
+    setProfileError("");
+
+    const { error } = await deleteCurrentUserAccount();
+    if (error) {
+      setProfileError("Не удалось удалить аккаунт.");
+      setIsAccountDeleting(false);
+      return;
+    }
+
+    clearAuthenticatedState();
+    navigate("/dashboard");
+    setIsAccountDeleting(false);
   }
 
   async function createWishlist(payload) {
@@ -1355,13 +1407,58 @@ export default function App() {
                 />
               </label>
 
+              <div className="account-danger-zone">
+                <button
+                  type="button"
+                  className="delete-button"
+                  onClick={() => {
+                    setIsDeleteAccountConfirmOpen((prev) => !prev);
+                    setDeleteAccountConfirmation("");
+                    setProfileError("");
+                  }}
+                  disabled={isProfileSubmitting || isAccountDeleting}
+                >
+                  Удалить аккаунт
+                </button>
+
+                {isDeleteAccountConfirmOpen ? (
+                  <div className="account-danger-confirm">
+                    <p className="account-danger-text">
+                      Аккаунт будет удален полностью вместе с вишлистами, подарками и связанными данными. Для подтверждения введи
+                      {" "}
+                      <strong>УДАЛИТЬ</strong>.
+                    </p>
+                    <input
+                      type="text"
+                      value={deleteAccountConfirmation}
+                      onChange={(event) => {
+                        setDeleteAccountConfirmation(event.target.value);
+                        if (profileError) {
+                          setProfileError("");
+                        }
+                      }}
+                      placeholder="УДАЛИТЬ"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      className="delete-button"
+                      onClick={deleteAccount}
+                      disabled={isProfileSubmitting || isAccountDeleting || deleteAccountConfirmation.trim().toUpperCase() !== "УДАЛИТЬ"}
+                    >
+                      {isAccountDeleting ? "Удаляем..." : "Подтвердить удаление"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
               {profileError ? <p className="donation-error">{profileError}</p> : null}
 
               <div className="donation-actions">
-                <button type="button" className="button-secondary" onClick={closeProfileModal}>
+                <button type="button" className="button-secondary" onClick={closeProfileModal} disabled={isProfileSubmitting || isAccountDeleting}>
                   Отмена
                 </button>
-                <button type="submit" className="button-primary" disabled={isProfileSubmitting}>
+                <button type="submit" className="button-primary" disabled={isProfileSubmitting || isAccountDeleting}>
                   {isProfileSubmitting ? "Сохраняем..." : "Сохранить"}
                 </button>
               </div>

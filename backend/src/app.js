@@ -273,6 +273,28 @@ app.patch("/api/auth/me", requireAuth, async (req, res, next) => {
   }
 });
 
+app.delete("/api/auth/me", requireAuth, async (req, res, next) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { rowCount } = await client.query("DELETE FROM users WHERE id = $1", [req.authUser.id]);
+    if (!rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "user not found" });
+    }
+
+    await client.query("COMMIT");
+    return res.status(204).end();
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return next(error);
+  } finally {
+    client.release();
+  }
+});
+
 app.get("/api/wishlists", requireAuth, async (req, res, next) => {
   try {
     const { rows } = await pool.query(

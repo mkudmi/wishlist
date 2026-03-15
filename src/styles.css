@@ -954,6 +954,30 @@ h3 {
   font-size: 0.9rem;
 }
 
+.account-danger-zone {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(159, 47, 47, 0.16);
+}
+
+.account-danger-confirm {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(159, 47, 47, 0.06);
+  border: 1px solid rgba(159, 47, 47, 0.14);
+}
+
+.account-danger-text {
+  margin: 0;
+  color: #7a3a33;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .donation-actions {
   display: flex;
   gap: 10px;

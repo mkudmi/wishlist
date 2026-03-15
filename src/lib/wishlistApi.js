@@ -156,6 +156,14 @@ export async function logoutUser() {
   return result;
 }
 
+export async function deleteCurrentUserAccount() {
+  const result = await request("/api/auth/me", { method: "DELETE" });
+  if (!result.error) {
+    setAuthToken(null);
+  }
+  return result;
+}
+
 export function fetchCurrentUser() {
   return request("/api/auth/me");
 }
