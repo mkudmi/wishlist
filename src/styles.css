@@ -2022,8 +2022,206 @@ h3 {
   margin-top: 2px;
 }
 
+.auth-register-actions {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
 .auth-form .button-primary {
   min-height: 42px;
+}
+
+.auth-register-progress {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.auth-register-progress span {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(95, 67, 39, 0.12);
+}
+
+.auth-register-progress span.is-active {
+  background: linear-gradient(90deg, #df7c37, #f1a35f);
+}
+
+.auth-register-step-label {
+  margin: 4px 0 2px;
+  color: #7a624d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.auth-register-nav-button {
+  flex: 1 1 0;
+}
+
+.auth-register-actions .button-primary {
+  flex: 1 1 0;
+}
+
+.birthday-picker-trigger {
+  cursor: pointer;
+}
+
+.birthday-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(19, 14, 10, 0.44);
+  backdrop-filter: blur(10px);
+}
+
+.birthday-picker-modal {
+  width: min(720px, 100%);
+  border-radius: 28px;
+  border: 1px solid rgba(95, 67, 39, 0.14);
+  background:
+    linear-gradient(165deg, rgba(255, 247, 236, 0.96), rgba(255, 240, 227, 0.82)),
+    rgba(255, 253, 249, 0.94);
+  box-shadow:
+    0 24px 60px rgba(63, 40, 22, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  padding: 22px;
+}
+
+.birthday-picker-head h3 {
+  margin: 4px 0 0;
+  font-family: "Playfair Display", serif;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  line-height: 0.98;
+}
+
+.birthday-picker-kicker {
+  margin: 0;
+  color: #8f5b2c;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.birthday-picker-columns {
+  display: grid;
+  grid-template-columns: 0.8fr 1.25fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.birthday-picker-column {
+  display: grid;
+  gap: 10px;
+}
+
+.birthday-picker-label {
+  color: #7a624d;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.birthday-picker-list {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 20px;
+  border: 1px solid rgba(95, 67, 39, 0.1);
+  background: rgba(255, 251, 246, 0.72);
+}
+
+.birthday-picker-select {
+  width: 100%;
+  min-height: 280px;
+  border-radius: 20px;
+  border: 1px solid rgba(95, 67, 39, 0.1);
+  background: rgba(255, 251, 246, 0.72);
+  color: #3d2a1d;
+  padding: 8px;
+  font: inherit;
+  outline: none;
+}
+
+.birthday-picker-select option {
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.birthday-picker-select:focus {
+  border-color: rgba(223, 124, 55, 0.45);
+  box-shadow: 0 0 0 3px rgba(223, 124, 55, 0.12);
+}
+
+.birthday-picker-option {
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #3d2a1d;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.birthday-picker-option:hover {
+  background: rgba(239, 220, 197, 0.72);
+}
+
+.birthday-picker-option.is-active {
+  background: linear-gradient(135deg, rgba(223, 124, 55, 0.18), rgba(241, 163, 95, 0.28));
+  color: #8f4b1a;
+  font-weight: 700;
+}
+
+.birthday-picker-preview {
+  margin: 16px 0 0;
+  color: #5f4327;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.birthday-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.birthday-picker-mobile-progress {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.birthday-picker-mobile-progress span {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(95, 67, 39, 0.12);
+}
+
+.birthday-picker-mobile-progress span.is-active {
+  background: linear-gradient(90deg, #df7c37, #f1a35f);
+}
+
+.birthday-picker-mobile-label {
+  margin: 8px 0 0;
+  color: #7a624d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .auth-userbar {
@@ -2343,6 +2541,15 @@ h3 {
     grid-template-columns: 1fr;
   }
 
+  .auth-register-actions {
+    flex-direction: column;
+  }
+
+  .auth-register-actions .button-primary,
+  .auth-register-actions .button-secondary {
+    width: 100%;
+  }
+
   .account-identity-row {
     flex-direction: column;
     align-items: flex-start;
@@ -2350,6 +2557,31 @@ h3 {
 
   .account-identity-badge,
   .account-identity-action {
+    width: 100%;
+  }
+
+  .birthday-picker-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .birthday-picker-list {
+    max-height: 180px;
+  }
+
+  .birthday-picker-select {
+    min-height: 180px;
+  }
+
+  .birthday-picker-select-mobile {
+    min-height: 220px;
+  }
+
+  .birthday-picker-actions {
+    flex-direction: column;
+  }
+
+  .birthday-picker-actions-mobile .button-primary,
+  .birthday-picker-actions-mobile .button-secondary {
     width: 100%;
   }
 

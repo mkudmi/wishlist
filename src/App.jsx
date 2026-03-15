@@ -59,6 +59,7 @@ import {
   updateWishRecord
 } from "./lib/wishlistApi";
 import { AuthPage } from "./components/pages/AuthPage";
+import { BirthdayPickerModal } from "./components/BirthdayPickerModal";
 import { DashboardPage } from "./components/pages/DashboardPage";
 import { WishlistPage } from "./components/pages/WishlistPage";
 export default function App() {
@@ -76,6 +77,7 @@ export default function App() {
   const [profileError, setProfileError] = useState("");
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
   const [isIdentitySubmitting, setIsIdentitySubmitting] = useState(false);
+  const [isProfileBirthdayPickerOpen, setIsProfileBirthdayPickerOpen] = useState(false);
   const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
   const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState("");
   const [isAccountDeleting, setIsAccountDeleting] = useState(false);
@@ -431,6 +433,10 @@ export default function App() {
     setAuthMode(nextMode);
     setAuthError("");
     setAuthForm(emptyAuthForm);
+  }
+
+  function resetAuthError() {
+    setAuthError("");
   }
 
   async function submitAuth(event) {
@@ -819,6 +825,7 @@ export default function App() {
     setProfileError("");
     setProfileForm(emptyProfileForm);
     setIsIdentitySubmitting(false);
+    setIsProfileBirthdayPickerOpen(false);
     setIsDeleteAccountConfirmOpen(false);
     setDeleteAccountConfirmation("");
   }
@@ -1364,6 +1371,7 @@ export default function App() {
         error={authError}
         submitting={isAuthSubmitting}
         onModeChange={onAuthModeChange}
+        onErrorReset={resetAuthError}
         onInputChange={onAuthInputChange}
         onSubmit={submitAuth}
         onGoogleAuth={submitGoogleAuth}
@@ -1380,6 +1388,7 @@ export default function App() {
         error={authError}
         submitting={isAuthSubmitting}
         onModeChange={onAuthModeChange}
+        onErrorReset={resetAuthError}
         onInputChange={onAuthInputChange}
         onSubmit={submitAuth}
         onGoogleAuth={submitGoogleAuth}
@@ -1698,8 +1707,11 @@ export default function App() {
                   type="text"
                   name="birthday"
                   value={profileForm.birthday}
-                  onChange={onProfileInputChange}
+                  onClick={() => setIsProfileBirthdayPickerOpen(true)}
+                  onFocus={() => setIsProfileBirthdayPickerOpen(true)}
                   placeholder="ДД-ММ-ГГГГ"
+                  readOnly
+                  className="birthday-picker-trigger"
                 />
               </label>
 
@@ -1814,6 +1826,16 @@ export default function App() {
           </div>
         </div>
       ) : null}
+
+      <BirthdayPickerModal
+        isOpen={isProfileBirthdayPickerOpen}
+        value={profileForm.birthday}
+        onClose={() => setIsProfileBirthdayPickerOpen(false)}
+        onConfirm={(nextValue) => {
+          onProfileInputChange({ target: { name: "birthday", value: nextValue } });
+          setIsProfileBirthdayPickerOpen(false);
+        }}
+      />
 
       {donationWish ? (
         <div className="donation-modal-backdrop" onClick={closeDonationModal}>

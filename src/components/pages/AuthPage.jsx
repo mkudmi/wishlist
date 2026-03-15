@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
+import { BirthdayPickerModal } from "../BirthdayPickerModal";
 
 export function AuthPage({
   mode,
@@ -7,6 +8,7 @@ export function AuthPage({
   error,
   submitting,
   onModeChange,
+  onErrorReset,
   onInputChange,
   onSubmit,
   onGoogleAuth,
@@ -16,68 +18,56 @@ export function AuthPage({
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
   const yandexClientId = import.meta.env.VITE_YANDEX_CLIENT_ID || "";
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [registerStep, setRegisterStep] = useState(1);
+  const [isBirthdayPickerOpen, setIsBirthdayPickerOpen] = useState(false);
+  const [hasTriedRegisterSubmit, setHasTriedRegisterSubmit] = useState(false);
+  const googleCallbackRef = useRef(onGoogleAuth);
+  const googleInitializedClientIdRef = useRef("");
+
+  useEffect(() => {
+    googleCallbackRef.current = onGoogleAuth;
+  }, [onGoogleAuth]);
 
   const proofItems = [
-    { value: "1 ссылка", label: "чтобы отправить всем гостям один понятный список" },
-    { value: "0 неловких вопросов", label: "больше не нужно отвечать каждому по отдельности" },
-    { value: "Совместные подарки", label: "друзья могут закрывать дорогие желания вместе" }
+    { value: "1 ссылка", label: "чтобы отправить гостям один понятный список" },
+    { value: "0 неловких вопросов", label: "не нужно объяснять каждому, что действительно хочется" },
+    { value: "Совместные подарки", label: "друзья могут собираться на одну крупную цель" }
   ];
 
   const featureCards = [
     {
       eyebrow: "Ясно",
-      title: "Понятный список вместо хаоса в чате",
-      text: "Желания, категории, цены и ссылки собраны в одном аккуратном экране."
+      title: "Один аккуратный список вместо хаоса в чате",
+      text: "Желания, ссылки, цены и пояснения собраны в одной странице."
     },
     {
       eyebrow: "Гибко",
-      title: "Можно собираться на один крупный подарок",
-      text: "Каждый участник видит прогресс и понимает, сколько уже собрано."
+      title: "Можно собираться на один дорогой подарок",
+      text: "Каждый видит прогресс и понимает, сколько уже собрано."
     },
     {
       eyebrow: "Спокойно",
-      title: "Пожелания и правила сразу на виду",
-      text: "Укажи цвета, формат подарка и любые нюансы, чтобы друзья не гадали."
+      title: "Правила и нюансы сразу на виду",
+      text: "Цвета, форматы, ограничения и другие пожелания не теряются."
     }
   ];
 
   const workflowSteps = [
-    {
-      number: "01",
-      title: "Создаешь событие",
-      text: "День рождения, свадьба, новоселье или свой формат за пару кликов."
-    },
-    {
-      number: "02",
-      title: "Добавляешь желания",
-      text: "От конкретных товаров до вкладов в крупную цель или мечту."
-    },
-    {
-      number: "03",
-      title: "Делишься ссылкой",
-      text: "Гости сразу видят, что уместно подарить и во что можно скинуться."
-    }
+    { number: "01", title: "Создаешь событие", text: "День рождения, свадьба, новоселье или свой формат." },
+    { number: "02", title: "Добавляешь желания", text: "От конкретных товаров до совместного сбора на одну цель." },
+    { number: "03", title: "Делишься ссылкой", text: "Гости сразу понимают, что дарить и во что можно скинуться." }
   ];
 
   const eventCards = [
-    {
-      title: "День рождения",
-      text: "Список на каждый год, без повторяющихся вопросов от друзей и коллег."
-    },
-    {
-      title: "Свадьба",
-      text: "Удобно собирать подарки, сертификаты и вклады в более крупные цели."
-    },
-    {
-      title: "Новоселье",
-      text: "Легко разложить желания по комнатам, бюджету и степени необходимости."
-    }
+    { title: "День рождения", text: "Удобно обновлять список каждый год и не повторяться в чатах." },
+    { title: "Свадьба", text: "Можно собирать подарки, сертификаты и вклады в общую цель." },
+    { title: "Новоселье", text: "Легко разложить желания по комнатам, бюджету и приоритету." }
   ];
 
   const authBenefits = [
     "Сразу после входа можно создать первый вишлист.",
-    "Для каждого события создается отдельная ссылка.",
-    "Заполнить список и поделиться им можно без лишних шагов."
+    "Для каждого события формируется отдельная ссылка.",
+    "Гостям не нужен аккаунт, чтобы открыть публичную страницу."
   ];
 
   function scrollToSection(sectionId) {
@@ -121,23 +111,11 @@ export function AuthPage({
     return () => window.removeEventListener("message", handleMessage);
   }, [onModeChange, onYandexAuth]);
 
-  function openYandexAuth() {
-    const apiBase = getApiBase();
-    const popupUrl = `${apiBase}/api/auth/yandex/start?origin=${encodeURIComponent(window.location.origin)}`;
-    window.open(popupUrl, "wishlist-yandex-auth", "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes");
-  }
-
-  function openAuthModal(nextMode) {
-    onModeChange(nextMode);
-    setIsAuthModalOpen(true);
-  }
-
-  function closeAuthModal() {
-    if (submitting) {
-      return;
+  useEffect(() => {
+    if (mode === "login") {
+      setRegisterStep(1);
     }
-    setIsAuthModalOpen(false);
-  }
+  }, [mode, isAuthModalOpen]);
 
   useEffect(() => {
     if (!googleClientId || typeof window === "undefined") {
@@ -149,14 +127,20 @@ export function AuthPage({
         return;
       }
 
+      if (googleInitializedClientIdRef.current === googleClientId) {
+        return;
+      }
+
       window.google.accounts.id.initialize({
         client_id: googleClientId,
         callback: async (response) => {
           if (response?.credential) {
-            await onGoogleAuth(response.credential);
+            await googleCallbackRef.current(response.credential);
           }
         }
       });
+
+      googleInitializedClientIdRef.current = googleClientId;
     }
 
     if (window.google?.accounts?.id) {
@@ -179,7 +163,13 @@ export function AuthPage({
     document.head.appendChild(script);
 
     return () => script.removeEventListener("load", initializeGoogle);
-  }, [googleClientId, onGoogleAuth, isAuthModalOpen]);
+  }, [googleClientId]);
+
+  function openYandexAuth() {
+    const apiBase = getApiBase();
+    const popupUrl = `${apiBase}/api/auth/yandex/start?origin=${encodeURIComponent(window.location.origin)}`;
+    window.open(popupUrl, "wishlist-yandex-auth", "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes");
+  }
 
   function openGoogleAuth() {
     if (!window.google?.accounts?.id) {
@@ -188,13 +178,172 @@ export function AuthPage({
     window.google.accounts.id.prompt();
   }
 
+  function switchMode(nextMode) {
+    onModeChange(nextMode);
+    setRegisterStep(1);
+    setHasTriedRegisterSubmit(false);
+  }
+
+  function openAuthModal(nextMode) {
+    switchMode(nextMode);
+    setIsAuthModalOpen(true);
+  }
+
+  function closeAuthModal() {
+    if (submitting) {
+      return;
+    }
+    setIsAuthModalOpen(false);
+  }
+
+  function goToNextRegisterStep() {
+    setHasTriedRegisterSubmit(false);
+    if (registerStep === 1) {
+      if (!String(form.firstName || "").trim() || !String(form.lastName || "").trim()) {
+        return;
+      }
+      setRegisterStep(2);
+      return;
+    }
+
+    if (registerStep === 2) {
+      if (!String(form.birthday || "").trim()) {
+        return;
+      }
+      setRegisterStep(3);
+    }
+  }
+
+  function goToPreviousRegisterStep() {
+    setHasTriedRegisterSubmit(false);
+    setRegisterStep((prev) => Math.max(1, prev - 1));
+  }
+
+  function handleAuthSubmit(event) {
+    if (!isLogin && registerStep < 3) {
+      event.preventDefault();
+      goToNextRegisterStep();
+      return;
+    }
+
+    if (!isLogin) {
+      setHasTriedRegisterSubmit(true);
+    }
+
+    onSubmit(event);
+  }
+
+  function updateBirthday(nextValue) {
+    onInputChange({ target: { name: "birthday", value: nextValue } });
+  }
+
+  function renderRegisterFields() {
+    if (registerStep === 1) {
+      return (
+        <>
+          <label>
+            Имя
+            <input
+              type="text"
+              name="firstName"
+              value={form.firstName}
+              onChange={onInputChange}
+              placeholder="Имя"
+              autoComplete="given-name"
+            />
+          </label>
+
+          <label>
+            Фамилия
+            <input
+              type="text"
+              name="lastName"
+              value={form.lastName}
+              onChange={onInputChange}
+              placeholder="Фамилия"
+              autoComplete="family-name"
+            />
+          </label>
+        </>
+      );
+    }
+
+    if (registerStep === 2) {
+      return (
+        <label>
+          Дата рождения
+          <input
+            type="text"
+            name="birthday"
+            value={form.birthday}
+            onClick={() => {
+              onErrorReset?.();
+              setIsBirthdayPickerOpen(true);
+            }}
+            onFocus={() => {
+              onErrorReset?.();
+              setIsBirthdayPickerOpen(true);
+            }}
+            placeholder="ДД-ММ-ГГГГ"
+            autoComplete="bday"
+            readOnly
+            className="birthday-picker-trigger"
+          />
+        </label>
+      );
+    }
+
+    return (
+      <>
+        <label>
+          Email
+          <input
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={onInputChange}
+            placeholder="you@example.com"
+            autoComplete="email"
+          />
+        </label>
+
+        <label>
+          Пароль
+          <input
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={onInputChange}
+            placeholder="Минимум 6 символов"
+            autoComplete="new-password"
+          />
+        </label>
+
+        <label>
+          Подтверждение пароля
+          <input
+            type="password"
+            name="confirmPassword"
+            value={form.confirmPassword}
+            onChange={onInputChange}
+            placeholder="Повтори пароль"
+            autoComplete="new-password"
+          />
+        </label>
+      </>
+    );
+  }
+
   function renderAuthCard(cardMode = mode) {
     const cardIsLogin = cardMode === "login";
+    const showOauthBlock = cardIsLogin && (yandexClientId || googleClientId);
 
     return (
       <section className="auth-card landing-auth-card">
         <p className="landing-auth-kicker">{cardIsLogin ? "Вход" : "Регистрация"}</p>
-        <h3 className="landing-auth-title">{cardIsLogin ? "Вернуться к своим спискам" : "Запустить первый вишлист"}</h3>
+        <h3 className="landing-auth-title">
+          {cardIsLogin ? "Вернуться к своим спискам" : "Создать аккаунт"}
+        </h3>
         <p className="auth-subtitle landing-auth-subtitle">
           {cardIsLogin
             ? "Открой свои вишлисты и продолжай делиться ими с друзьями."
@@ -202,102 +351,79 @@ export function AuthPage({
         </p>
 
         <div className="auth-switch landing-auth-switch">
-          <button type="button" className={cardIsLogin ? "button-primary" : "button-secondary"} onClick={() => onModeChange("login")}>
+          <button type="button" className={cardIsLogin ? "button-primary" : "button-secondary"} onClick={() => switchMode("login")}>
             Вход
           </button>
-          <button type="button" className={!cardIsLogin ? "button-primary" : "button-secondary"} onClick={() => onModeChange("register")}>
+          <button type="button" className={!cardIsLogin ? "button-primary" : "button-secondary"} onClick={() => switchMode("register")}>
             Регистрация
           </button>
         </div>
 
-        <form className="donation-form auth-form" onSubmit={onSubmit}>
+        <form className="donation-form auth-form" onSubmit={handleAuthSubmit}>
           {!cardIsLogin ? (
             <>
+              <div className="auth-register-progress" aria-label={`Шаг ${registerStep} из 3`}>
+                <span className={registerStep >= 1 ? "is-active" : ""} />
+                <span className={registerStep >= 2 ? "is-active" : ""} />
+                <span className={registerStep >= 3 ? "is-active" : ""} />
+              </div>
+
+              <p className="auth-register-step-label">Шаг {registerStep} из 3</p>
+              {renderRegisterFields()}
+            </>
+          ) : (
+            <>
               <label>
-                Имя
+                Email
                 <input
-                  type="text"
-                  name="firstName"
-                  value={form.firstName}
+                  type="email"
+                  name="email"
+                  value={form.email}
                   onChange={onInputChange}
-                  placeholder="Имя"
-                  autoComplete="given-name"
+                  placeholder="you@example.com"
+                  autoComplete="email"
                 />
               </label>
 
               <label>
-                Фамилия
+                Пароль
                 <input
-                  type="text"
-                  name="lastName"
-                  value={form.lastName}
+                  type="password"
+                  name="password"
+                  value={form.password}
                   onChange={onInputChange}
-                  placeholder="Фамилия"
-                  autoComplete="family-name"
-                />
-              </label>
-
-              <label>
-                Дата рождения
-                <input
-                  type="text"
-                  name="birthday"
-                  value={form.birthday}
-                  onChange={onInputChange}
-                  placeholder="ДД-ММ-ГГГГ"
-                  autoComplete="bday"
+                  placeholder="Минимум 6 символов"
+                  autoComplete="current-password"
                 />
               </label>
             </>
-          ) : null}
+          )}
 
-          <label>
-            Email
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={onInputChange}
-              placeholder="you@example.com"
-              autoComplete="email"
-            />
-          </label>
+          {error && (isLogin || hasTriedRegisterSubmit) ? <p className="donation-error">{error}</p> : null}
 
-          <label>
-            Пароль
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={onInputChange}
-              placeholder="Минимум 6 символов"
-              autoComplete={cardIsLogin ? "current-password" : "new-password"}
-            />
-          </label>
+          <div className={`donation-actions${!cardIsLogin ? " auth-register-actions" : ""}`}>
+            {!cardIsLogin && registerStep > 1 ? (
+              <button type="button" className="button-secondary auth-register-nav-button" onClick={goToPreviousRegisterStep} disabled={submitting}>
+                Назад
+              </button>
+            ) : null}
 
-          {!cardIsLogin ? (
-            <label>
-              Подтверждение пароля
-              <input
-                type="password"
-                name="confirmPassword"
-                value={form.confirmPassword}
-                onChange={onInputChange}
-                placeholder="Повтори пароль"
-                autoComplete="new-password"
-              />
-            </label>
-          ) : null}
-
-          {error ? <p className="donation-error">{error}</p> : null}
-
-          <div className="donation-actions">
-            <button type="submit" className="button-primary" disabled={submitting}>
-              {submitting ? "Подождите..." : cardIsLogin ? "Войти" : "Создать аккаунт"}
-            </button>
+            {cardIsLogin ? (
+              <button type="submit" className="button-primary" disabled={submitting}>
+                {submitting ? "Подождите..." : "Войти"}
+              </button>
+            ) : registerStep < 3 ? (
+              <button type="button" className="button-primary" onClick={goToNextRegisterStep} disabled={submitting}>
+                Далее
+              </button>
+            ) : (
+              <button type="submit" className="button-primary" disabled={submitting}>
+                {submitting ? "Подождите..." : "Создать аккаунт"}
+              </button>
+            )}
           </div>
 
-          {yandexClientId || googleClientId ? (
+          {showOauthBlock ? (
             <>
               <div className="auth-divider auth-divider-after-submit" aria-hidden="true">
                 <span>или</span>
@@ -323,7 +449,7 @@ export function AuthPage({
                       />
                       <path
                         fill="#34A853"
-                        d="M9 18c2.43 0 4.4673-.8059 5.9563-2.1791l-2.9087-2.2582c-.806  .54-1.8369.8591-3.0476.8591-2.3441 0-4.3282-1.5832-5.0364-3.7105H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"
+                        d="M9 18c2.43 0 4.4673-.8059 5.9563-2.1791l-2.9087-2.2582c-.806.54-1.8369.8591-3.0476.8591-2.3441 0-4.3282-1.5832-5.0364-3.7105H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"
                       />
                       <path
                         fill="#FBBC05"
@@ -474,10 +600,7 @@ export function AuthPage({
           <div className="section-head landing-section-head">
             <p className="section-label">Преимущества</p>
             <h2>Все, что нужно для подарков без неловких переписок</h2>
-            <p>
-              Один аккуратный вишлист помогает сразу показать, что хочется, на что можно скинуться вместе и какой
-              подарок точно будет уместен.
-            </p>
+            <p>Один аккуратный вишлист помогает сразу показать, что хочется и как лучше подарить.</p>
           </div>
 
           <div className="landing-feature-grid">
@@ -530,10 +653,7 @@ export function AuthPage({
           <div className="landing-auth-copy">
             <p className="section-label">Запуск за минуту</p>
             <h2>Создай первый вишлист и сразу отправь его гостям</h2>
-            <p>
-              Зарегистрируйся, добавь желания и получи аккуратную страницу, которую можно сразу отправить друзьям и
-              близким.
-            </p>
+            <p>Регистрация короткая, а публичная страница готова сразу после первого списка.</p>
 
             <div className="landing-auth-benefits">
               {authBenefits.map((benefit) => (
@@ -566,6 +686,17 @@ export function AuthPage({
           </div>
         </div>
       ) : null}
+
+      <BirthdayPickerModal
+        isOpen={isBirthdayPickerOpen}
+        value={form.birthday}
+        onClose={() => setIsBirthdayPickerOpen(false)}
+        onConfirm={(nextValue) => {
+          onErrorReset?.();
+          updateBirthday(nextValue);
+          setIsBirthdayPickerOpen(false);
+        }}
+      />
     </div>
   );
 }
