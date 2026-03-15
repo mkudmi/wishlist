@@ -267,11 +267,14 @@ export function getEventCountdownInfo(dateValue, options = {}) {
 
 export function getRouteFromLocation() {
   if (typeof window === "undefined") {
-    return { page: "dashboard", shareToken: null };
+    return { page: "landing", shareToken: null };
   }
 
   const raw = window.location.pathname || "/";
-  if (raw === "/dashboard" || raw === "/") {
+  if (raw === "/") {
+    return { page: "landing", shareToken: null };
+  }
+  if (raw === "/dashboard") {
     return { page: "dashboard", shareToken: null };
   }
   if (raw === "/auth/yandex/callback") {
@@ -284,7 +287,7 @@ export function getRouteFromLocation() {
   if (sharedMatch) {
     return { page: "shared", shareToken: sharedMatch[1] };
   }
-  return { page: "dashboard", shareToken: null };
+  return { page: "landing", shareToken: null };
 }
 
 export function groupReservationsByWish(items) {

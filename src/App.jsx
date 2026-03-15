@@ -112,7 +112,7 @@ export default function App() {
       return;
     }
 
-    const nextPath = path || "/dashboard";
+    const nextPath = path || "/";
     if (window.location.pathname === nextPath) {
       return;
     }
@@ -373,10 +373,6 @@ export default function App() {
         setCurrentShareToken(null);
         setWishes([]);
       }
-
-      if (!window.location.pathname || window.location.pathname === "/") {
-        navigate("/dashboard", { replace: true });
-      }
       setIsAuthLoading(false);
     }
 
@@ -395,10 +391,6 @@ export default function App() {
     }
 
     window.addEventListener("popstate", handleLocationChange);
-
-    if (!window.location.pathname || window.location.pathname === "/") {
-      navigate("/dashboard", { replace: true });
-    }
 
     return () => window.removeEventListener("popstate", handleLocationChange);
   }, []);
@@ -1200,7 +1192,23 @@ export default function App() {
     );
   }
 
-  if (!currentUser && page !== "shared") {
+  if (!currentUser && page !== "shared" && page !== "landing") {
+    return (
+      <AuthPage
+        mode={authMode}
+        form={authForm}
+        error={authError}
+        submitting={isAuthSubmitting}
+        onModeChange={onAuthModeChange}
+        onInputChange={onAuthInputChange}
+        onSubmit={submitAuth}
+        onGoogleAuth={submitGoogleAuth}
+        onYandexAuth={completeYandexAuth}
+      />
+    );
+  }
+
+  if (page === "landing") {
     return (
       <AuthPage
         mode={authMode}

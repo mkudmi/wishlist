@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
 
 export function AuthPage({
@@ -15,13 +15,14 @@ export function AuthPage({
   const isLogin = mode === "login";
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
   const yandexClientId = import.meta.env.VITE_YANDEX_CLIENT_ID || "";
-  const googleButtonRef = useRef(null);
-  const googleInitializedRef = useRef(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
   const proofItems = [
     { value: "1 ссылка", label: "чтобы отправить всем гостям один понятный список" },
     { value: "0 неловких вопросов", label: "больше не нужно отвечать каждому по отдельности" },
     { value: "Совместные подарки", label: "друзья могут закрывать дорогие желания вместе" }
   ];
+
   const featureCards = [
     {
       eyebrow: "Ясно",
@@ -39,6 +40,7 @@ export function AuthPage({
       text: "Укажи цвета, формат подарка и любые нюансы, чтобы друзья не гадали."
     }
   ];
+
   const workflowSteps = [
     {
       number: "01",
@@ -56,6 +58,7 @@ export function AuthPage({
       text: "Гости сразу видят, что уместно подарить и во что можно скинуться."
     }
   ];
+
   const eventCards = [
     {
       title: "День рождения",
@@ -70,12 +73,12 @@ export function AuthPage({
       text: "Легко разложить желания по комнатам, бюджету и степени необходимости."
     }
   ];
+
   const authBenefits = [
     "Сразу после входа можно создать первый вишлист.",
     "Для каждого события создается отдельная ссылка.",
     "Заполнить список и поделиться им можно без лишних шагов."
   ];
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   function scrollToSection(sectionId) {
     if (typeof document === "undefined") {
@@ -141,51 +144,30 @@ export function AuthPage({
       return undefined;
     }
 
-    let cancelled = false;
-
-    function initializeGoogleButton() {
-      if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) {
+    function initializeGoogle() {
+      if (!window.google?.accounts?.id) {
         return;
       }
 
-      if (!googleInitializedRef.current) {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: async (response) => {
-            if (response?.credential) {
-              await onGoogleAuth(response.credential);
-            }
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          if (response?.credential) {
+            await onGoogleAuth(response.credential);
           }
-        });
-        googleInitializedRef.current = true;
-      }
-
-      googleButtonRef.current.innerHTML = "";
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        type: "standard",
-        theme: "outline",
-        size: "large",
-        text: "continue_with",
-        shape: "pill",
-        logo_alignment: "left",
-        width: 320
+        }
       });
     }
 
     if (window.google?.accounts?.id) {
-      initializeGoogleButton();
-      return () => {
-        cancelled = true;
-      };
+      initializeGoogle();
+      return undefined;
     }
 
     const existingScript = document.querySelector('script[data-google-gsi="true"]');
     if (existingScript) {
-      existingScript.addEventListener("load", initializeGoogleButton, { once: true });
-      return () => {
-        cancelled = true;
-        existingScript.removeEventListener("load", initializeGoogleButton);
-      };
+      existingScript.addEventListener("load", initializeGoogle, { once: true });
+      return () => existingScript.removeEventListener("load", initializeGoogle);
     }
 
     const script = document.createElement("script");
@@ -193,14 +175,18 @@ export function AuthPage({
     script.async = true;
     script.defer = true;
     script.dataset.googleGsi = "true";
-    script.addEventListener("load", initializeGoogleButton, { once: true });
+    script.addEventListener("load", initializeGoogle, { once: true });
     document.head.appendChild(script);
 
-    return () => {
-      cancelled = true;
-      script.removeEventListener("load", initializeGoogleButton);
-    };
+    return () => script.removeEventListener("load", initializeGoogle);
   }, [googleClientId, onGoogleAuth, isAuthModalOpen]);
+
+  function openGoogleAuth() {
+    if (!window.google?.accounts?.id) {
+      return;
+    }
+    window.google.accounts.id.prompt();
+  }
 
   function renderAuthCard(cardMode = mode) {
     const cardIsLogin = cardMode === "login";
@@ -225,23 +211,6 @@ export function AuthPage({
         </div>
 
         <form className="donation-form auth-form" onSubmit={onSubmit}>
-          {yandexClientId ? (
-            <button type="button" className="button-secondary auth-oauth-button auth-yandex-button" onClick={openYandexAuth}>
-              Войти через Яндекс
-            </button>
-          ) : null}
-
-          {googleClientId ? (
-            <>
-              <div className="auth-google-block">
-                <div className="auth-google-button" ref={googleButtonRef} />
-              </div>
-              <div className="auth-divider" aria-hidden="true">
-                <span>или</span>
-              </div>
-            </>
-          ) : null}
-
           {!cardIsLogin ? (
             <>
               <label>
@@ -327,6 +296,50 @@ export function AuthPage({
               {submitting ? "Подождите..." : cardIsLogin ? "Войти" : "Создать аккаунт"}
             </button>
           </div>
+
+          {yandexClientId || googleClientId ? (
+            <>
+              <div className="auth-divider auth-divider-after-submit" aria-hidden="true">
+                <span>или</span>
+              </div>
+
+              <p className="auth-oauth-label">Войти с помощью</p>
+              <div className="auth-oauth-row">
+                {yandexClientId ? (
+                  <button type="button" className="button-secondary auth-oauth-button auth-yandex-button" onClick={openYandexAuth}>
+                    <span className="auth-yandex-logo" aria-hidden="true">
+                      Я
+                    </span>
+                    <span>Яндекс</span>
+                  </button>
+                ) : null}
+
+                {googleClientId ? (
+                  <button type="button" className="button-secondary auth-oauth-button auth-google-custom-button" onClick={openGoogleAuth}>
+                    <svg className="auth-google-logo" viewBox="0 0 18 18" aria-hidden="true">
+                      <path
+                        fill="#4285F4"
+                        d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9v3.4818h4.8436c-.2087 1.125-.8427 2.0782-1.796 2.7164v2.2582h2.9087c1.7018-1.5668 2.6837-3.8741 2.6837-6.6155z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M9 18c2.43 0 4.4673-.8059 5.9563-2.1791l-2.9087-2.2582c-.806  .54-1.8369.8591-3.0476.8591-2.3441 0-4.3282-1.5832-5.0364-3.7105H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M3.9636 10.7105C3.7832 10.1705 3.6818 9.5932 3.6818 9s.1014-1.1705.2818-1.7105V4.9577H.9573C.3477 6.1732 0 7.5482 0 9s.3477 2.8268.9573 4.0423l3.0063-2.3318z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M9 3.5782c1.3214 0 2.5077.4541 3.4405 1.3459l2.5809-2.5809C13.4632.8918 11.4264 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9577l3.0063 2.3318C4.6718 5.1614 6.6559 3.5782 9 3.5782z"
+                      />
+                    </svg>
+                    <span>Войти через Google</span>
+                  </button>
+                ) : null}
+              </div>
+            </>
+          ) : null}
         </form>
       </section>
     );
@@ -372,11 +385,7 @@ export function AuthPage({
               <button type="button" className="button-primary" onClick={() => openAuthModal("login")}>
                 Начать бесплатно
               </button>
-              <button
-                type="button"
-                className="button-secondary landing-secondary-action"
-                onClick={() => scrollToSection("landing-flow")}
-              >
+              <button type="button" className="button-secondary landing-secondary-action" onClick={() => scrollToSection("landing-flow")}>
                 Посмотреть сценарий
               </button>
             </div>
@@ -447,7 +456,6 @@ export function AuthPage({
                   </article>
                 </div>
               </div>
-
             </div>
 
             <div className="landing-floating-card landing-floating-card-top">
@@ -552,7 +560,7 @@ export function AuthPage({
         <div className="donation-modal-backdrop auth-modal-backdrop" onClick={closeAuthModal}>
           <div className="donation-modal auth-landing-modal" onClick={(event) => event.stopPropagation()}>
             <button type="button" className="auth-modal-close" aria-label="Закрыть окно входа" onClick={closeAuthModal} disabled={submitting}>
-              ×
+              x
             </button>
             {renderAuthCard(mode)}
           </div>
