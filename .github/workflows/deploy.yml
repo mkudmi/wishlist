@@ -18,6 +18,9 @@ jobs:
       DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      APP_PATH: /opt/wishlist
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      NODE_NO_WARNINGS: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -55,6 +58,27 @@ jobs:
             dist/ \
             "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/releases/$RELEASE_ID/"
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod -R u=rwX,go=rX '$DEPLOY_PATH/releases/$RELEASE_ID'"
+
+      - name: Upload backend app
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$APP_PATH/backend'"
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key -p $DEPLOY_PORT" \
+            backend/ \
+            "$DEPLOY_USER@$DEPLOY_HOST:$APP_PATH/backend/"
+          rsync -az -e "ssh -i ~/.ssh/deploy_key -p $DEPLOY_PORT" \
+            package.json package-lock.json \
+            "$DEPLOY_USER@$DEPLOY_HOST:$APP_PATH/"
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod -R u=rwX,go=rX '$APP_PATH/backend' '$APP_PATH/package.json' '$APP_PATH/package-lock.json'"
+
+      - name: Install backend dependencies and restart service
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "\
+            cd '$APP_PATH' && \
+            npm ci && \
+            npm run db:migrate && \
+            systemctl restart wishlist-api.service && \
+            systemctl is-active --quiet wishlist-api.service \
+          "
 
       - name: Activate release
         env:
