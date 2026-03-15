@@ -4,6 +4,21 @@ const GUEST_SESSION_KEY = "wishlist-guest-session-v1";
 function getApiBaseUrl() {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) {
+    if (typeof window !== "undefined") {
+      const currentOrigin = window.location.origin;
+      const isSecurePage = window.location.protocol === "https:";
+      const normalizedEnvUrl = envUrl.replace(/\/$/, "");
+      const isLocalDevApi =
+        normalizedEnvUrl.includes("127.0.0.1") ||
+        normalizedEnvUrl.includes("localhost");
+      const isInsecureApi = normalizedEnvUrl.startsWith("http://");
+
+      // Never ship a production HTTPS page that talks to localhost or plain HTTP.
+      if (isSecurePage && (isLocalDevApi || isInsecureApi)) {
+        return currentOrigin;
+      }
+    }
+
     return envUrl.replace(/\/$/, "");
   }
   if (typeof window !== "undefined") {
