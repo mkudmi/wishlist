@@ -37,6 +37,7 @@ import {
   deleteMyWishReservations,
   fetchCurrentUser,
   getOrCreateGuestSessionId,
+  setAuthToken,
   loginUser,
   loginWithGoogleCredential,
   logoutUser,
@@ -52,6 +53,7 @@ import {
   updateProfileRecord,
   updateRulesByWishlist,
   updateWishlistRecord,
+  getApiBase,
   updateWishRecord
 } from "./lib/wishlistApi";
 import { AuthPage } from "./components/pages/AuthPage";
@@ -550,6 +552,73 @@ export default function App() {
       setIsAuthSubmitting(false);
     }
   }
+
+  async function completeYandexAuth(token) {
+    setAuthError("");
+    setIsAuthSubmitting(true);
+
+    try {
+      if (!token) {
+        throw new Error("Яндекс не вернул локальную сессию.");
+      }
+
+      setAuthToken(token);
+
+      const current = await fetchCurrentUser();
+      const user = current.data ? buildAppUser(current.data) : null;
+      if (!user) {
+        throw new Error("Не удалось получить пользователя.");
+      }
+      setCurrentUser(user);
+
+      const lists = await loadWishlistsForUser();
+      if (lists.length > 0) {
+        await selectWishlist(lists[0]);
+      } else {
+        setCurrentWishlistId(null);
+        setCurrentShareToken(null);
+        setWishes([]);
+      }
+
+      navigate("/dashboard");
+      setAuthForm(emptyAuthForm);
+    } catch (error) {
+      setAuthError(error.message || "Ошибка входа через Яндекс.");
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  }
+
+  useEffect(() => {
+    if (page !== "yandex-callback" || typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const error = params.get("error");
+
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(
+        {
+          type: "wishlist:yandex-auth-result",
+          token,
+          error
+        },
+        window.location.origin
+      );
+      window.close();
+      return;
+    }
+
+    if (token) {
+      setAuthError("");
+    } else if (error) {
+      setAuthError("Не удалось войти через Яндекс.");
+    }
+
+    navigate("/dashboard", { replace: true });
+  }, [page]);
 
   async function logout() {
     await logoutUser();
@@ -1118,6 +1187,19 @@ export default function App() {
     return null;
   }
 
+  if (page === "yandex-callback") {
+    return (
+      <div className="page-shell auth-shell landing-shell">
+        <main className="layout auth-layout">
+          <section className="auth-card">
+            <h2 className="auth-title">Вход через Яндекс</h2>
+            <p className="auth-subtitle">Можно закрыть это окно.</p>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   if (!currentUser && page !== "shared") {
     return (
       <AuthPage
@@ -1129,6 +1211,7 @@ export default function App() {
         onInputChange={onAuthInputChange}
         onSubmit={submitAuth}
         onGoogleAuth={submitGoogleAuth}
+        onYandexAuth={completeYandexAuth}
       />
     );
   }

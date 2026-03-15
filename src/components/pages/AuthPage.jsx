@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
 
 export function AuthPage({
   mode,
@@ -8,10 +9,12 @@ export function AuthPage({
   onModeChange,
   onInputChange,
   onSubmit,
-  onGoogleAuth
+  onGoogleAuth,
+  onYandexAuth
 }) {
   const isLogin = mode === "login";
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+  const yandexClientId = import.meta.env.VITE_YANDEX_CLIENT_ID || "";
   const googleButtonRef = useRef(null);
   const googleInitializedRef = useRef(false);
   const proofItems = [
@@ -83,6 +86,42 @@ export function AuthPage({
     if (section) {
       section.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    async function handleMessage(event) {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const payload = event.data;
+      if (payload?.type !== "wishlist:yandex-auth-result") {
+        return;
+      }
+
+      if (payload.token) {
+        setAuthToken(payload.token);
+        await onYandexAuth(payload.token);
+        return;
+      }
+
+      if (payload.error) {
+        onModeChange("login");
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [onModeChange, onYandexAuth]);
+
+  function openYandexAuth() {
+    const apiBase = getApiBase();
+    const popupUrl = `${apiBase}/api/auth/yandex/start?origin=${encodeURIComponent(window.location.origin)}`;
+    window.open(popupUrl, "wishlist-yandex-auth", "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes");
   }
 
   function openAuthModal(nextMode) {
@@ -186,6 +225,12 @@ export function AuthPage({
         </div>
 
         <form className="donation-form auth-form" onSubmit={onSubmit}>
+          {yandexClientId ? (
+            <button type="button" className="button-secondary auth-oauth-button auth-yandex-button" onClick={openYandexAuth}>
+              Войти через Яндекс
+            </button>
+          ) : null}
+
           {googleClientId ? (
             <>
               <div className="auth-google-block">

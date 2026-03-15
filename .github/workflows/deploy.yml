@@ -37,6 +37,7 @@ jobs:
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_YANDEX_CLIENT_ID: ${{ secrets.VITE_YANDEX_CLIENT_ID }}
         run: npm run build
 
       - name: Prepare SSH
@@ -74,7 +75,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "\
             cd '$APP_PATH' && \
-            npm ci && \
+            npm ci --omit=dev --no-audit --no-fund --loglevel=error && \
             npm run db:migrate && \
             systemctl restart wishlist-api.service && \
             systemctl is-active --quiet wishlist-api.service \

@@ -1851,6 +1851,21 @@ h3 {
   margin-bottom: 4px;
 }
 
+.auth-oauth-button {
+  min-height: 42px;
+  width: 100%;
+}
+
+.auth-yandex-button {
+  border-color: rgba(255, 0, 0, 0.2);
+  color: #222;
+  background: #fff;
+}
+
+.auth-yandex-button:hover {
+  background: #fff6f5;
+}
+
 .auth-google-button {
   width: 100%;
   min-height: 42px;

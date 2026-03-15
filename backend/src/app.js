@@ -8,6 +8,9 @@ import { config } from "./config.js";
 
 const app = express();
 const googleAuthClient = config.googleClientId ? new OAuth2Client(config.googleClientId) : null;
+const YANDEX_OAUTH_AUTHORIZE_URL = "https://oauth.yandex.com/authorize";
+const YANDEX_OAUTH_TOKEN_URL = "https://oauth.yandex.com/token";
+const YANDEX_USER_INFO_URL = "https://login.yandex.ru/info?format=json";
 
 app.use(cors({ origin: config.corsOrigin === "*" ? true : config.corsOrigin }));
 app.use(express.json({ limit: "1mb" }));
@@ -56,6 +59,47 @@ function createSessionToken() {
 
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function createOauthState(payload, secret) {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto.createHmac("sha256", secret).update(encoded).digest("base64url");
+  return `${encoded}.${signature}`;
+}
+
+function parseOauthState(state, secret) {
+  if (!state || !secret || !state.includes(".")) {
+    return null;
+  }
+
+  const [encoded, signature] = state.split(".");
+  const expected = crypto.createHmac("sha256", secret).update(encoded).digest("base64url");
+  if (signature !== expected) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function getSafeAppOrigin(value) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const url = new URL(raw);
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
 }
 
 function hashPassword(password) {
@@ -184,6 +228,47 @@ async function verifyGoogleCredential(credential) {
     throw new Error("invalid google credential");
   }
   return payload;
+}
+
+async function exchangeYandexCodeForToken(code) {
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    client_id: config.yandexClientId,
+    client_secret: config.yandexClientSecret
+  });
+
+  const response = await fetch(YANDEX_OAUTH_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body
+  });
+
+  if (!response.ok) {
+    throw new Error("invalid yandex code");
+  }
+
+  return response.json();
+}
+
+async function fetchYandexUser(accessToken) {
+  const response = await fetch(YANDEX_USER_INFO_URL, {
+    headers: {
+      Authorization: `OAuth ${accessToken}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("failed to fetch yandex user");
+  }
+
+  const data = await response.json();
+  if (!data?.id) {
+    throw new Error("invalid yandex user");
+  }
+  return data;
 }
 
 app.get("/api/health", async (_req, res, next) => {
@@ -390,6 +475,131 @@ app.post("/api/auth/google", async (req, res, next) => {
     return next(error);
   } finally {
     client.release();
+  }
+});
+
+app.get("/api/auth/yandex/start", (req, res) => {
+  const appOrigin = getSafeAppOrigin(req.query?.origin || req.headers.origin);
+  if (!config.yandexClientId || !config.yandexClientSecret || !config.yandexRedirectUri) {
+    return res.status(503).send("Yandex auth is not configured");
+  }
+  if (!appOrigin) {
+    return res.status(400).send("Invalid app origin");
+  }
+
+  const state = createOauthState(
+    {
+      provider: "yandex",
+      origin: appOrigin,
+      nonce: crypto.randomBytes(12).toString("hex"),
+      ts: Date.now()
+    },
+    config.yandexClientSecret
+  );
+
+  const authorizeUrl = new URL(YANDEX_OAUTH_AUTHORIZE_URL);
+  authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("client_id", config.yandexClientId);
+  authorizeUrl.searchParams.set("redirect_uri", config.yandexRedirectUri);
+  authorizeUrl.searchParams.set("state", state);
+  authorizeUrl.searchParams.set("force_confirm", "true");
+
+  return res.redirect(authorizeUrl.toString());
+});
+
+app.get("/api/auth/yandex/callback", async (req, res, next) => {
+  const error = String(req.query?.error || "").trim();
+  const code = String(req.query?.code || "").trim();
+  const state = String(req.query?.state || "").trim();
+  const parsedState = parseOauthState(state, config.yandexClientSecret);
+  const fallbackOrigin = getSafeAppOrigin(config.corsOrigin === "*" ? "" : config.corsOrigin);
+  const appOrigin = getSafeAppOrigin(parsedState?.origin) || fallbackOrigin;
+
+  if (!appOrigin) {
+    return res.status(400).send("Invalid callback origin");
+  }
+
+  const redirectUrl = new URL("/auth/yandex/callback", appOrigin);
+
+  try {
+    if (error) {
+      redirectUrl.searchParams.set("error", error);
+      return res.redirect(redirectUrl.toString());
+    }
+    if (!config.yandexClientId || !config.yandexClientSecret || !config.yandexRedirectUri) {
+      redirectUrl.searchParams.set("error", "yandex_not_configured");
+      return res.redirect(redirectUrl.toString());
+    }
+    if (!code || !parsedState || parsedState.provider !== "yandex") {
+      redirectUrl.searchParams.set("error", "invalid_state");
+      return res.redirect(redirectUrl.toString());
+    }
+    if (Date.now() - Number(parsedState.ts || 0) > 10 * 60 * 1000) {
+      redirectUrl.searchParams.set("error", "state_expired");
+      return res.redirect(redirectUrl.toString());
+    }
+
+    const tokenData = await exchangeYandexCodeForToken(code);
+    const yandexUser = await fetchYandexUser(tokenData.access_token);
+    const yandexId = String(yandexUser.id);
+    const email = normalizeEmail(yandexUser.default_email || yandexUser.emails?.[0] || "");
+    const firstName = normalizeName(yandexUser.first_name);
+    const lastName = normalizeName(yandexUser.last_name);
+    const fallbackName = splitDisplayName(yandexUser.real_name || yandexUser.display_name || yandexUser.login);
+    const safeFirstName = firstName || fallbackName.firstName || yandexUser.display_name || "Yandex";
+    const safeLastName = lastName || fallbackName.lastName || "";
+
+    const { rows } = await pool.query(
+      `SELECT id, email, first_name, last_name, birthday, created_at, yandex_id
+       FROM users
+       WHERE yandex_id = $1
+          OR ($2 <> '' AND email = $2)
+       ORDER BY CASE WHEN yandex_id = $1 THEN 0 ELSE 1 END
+       LIMIT 1;`,
+      [yandexId, email]
+    );
+
+    let userRow = rows[0] || null;
+
+    if (userRow) {
+      if (userRow.yandex_id && userRow.yandex_id !== yandexId) {
+        redirectUrl.searchParams.set("error", "yandex_account_conflict");
+        return res.redirect(redirectUrl.toString());
+      }
+
+      const updated = await pool.query(
+        `UPDATE users
+         SET yandex_id = $2,
+             first_name = CASE WHEN first_name = '' THEN $3 ELSE first_name END,
+             last_name = CASE WHEN last_name = '' THEN $4 ELSE last_name END
+         WHERE id = $1
+         RETURNING id, email, first_name, last_name, birthday, created_at;`,
+        [userRow.id, yandexId, safeFirstName, safeLastName]
+      );
+      userRow = updated.rows[0];
+    } else {
+      const inserted = await pool.query(
+        `INSERT INTO users (email, password_hash, yandex_id, first_name, last_name)
+         VALUES ($1, NULL, $2, $3, $4)
+         RETURNING id, email, first_name, last_name, birthday, created_at;`,
+        [email || null, yandexId, safeFirstName, safeLastName]
+      );
+      userRow = inserted.rows[0];
+    }
+
+    const token = await createSession(userRow.id);
+    redirectUrl.searchParams.set("token", token);
+    return res.redirect(redirectUrl.toString());
+  } catch (callbackError) {
+    if (callbackError?.message === "invalid yandex code") {
+      redirectUrl.searchParams.set("error", "invalid_code");
+      return res.redirect(redirectUrl.toString());
+    }
+    if (callbackError?.message === "failed to fetch yandex user" || callbackError?.message === "invalid yandex user") {
+      redirectUrl.searchParams.set("error", "invalid_user");
+      return res.redirect(redirectUrl.toString());
+    }
+    return next(callbackError);
   }
 });
 

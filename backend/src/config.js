@@ -8,7 +8,10 @@ export const config = {
   port: Number(process.env.PORT || 8080),
   databaseUrl: process.env.DATABASE_URL,
   corsOrigin: process.env.CORS_ORIGIN || "*",
-  googleClientId: process.env.GOOGLE_CLIENT_ID || ""
+  googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+  yandexClientId: process.env.YANDEX_CLIENT_ID || "",
+  yandexClientSecret: process.env.YANDEX_CLIENT_SECRET || "",
+  yandexRedirectUri: process.env.YANDEX_REDIRECT_URI || ""
 };
 
 if (!config.databaseUrl) {

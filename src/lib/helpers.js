@@ -274,6 +274,9 @@ export function getRouteFromLocation() {
   if (raw === "/dashboard" || raw === "/") {
     return { page: "dashboard", shareToken: null };
   }
+  if (raw === "/auth/yandex/callback") {
+    return { page: "yandex-callback", shareToken: null };
+  }
   if (raw === "/wishlist") {
     return { page: "wishlist", shareToken: null };
   }

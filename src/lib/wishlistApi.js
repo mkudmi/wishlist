@@ -178,6 +178,10 @@ export async function deleteCurrentUserAccount() {
   return result;
 }
 
+export function getApiBase() {
+  return API_BASE;
+}
+
 export function fetchCurrentUser() {
   return request("/api/auth/me");
 }
