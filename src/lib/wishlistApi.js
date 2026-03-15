@@ -7,7 +7,7 @@ function getApiBaseUrl() {
     return envUrl.replace(/\/$/, "");
   }
   if (typeof window !== "undefined") {
-    return `${window.location.protocol}//${window.location.hostname}:8080`;
+    return window.location.origin;
   }
   return "http://127.0.0.1:8080";
 }
