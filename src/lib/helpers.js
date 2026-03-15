@@ -265,19 +265,19 @@ export function getEventCountdownInfo(dateValue, options = {}) {
   return { label, remaining: `${verb} ${safeDays} ${suffix}` };
 }
 
-export function getRouteFromHash() {
+export function getRouteFromLocation() {
   if (typeof window === "undefined") {
     return { page: "dashboard", shareToken: null };
   }
 
-  const raw = window.location.hash || "#/";
-  if (raw === "#/dashboard" || raw === "#/") {
+  const raw = window.location.pathname || "/";
+  if (raw === "/dashboard" || raw === "/") {
     return { page: "dashboard", shareToken: null };
   }
-  if (raw === "#/wishlist") {
+  if (raw === "/wishlist") {
     return { page: "wishlist", shareToken: null };
   }
-  const sharedMatch = raw.match(/^#\/shared\/([a-zA-Z0-9_-]+)$/);
+  const sharedMatch = raw.match(/^\/shared\/([a-zA-Z0-9_-]+)$/);
   if (sharedMatch) {
     return { page: "shared", shareToken: sharedMatch[1] };
   }
@@ -338,7 +338,7 @@ export function buildSharedWishlistUrl(shareToken) {
     host = "www.списокжеланий.рф";
   }
 
-  return `${protocol}//${host}${window.location.pathname}#/shared/${shareToken}`;
+  return `${protocol}//${host}/shared/${shareToken}`;
 }
 
 export async function copyTextToClipboard(value) {

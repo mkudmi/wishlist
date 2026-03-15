@@ -11,7 +11,7 @@ import {
   createShareToken,
   formatMoney,
   getProfileFormFromUser,
-  getRouteFromHash,
+  getRouteFromLocation,
   getUserDisplayName,
   getWishDonated,
   getWishParticipants,
@@ -56,7 +56,7 @@ import { AuthPage } from "./components/pages/AuthPage";
 import { DashboardPage } from "./components/pages/DashboardPage";
 import { WishlistPage } from "./components/pages/WishlistPage";
 export default function App() {
-  const initialRoute = getRouteFromHash();
+  const initialRoute = getRouteFromLocation();
   const [wishes, setWishes] = useState([]);
   const [contributions, setContributions] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
@@ -99,6 +99,27 @@ export default function App() {
   const [donationError, setDonationError] = useState("");
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
   const [guestSessionId] = useState(() => getOrCreateGuestSessionId());
+
+  function navigate(path, options = {}) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextPath = path || "/dashboard";
+    if (window.location.pathname === nextPath) {
+      return;
+    }
+
+    if (options.replace) {
+      window.history.replaceState(null, "", nextPath);
+    } else {
+      window.history.pushState(null, "", nextPath);
+    }
+
+    const route = getRouteFromLocation();
+    setPage(route.page);
+    setShareToken(route.shareToken);
+  }
 
   async function saveRulesForWishlist(nextRules) {
     if (!currentWishlistId) {
@@ -346,8 +367,8 @@ export default function App() {
         setWishes([]);
       }
 
-      if (!window.location.hash || window.location.hash === "#/") {
-        window.location.hash = "#/dashboard";
+      if (!window.location.pathname || window.location.pathname === "/") {
+        navigate("/dashboard", { replace: true });
       }
       setIsAuthLoading(false);
     }
@@ -360,19 +381,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    function handleHashChange() {
-      const route = getRouteFromHash();
+    function handleLocationChange() {
+      const route = getRouteFromLocation();
       setPage(route.page);
       setShareToken(route.shareToken);
     }
 
-    window.addEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handleLocationChange);
 
-    if (!window.location.hash) {
-      window.location.hash = "#/";
+    if (!window.location.pathname || window.location.pathname === "/") {
+      navigate("/dashboard", { replace: true });
     }
 
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("popstate", handleLocationChange);
   }, []);
 
   useEffect(() => {
@@ -381,7 +402,7 @@ export default function App() {
     }
 
     if (page === "wishlist" && !currentWishlistId) {
-      window.location.hash = "#/dashboard";
+      navigate("/dashboard", { replace: true });
     }
   }, [page, currentWishlistId, currentUser]);
 
@@ -477,7 +498,7 @@ export default function App() {
         setWishes([]);
       }
 
-      window.location.hash = "#/dashboard";
+      navigate("/dashboard");
       setAuthForm(emptyAuthForm);
     } catch (error) {
       setAuthError(error.message || "Ошибка авторизации.");
@@ -495,7 +516,7 @@ export default function App() {
     setWishes([]);
     setWishlistRules(defaultRules.slice(0, 5));
     setPage("dashboard");
-    window.location.hash = "#/dashboard";
+    navigate("/dashboard");
   }
 
   function openProfileModal() {
@@ -609,13 +630,13 @@ export default function App() {
     setWishlists(next);
     await selectWishlist(data);
     setIsWishlistSubmitting(false);
-    window.location.hash = "#/wishlist";
+    navigate("/wishlist");
     return true;
   }
 
   async function openWishlistFromDashboard(wishlist) {
     await selectWishlist(wishlist);
-    window.location.hash = "#/wishlist";
+    navigate("/wishlist");
   }
 
   function requestDeleteWishlist(wishlist) {
@@ -659,7 +680,7 @@ export default function App() {
         setWishes([]);
         setWishlistRules(defaultRules.slice(0, 5));
       }
-      window.location.hash = "#/dashboard";
+      navigate("/dashboard");
     }
 
     setWishlistToDelete(null);
@@ -968,7 +989,7 @@ export default function App() {
   }
 
   function openDashboardPage() {
-    window.location.hash = "#/dashboard";
+    navigate("/dashboard");
   }
 
   function removeMyParticipation(wishId) {
