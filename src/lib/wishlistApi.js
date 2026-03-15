@@ -164,6 +164,17 @@ export async function loginWithGoogleCredential(credential) {
   };
 }
 
+export async function linkGoogleIdentity(credential) {
+  const result = await request("/api/auth/google/link", {
+    method: "POST",
+    body: { credential }
+  });
+  return {
+    data: result.data?.identities || [],
+    error: result.error
+  };
+}
+
 export async function logoutUser() {
   const result = await request("/api/auth/logout", { method: "POST" });
   setAuthToken(null);
@@ -184,6 +195,14 @@ export function getApiBase() {
 
 export function fetchCurrentUser() {
   return request("/api/auth/me");
+}
+
+export async function fetchCurrentUserIdentities() {
+  const result = await request("/api/auth/identities");
+  return {
+    data: result.data?.identities || [],
+    error: result.error
+  };
 }
 
 export function fetchWishlistsByOwner() {

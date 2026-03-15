@@ -210,8 +210,122 @@ function mapUser(user) {
     first_name: user.first_name || "",
     last_name: user.last_name || "",
     birthday: user.birthday || null,
-    created_at: user.created_at
+    created_at: user.created_at,
+    identities: user.identities || []
   };
+}
+
+async function fetchUserIdentities(client, userId) {
+  const executor = client || pool;
+  const { rows } = await executor.query(
+    `SELECT provider, provider_user_id, provider_email, email_verified, created_at
+     FROM user_identities
+     WHERE user_id = $1
+     ORDER BY created_at ASC;`,
+    [userId]
+  );
+  return rows;
+}
+
+async function mapUserWithIdentities(client, user) {
+  if (!user) {
+    return null;
+  }
+  const identities = await fetchUserIdentities(client, user.id);
+  return mapUser({ ...user, identities });
+}
+
+async function ensurePasswordIdentity(client, userId, email) {
+  await client.query(
+    `INSERT INTO user_identities (user_id, provider, provider_user_id, provider_email, email_verified)
+     VALUES ($1, 'password', $2, $2, TRUE)
+     ON CONFLICT (provider, provider_user_id) DO NOTHING;`,
+    [userId, normalizeEmail(email)]
+  );
+}
+
+async function findUserByIdentity(client, provider, providerUserId) {
+  const { rows } = await client.query(
+    `SELECT u.id, u.email, u.first_name, u.last_name, u.birthday, u.created_at
+     FROM user_identities ui
+     JOIN users u ON u.id = ui.user_id
+     WHERE ui.provider = $1 AND ui.provider_user_id = $2
+     LIMIT 1;`,
+    [provider, providerUserId]
+  );
+  return rows[0] || null;
+}
+
+async function findUserByEmail(client, email) {
+  if (!email) {
+    return null;
+  }
+  const { rows } = await client.query(
+    `SELECT id, email, first_name, last_name, birthday, created_at
+     FROM users
+     WHERE email = $1
+     LIMIT 1;`,
+    [normalizeEmail(email)]
+  );
+  return rows[0] || null;
+}
+
+async function linkIdentity(client, userId, { provider, providerUserId, providerEmail, emailVerified }) {
+  await client.query(
+    `INSERT INTO user_identities (user_id, provider, provider_user_id, provider_email, email_verified)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (provider, provider_user_id)
+     DO UPDATE SET
+       user_id = EXCLUDED.user_id,
+       provider_email = EXCLUDED.provider_email,
+       email_verified = EXCLUDED.email_verified;`,
+    [userId, provider, providerUserId, providerEmail || null, Boolean(emailVerified)]
+  );
+}
+
+async function resolveOauthUser(client, { provider, providerUserId, providerEmail, emailVerified, firstName, lastName }) {
+  const normalizedEmail = normalizeEmail(providerEmail);
+  let user = await findUserByIdentity(client, provider, providerUserId);
+
+  if (user) {
+    await linkIdentity(client, user.id, {
+      provider,
+      providerUserId,
+      providerEmail: normalizedEmail,
+      emailVerified
+    });
+    return user;
+  }
+
+  if (normalizedEmail && emailVerified) {
+    user = await findUserByEmail(client, normalizedEmail);
+    if (user) {
+      await linkIdentity(client, user.id, {
+        provider,
+        providerUserId,
+        providerEmail: normalizedEmail,
+        emailVerified
+      });
+      return user;
+    }
+  }
+
+  const inserted = await client.query(
+    `INSERT INTO users (email, password_hash, first_name, last_name)
+     VALUES ($1, NULL, $2, $3)
+     RETURNING id, email, first_name, last_name, birthday, created_at;`,
+    [normalizedEmail || null, firstName || "", lastName || ""]
+  );
+
+  user = inserted.rows[0];
+  await linkIdentity(client, user.id, {
+    provider,
+    providerUserId,
+    providerEmail: normalizedEmail,
+    emailVerified
+  });
+
+  return user;
 }
 
 async function verifyGoogleCredential(credential) {
@@ -312,8 +426,10 @@ app.post("/api/auth/register", async (req, res, next) => {
       [email, passwordHash, firstName, lastName, birthday]
     );
 
+    await ensurePasswordIdentity(pool, rows[0].id, email);
+
     const token = await createSession(rows[0].id);
-    return res.status(201).json({ token, user: mapUser(rows[0]) });
+    return res.status(201).json({ token, user: await mapUserWithIdentities(pool, rows[0]) });
   } catch (error) {
     next(error);
   }
@@ -343,8 +459,9 @@ app.post("/api/auth/login", async (req, res, next) => {
       return res.status(401).json({ error: "invalid credentials" });
     }
 
+    await ensurePasswordIdentity(pool, rows[0].id, email);
     const token = await createSession(rows[0].id);
-    return res.json({ token, user: mapUser(rows[0]) });
+    return res.json({ token, user: await mapUserWithIdentities(pool, rows[0]) });
   } catch (error) {
     next(error);
   }
@@ -362,7 +479,8 @@ app.post("/api/auth/logout", requireAuth, async (req, res, next) => {
 });
 
 app.get("/api/auth/me", requireAuth, async (req, res) => {
-  res.json(mapUser(req.authUser));
+  const user = await mapUserWithIdentities(pool, req.authUser);
+  res.json(user);
 });
 
 app.patch("/api/auth/me", requireAuth, async (req, res, next) => {
@@ -383,9 +501,18 @@ app.patch("/api/auth/me", requireAuth, async (req, res, next) => {
       [req.authUser.id, firstName, lastName, birthday]
     );
 
-    return res.json(mapUser(rows[0]));
+    return res.json(await mapUserWithIdentities(pool, rows[0]));
   } catch (error) {
     next(error);
+  }
+});
+
+app.get("/api/auth/identities", requireAuth, async (req, res, next) => {
+  try {
+    const identities = await fetchUserIdentities(pool, req.authUser.id);
+    return res.json({ identities });
+  } catch (error) {
+    return next(error);
   }
 });
 
@@ -411,66 +538,66 @@ app.post("/api/auth/google", async (req, res, next) => {
     const lastName = familyName || fallbackName.lastName || "";
 
     await client.query("BEGIN");
-
-    const byGoogleId = await client.query(
-      `SELECT id, email, first_name, last_name, birthday, created_at
-       FROM users
-       WHERE google_id = $1
-       LIMIT 1;`,
-      [googleId]
-    );
-
-    let userRow = byGoogleId.rows[0] || null;
-
-    if (!userRow) {
-      const byEmail = await client.query(
-        `SELECT id, email, first_name, last_name, birthday, created_at, google_id
-         FROM users
-         WHERE email = $1
-         LIMIT 1;`,
-        [email]
-      );
-
-      if (byEmail.rows[0]) {
-        userRow = byEmail.rows[0];
-
-        if (userRow.google_id && userRow.google_id !== googleId) {
-          await client.query("ROLLBACK");
-          return res.status(409).json({ error: "email is already linked to another google account" });
-        }
-
-        const updated = await client.query(
-          `UPDATE users
-           SET google_id = $2,
-               first_name = CASE WHEN first_name = '' THEN $3 ELSE first_name END,
-               last_name = CASE WHEN last_name = '' THEN $4 ELSE last_name END
-           WHERE id = $1
-           RETURNING id, email, first_name, last_name, birthday, created_at;`,
-          [userRow.id, googleId, firstName, lastName]
-        );
-        userRow = updated.rows[0];
-      } else {
-        const inserted = await client.query(
-          `INSERT INTO users (email, password_hash, google_id, first_name, last_name)
-           VALUES ($1, NULL, $2, $3, $4)
-           RETURNING id, email, first_name, last_name, birthday, created_at;`,
-          [email, googleId, firstName, lastName]
-        );
-        userRow = inserted.rows[0];
-      }
-    }
-
+    const userRow = await resolveOauthUser(client, {
+      provider: "google",
+      providerUserId: googleId,
+      providerEmail: email,
+      emailVerified: true,
+      firstName,
+      lastName
+    });
     await client.query("COMMIT");
-
     const token = await createSession(userRow.id);
-    return res.json({ token, user: mapUser(userRow) });
+    return res.json({ token, user: await mapUserWithIdentities(pool, userRow) });
   } catch (error) {
     await client.query("ROLLBACK");
-    if (error?.message === "invalid google credential") {
-      return res.status(401).json({ error: "invalid google credential" });
+    if (error?.message === "invalid google credential" || error?.message === "google auth is not configured") {
+      return res.status(error.message === "invalid google credential" ? 401 : 503).json({ error: error.message });
     }
-    if (error?.message === "google auth is not configured") {
+    if (error?.code === "23505") {
+      return res.status(409).json({ error: "identity_link_conflict" });
+    }
+    return next(error);
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/api/auth/google/link", requireAuth, async (req, res, next) => {
+  const client = await pool.connect();
+
+  try {
+    const credential = String(req.body?.credential || "").trim();
+    if (!credential) {
+      return res.status(400).json({ error: "credential is required" });
+    }
+    if (!googleAuthClient || !config.googleClientId) {
       return res.status(503).json({ error: "google auth is not configured" });
+    }
+
+    const googlePayload = await verifyGoogleCredential(credential);
+    const providerUserId = String(googlePayload.sub);
+    const providerEmail = normalizeEmail(googlePayload.email);
+
+    await client.query("BEGIN");
+    const owner = await findUserByIdentity(client, "google", providerUserId);
+    if (owner && owner.id !== req.authUser.id) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "identity_link_conflict" });
+    }
+
+    await linkIdentity(client, req.authUser.id, {
+      provider: "google",
+      providerUserId,
+      providerEmail,
+      emailVerified: true
+    });
+    await client.query("COMMIT");
+    return res.json({ identities: await fetchUserIdentities(pool, req.authUser.id) });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    if (error?.message === "invalid google credential" || error?.message === "google auth is not configured") {
+      return res.status(error.message === "invalid google credential" ? 401 : 503).json({ error: error.message });
     }
     return next(error);
   } finally {
@@ -530,7 +657,7 @@ app.get("/api/auth/yandex/callback", async (req, res, next) => {
       redirectUrl.searchParams.set("error", "yandex_not_configured");
       return res.redirect(redirectUrl.toString());
     }
-    if (!code || !parsedState || parsedState.provider !== "yandex") {
+    if (!code || !parsedState || !["yandex", "yandex-link"].includes(parsedState.provider)) {
       redirectUrl.searchParams.set("error", "invalid_state");
       return res.redirect(redirectUrl.toString());
     }
@@ -549,43 +676,31 @@ app.get("/api/auth/yandex/callback", async (req, res, next) => {
     const safeFirstName = firstName || fallbackName.firstName || yandexUser.display_name || "Yandex";
     const safeLastName = lastName || fallbackName.lastName || "";
 
-    const { rows } = await pool.query(
-      `SELECT id, email, first_name, last_name, birthday, created_at, yandex_id
-       FROM users
-       WHERE yandex_id = $1
-          OR ($2 <> '' AND email = $2)
-       ORDER BY CASE WHEN yandex_id = $1 THEN 0 ELSE 1 END
-       LIMIT 1;`,
-      [yandexId, email]
-    );
-
-    let userRow = rows[0] || null;
-
-    if (userRow) {
-      if (userRow.yandex_id && userRow.yandex_id !== yandexId) {
-        redirectUrl.searchParams.set("error", "yandex_account_conflict");
+    if (parsedState.provider === "yandex-link") {
+      const owner = await findUserByIdentity(pool, "yandex", yandexId);
+      if (owner && owner.id !== parsedState.userId) {
+        redirectUrl.searchParams.set("error", "identity_link_conflict");
         return res.redirect(redirectUrl.toString());
       }
 
-      const updated = await pool.query(
-        `UPDATE users
-         SET yandex_id = $2,
-             first_name = CASE WHEN first_name = '' THEN $3 ELSE first_name END,
-             last_name = CASE WHEN last_name = '' THEN $4 ELSE last_name END
-         WHERE id = $1
-         RETURNING id, email, first_name, last_name, birthday, created_at;`,
-        [userRow.id, yandexId, safeFirstName, safeLastName]
-      );
-      userRow = updated.rows[0];
-    } else {
-      const inserted = await pool.query(
-        `INSERT INTO users (email, password_hash, yandex_id, first_name, last_name)
-         VALUES ($1, NULL, $2, $3, $4)
-         RETURNING id, email, first_name, last_name, birthday, created_at;`,
-        [email || null, yandexId, safeFirstName, safeLastName]
-      );
-      userRow = inserted.rows[0];
+      await linkIdentity(pool, parsedState.userId, {
+        provider: "yandex",
+        providerUserId: yandexId,
+        providerEmail: email,
+        emailVerified: Boolean(email)
+      });
+      redirectUrl.searchParams.set("linked", "yandex");
+      return res.redirect(redirectUrl.toString());
     }
+
+    const userRow = await resolveOauthUser(pool, {
+      provider: "yandex",
+      providerUserId: yandexId,
+      providerEmail: email,
+      emailVerified: Boolean(email),
+      firstName: safeFirstName,
+      lastName: safeLastName
+    });
 
     const token = await createSession(userRow.id);
     redirectUrl.searchParams.set("token", token);
@@ -599,8 +714,42 @@ app.get("/api/auth/yandex/callback", async (req, res, next) => {
       redirectUrl.searchParams.set("error", "invalid_user");
       return res.redirect(redirectUrl.toString());
     }
+    if (callbackError?.code === "23505") {
+      redirectUrl.searchParams.set("error", "identity_link_conflict");
+      return res.redirect(redirectUrl.toString());
+    }
     return next(callbackError);
   }
+});
+
+app.get("/api/auth/yandex/link/start", requireAuth, (req, res) => {
+  const appOrigin = getSafeAppOrigin(req.query?.origin || req.headers.origin);
+  if (!config.yandexClientId || !config.yandexClientSecret || !config.yandexRedirectUri) {
+    return res.status(503).send("Yandex auth is not configured");
+  }
+  if (!appOrigin) {
+    return res.status(400).send("Invalid app origin");
+  }
+
+  const state = createOauthState(
+    {
+      provider: "yandex-link",
+      origin: appOrigin,
+      userId: req.authUser.id,
+      nonce: crypto.randomBytes(12).toString("hex"),
+      ts: Date.now()
+    },
+    config.yandexClientSecret
+  );
+
+  const authorizeUrl = new URL(YANDEX_OAUTH_AUTHORIZE_URL);
+  authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("client_id", config.yandexClientId);
+  authorizeUrl.searchParams.set("redirect_uri", config.yandexRedirectUri);
+  authorizeUrl.searchParams.set("state", state);
+  authorizeUrl.searchParams.set("force_confirm", "true");
+
+  return res.redirect(authorizeUrl.toString());
 });
 
 app.delete("/api/auth/me", requireAuth, async (req, res, next) => {

@@ -13,6 +13,7 @@ export function buildAppUser(sessionUser) {
     firstName,
     lastName,
     birthday: sessionUser.birthday || "",
+    identities: Array.isArray(sessionUser.identities) ? sessionUser.identities : [],
     isIncognito: false
   };
 }

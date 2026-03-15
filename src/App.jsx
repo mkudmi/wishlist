@@ -36,9 +36,11 @@ import {
   deleteWishlistRecord,
   deleteMyWishReservations,
   fetchCurrentUser,
+  fetchCurrentUserIdentities,
   getOrCreateGuestSessionId,
   setAuthToken,
   loginUser,
+  linkGoogleIdentity,
   loginWithGoogleCredential,
   logoutUser,
   registerUser,
@@ -73,6 +75,7 @@ export default function App() {
   const [profileForm, setProfileForm] = useState(emptyProfileForm);
   const [profileError, setProfileError] = useState("");
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+  const [isIdentitySubmitting, setIsIdentitySubmitting] = useState(false);
   const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
   const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState("");
   const [isAccountDeleting, setIsAccountDeleting] = useState(false);
@@ -581,6 +584,126 @@ export default function App() {
     }
   }
 
+  async function refreshCurrentUserIdentities() {
+    if (!currentUser) {
+      return;
+    }
+
+    const { data, error } = await fetchCurrentUserIdentities();
+    if (error) {
+      throw new Error("Не удалось обновить способы входа.");
+    }
+
+    setCurrentUser((prev) => (prev ? { ...prev, identities: data || [] } : prev));
+  }
+
+  async function ensureGoogleSdkLoaded() {
+    if (typeof window === "undefined") {
+      throw new Error("Google SDK недоступен.");
+    }
+
+    if (window.google?.accounts?.id) {
+      return;
+    }
+
+    await new Promise((resolve, reject) => {
+      const existingScript = document.querySelector('script[data-google-gsi="true"]');
+      if (existingScript) {
+        existingScript.addEventListener("load", resolve, { once: true });
+        existingScript.addEventListener("error", reject, { once: true });
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.dataset.googleGsi = "true";
+      script.addEventListener("load", resolve, { once: true });
+      script.addEventListener("error", reject, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
+  async function startGoogleLink() {
+    if (!currentUser) {
+      return;
+    }
+
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+    if (!googleClientId) {
+      setProfileError("Google вход не настроен.");
+      return;
+    }
+
+    setProfileError("");
+    setIsIdentitySubmitting(true);
+
+    try {
+      await ensureGoogleSdkLoaded();
+
+      const credential = await new Promise((resolve, reject) => {
+        if (!window.google?.accounts?.id) {
+          reject(new Error("Google SDK недоступен."));
+          return;
+        }
+
+        let settled = false;
+        const finish = (handler, value) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          handler(value);
+        };
+
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: (response) => {
+            if (response?.credential) {
+              finish(resolve, response.credential);
+              return;
+            }
+            finish(reject, new Error("Google не вернул токен входа."));
+          }
+        });
+
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+            finish(reject, new Error("Не удалось открыть вход через Google."));
+          }
+        });
+      });
+
+      const { error } = await linkGoogleIdentity(credential);
+      if (error) {
+        if (error.message === "identity_link_conflict") {
+          throw new Error("Этот Google-аккаунт уже привязан к другому профилю.");
+        }
+        throw new Error("Не удалось привязать Google.");
+      }
+
+      await refreshCurrentUserIdentities();
+    } catch (error) {
+      setProfileError(error.message || "Не удалось привязать Google.");
+    } finally {
+      setIsIdentitySubmitting(false);
+    }
+  }
+
+  function startYandexLink() {
+    if (!currentUser) {
+      return;
+    }
+
+    setProfileError("");
+    setIsIdentitySubmitting(true);
+
+    const apiBase = getApiBase();
+    const popupUrl = `${apiBase}/api/auth/yandex/link/start?origin=${encodeURIComponent(window.location.origin)}`;
+    window.open(popupUrl, "wishlist-yandex-link", "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes");
+  }
+
   useEffect(() => {
     if (page !== "yandex-callback" || typeof window === "undefined") {
       return;
@@ -589,13 +712,15 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
     const error = params.get("error");
+    const linked = params.get("linked");
 
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage(
         {
           type: "wishlist:yandex-auth-result",
           token,
-          error
+          error,
+          linked
         },
         window.location.origin
       );
@@ -603,7 +728,7 @@ export default function App() {
       return;
     }
 
-    if (token) {
+    if (token || linked) {
       setAuthError("");
     } else if (error) {
       setAuthError("Не удалось войти через Яндекс.");
@@ -611,6 +736,43 @@ export default function App() {
 
     navigate("/dashboard", { replace: true });
   }, [page]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    async function handleAuthMessage(event) {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      const payload = event.data;
+      if (payload?.type !== "wishlist:yandex-auth-result" || payload.linked !== "yandex") {
+        return;
+      }
+
+      setIsIdentitySubmitting(false);
+
+      if (payload.error) {
+        setProfileError(
+          payload.error === "identity_link_conflict"
+            ? "Этот Яндекс-аккаунт уже привязан к другому профилю."
+            : "Не удалось привязать Яндекс."
+        );
+        return;
+      }
+
+      try {
+        await refreshCurrentUserIdentities();
+      } catch (error) {
+        setProfileError(error.message || "Не удалось обновить способы входа.");
+      }
+    }
+
+    window.addEventListener("message", handleAuthMessage);
+    return () => window.removeEventListener("message", handleAuthMessage);
+  }, [currentUser]);
 
   async function logout() {
     await logoutUser();
@@ -643,18 +805,20 @@ export default function App() {
   function openProfileModal() {
     setProfileForm(getProfileFormFromUser(currentUser));
     setProfileError("");
+    setIsIdentitySubmitting(false);
     setIsDeleteAccountConfirmOpen(false);
     setDeleteAccountConfirmation("");
     setIsProfileOpen(true);
   }
 
   function closeProfileModal() {
-    if (isProfileSubmitting || isAccountDeleting) {
+    if (isProfileSubmitting || isAccountDeleting || isIdentitySubmitting) {
       return;
     }
     setIsProfileOpen(false);
     setProfileError("");
     setProfileForm(emptyProfileForm);
+    setIsIdentitySubmitting(false);
     setIsDeleteAccountConfirmOpen(false);
     setDeleteAccountConfirmation("");
   }
@@ -1538,6 +1702,58 @@ export default function App() {
                   placeholder="ДД-ММ-ГГГГ"
                 />
               </label>
+
+              <div className="account-identity-section">
+                <p className="account-identity-title">Способы входа</p>
+
+                <div className="account-identity-row">
+                  <div>
+                    <strong>Пароль</strong>
+                    <p>Обычный вход по email и паролю.</p>
+                  </div>
+                  <span className="account-identity-badge">
+                    {currentUser?.identities?.some((identity) => identity.provider === "password") ? "Подключен" : "Не подключен"}
+                  </span>
+                </div>
+
+                <div className="account-identity-row">
+                  <div>
+                    <strong>Google</strong>
+                    <p>Можно входить через Google без создания нового профиля.</p>
+                  </div>
+                  {currentUser?.identities?.some((identity) => identity.provider === "google") ? (
+                    <span className="account-identity-badge">Подключен</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="button-secondary account-identity-action"
+                      onClick={startGoogleLink}
+                      disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
+                    >
+                      {isIdentitySubmitting ? "Подключаем..." : "Привязать Google"}
+                    </button>
+                  )}
+                </div>
+
+                <div className="account-identity-row">
+                  <div>
+                    <strong>Яндекс</strong>
+                    <p>Можно привязать даже если у Яндекса другой email.</p>
+                  </div>
+                  {currentUser?.identities?.some((identity) => identity.provider === "yandex") ? (
+                    <span className="account-identity-badge">Подключен</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="button-secondary account-identity-action"
+                      onClick={startYandexLink}
+                      disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
+                    >
+                      {isIdentitySubmitting ? "Подключаем..." : "Привязать Яндекс"}
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <div className="account-danger-zone">
                 <button

@@ -1917,6 +1917,62 @@ h3 {
   flex: 0 0 18px;
 }
 
+.account-identity-section {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: rgba(255, 250, 243, 0.86);
+  border: 1px solid rgba(95, 67, 39, 0.1);
+}
+
+.account-identity-title {
+  margin: 0 0 10px;
+  color: #5d4331;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.account-identity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.account-identity-row + .account-identity-row {
+  border-top: 1px solid rgba(95, 67, 39, 0.08);
+}
+
+.account-identity-row strong {
+  display: block;
+  color: #241811;
+}
+
+.account-identity-row p {
+  margin: 4px 0 0;
+  color: #73543f;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.account-identity-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 112px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(38, 122, 68, 0.12);
+  color: #1c6f3c;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.account-identity-action {
+  min-width: 170px;
+}
+
 .auth-divider {
   position: relative;
   display: flex;
@@ -2285,6 +2341,16 @@ h3 {
 
   .auth-oauth-row {
     grid-template-columns: 1fr;
+  }
+
+  .account-identity-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .account-identity-badge,
+  .account-identity-action {
+    width: 100%;
   }
 
   .landing-layout {
