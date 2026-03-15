@@ -1674,6 +1674,23 @@ h3 {
   margin-top: 22px;
 }
 
+.landing-auth-cta-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.landing-auth-cta-secondary {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff8ef;
+  background: rgba(255, 248, 240, 0.1);
+}
+
+.landing-auth-cta-secondary:hover {
+  background: rgba(255, 248, 240, 0.16);
+}
+
 .landing-auth-benefit {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr);
@@ -1742,6 +1759,40 @@ h3 {
 
 .landing-auth-card .donation-actions .button-primary {
   width: 100%;
+}
+
+.auth-modal-backdrop {
+  padding: 20px;
+}
+
+.auth-landing-modal {
+  position: relative;
+  width: min(560px, 100%);
+  padding: 18px;
+}
+
+.auth-landing-modal .landing-auth-card.auth-card {
+  box-shadow: none;
+}
+
+.auth-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(95, 67, 39, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 251, 246, 0.94);
+  color: #5f4327;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.auth-modal-close:hover {
+  background: rgba(245, 234, 220, 0.94);
 }
 
 .auth-layout {
@@ -2033,6 +2084,10 @@ h3 {
   .landing-auth-card.auth-card {
     padding: 24px;
   }
+
+  .landing-auth-cta-row {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 720px) {
@@ -2297,6 +2352,10 @@ h3 {
   }
 
   .auth-card {
+    padding: 14px;
+  }
+
+  .auth-landing-modal {
     padding: 14px;
   }
 

@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 export function AuthPage({
   mode,
   form,
@@ -66,6 +68,7 @@ export function AuthPage({
     "Для каждого события создается отдельная ссылка.",
     "Заполнить список и поделиться им можно без лишних шагов."
   ];
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   function scrollToSection(sectionId) {
     if (typeof document === "undefined") {
@@ -78,9 +81,129 @@ export function AuthPage({
     }
   }
 
-  function focusAuth(nextMode) {
+  function openAuthModal(nextMode) {
     onModeChange(nextMode);
-    scrollToSection("landing-auth");
+    setIsAuthModalOpen(true);
+  }
+
+  function closeAuthModal() {
+    if (submitting) {
+      return;
+    }
+    setIsAuthModalOpen(false);
+  }
+
+  function renderAuthCard(cardMode = mode) {
+    const cardIsLogin = cardMode === "login";
+
+    return (
+      <section className="auth-card landing-auth-card">
+        <p className="landing-auth-kicker">{cardIsLogin ? "Вход" : "Регистрация"}</p>
+        <h3 className="landing-auth-title">{cardIsLogin ? "Вернуться к своим спискам" : "Запустить первый вишлист"}</h3>
+        <p className="auth-subtitle landing-auth-subtitle">
+          {cardIsLogin
+            ? "Открой свои вишлисты и продолжай делиться ими с друзьями."
+            : "Создай аккаунт, чтобы собрать желания и получить персональную ссылку."}
+        </p>
+
+        <div className="auth-switch landing-auth-switch">
+          <button type="button" className={cardIsLogin ? "button-primary" : "button-secondary"} onClick={() => onModeChange("login")}>
+            Вход
+          </button>
+          <button type="button" className={!cardIsLogin ? "button-primary" : "button-secondary"} onClick={() => onModeChange("register")}>
+            Регистрация
+          </button>
+        </div>
+
+        <form className="donation-form auth-form" onSubmit={onSubmit}>
+          {!cardIsLogin ? (
+            <>
+              <label>
+                Имя
+                <input
+                  type="text"
+                  name="firstName"
+                  value={form.firstName}
+                  onChange={onInputChange}
+                  placeholder="Имя"
+                  autoComplete="given-name"
+                />
+              </label>
+
+              <label>
+                Фамилия
+                <input
+                  type="text"
+                  name="lastName"
+                  value={form.lastName}
+                  onChange={onInputChange}
+                  placeholder="Фамилия"
+                  autoComplete="family-name"
+                />
+              </label>
+
+              <label>
+                Дата рождения
+                <input
+                  type="text"
+                  name="birthday"
+                  value={form.birthday}
+                  onChange={onInputChange}
+                  placeholder="ДД-ММ-ГГГГ"
+                  autoComplete="bday"
+                />
+              </label>
+            </>
+          ) : null}
+
+          <label>
+            Email
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={onInputChange}
+              placeholder="you@example.com"
+              autoComplete="email"
+            />
+          </label>
+
+          <label>
+            Пароль
+            <input
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={onInputChange}
+              placeholder="Минимум 6 символов"
+              autoComplete={cardIsLogin ? "current-password" : "new-password"}
+            />
+          </label>
+
+          {!cardIsLogin ? (
+            <label>
+              Подтверждение пароля
+              <input
+                type="password"
+                name="confirmPassword"
+                value={form.confirmPassword}
+                onChange={onInputChange}
+                placeholder="Повтори пароль"
+                autoComplete="new-password"
+              />
+            </label>
+          ) : null}
+
+          {error ? <p className="donation-error">{error}</p> : null}
+
+          <div className="donation-actions">
+            <button type="submit" className="button-primary" disabled={submitting}>
+              {submitting ? "Подождите..." : cardIsLogin ? "Войти" : "Создать аккаунт"}
+            </button>
+          </div>
+        </form>
+      </section>
+    );
   }
 
   return (
@@ -105,7 +228,7 @@ export function AuthPage({
             <button type="button" className="landing-nav-link" onClick={() => scrollToSection("landing-flow")}>
               Как это работает
             </button>
-            <button type="button" className="button-primary landing-nav-cta" onClick={() => focusAuth("register")}>
+            <button type="button" className="button-primary landing-nav-cta" onClick={() => openAuthModal("login")}>
               Создать вишлист
             </button>
           </div>
@@ -120,7 +243,7 @@ export function AuthPage({
             </p>
 
             <div className="landing-hero-actions">
-              <button type="button" className="button-primary" onClick={() => focusAuth("register")}>
+              <button type="button" className="button-primary" onClick={() => openAuthModal("login")}>
                 Начать бесплатно
               </button>
               <button
@@ -286,116 +409,29 @@ export function AuthPage({
                 </div>
               ))}
             </div>
-          </div>
 
-          <section className="auth-card landing-auth-card">
-            <p className="landing-auth-kicker">{isLogin ? "Вход" : "Регистрация"}</p>
-            <h3 className="landing-auth-title">{isLogin ? "Вернуться к своим спискам" : "Запустить первый вишлист"}</h3>
-            <p className="auth-subtitle landing-auth-subtitle">
-              {isLogin
-                ? "Открой свои вишлисты и продолжай делиться ими с друзьями."
-                : "Создай аккаунт, чтобы собрать желания и получить персональную ссылку."}
-            </p>
-
-            <div className="auth-switch landing-auth-switch">
-              <button type="button" className={isLogin ? "button-primary" : "button-secondary"} onClick={() => onModeChange("login")}>
-                Вход
+            <div className="landing-auth-cta-row">
+              <button type="button" className="button-primary" onClick={() => openAuthModal("login")}>
+                Создать аккаунт
               </button>
-              <button type="button" className={!isLogin ? "button-primary" : "button-secondary"} onClick={() => onModeChange("register")}>
-                Регистрация
+              <button type="button" className="button-secondary landing-auth-cta-secondary" onClick={() => openAuthModal("login")}>
+                Уже есть аккаунт
               </button>
             </div>
-
-            <form className="donation-form auth-form" onSubmit={onSubmit}>
-              {!isLogin ? (
-                <>
-                  <label>
-                    Имя
-                    <input
-                      type="text"
-                      name="firstName"
-                      value={form.firstName}
-                      onChange={onInputChange}
-                      placeholder="Имя"
-                      autoComplete="given-name"
-                    />
-                  </label>
-
-                  <label>
-                    Фамилия
-                    <input
-                      type="text"
-                      name="lastName"
-                      value={form.lastName}
-                      onChange={onInputChange}
-                      placeholder="Фамилия"
-                      autoComplete="family-name"
-                    />
-                  </label>
-
-                  <label>
-                    Дата рождения
-                    <input
-                      type="text"
-                      name="birthday"
-                      value={form.birthday}
-                      onChange={onInputChange}
-                      placeholder="ДД-ММ-ГГГГ"
-                      autoComplete="bday"
-                    />
-                  </label>
-                </>
-              ) : null}
-
-              <label>
-                Email
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={onInputChange}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                />
-              </label>
-
-              <label>
-                Пароль
-                <input
-                  type="password"
-                  name="password"
-                  value={form.password}
-                  onChange={onInputChange}
-                  placeholder="Минимум 6 символов"
-                  autoComplete={isLogin ? "current-password" : "new-password"}
-                />
-              </label>
-
-              {!isLogin ? (
-                <label>
-                  Подтверждение пароля
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={form.confirmPassword}
-                    onChange={onInputChange}
-                    placeholder="Повтори пароль"
-                    autoComplete="new-password"
-                  />
-                </label>
-              ) : null}
-
-              {error ? <p className="donation-error">{error}</p> : null}
-
-              <div className="donation-actions">
-                <button type="submit" className="button-primary" disabled={submitting}>
-                  {submitting ? "Подождите..." : isLogin ? "Войти" : "Создать аккаунт"}
-                </button>
-              </div>
-            </form>
-          </section>
+          </div>
         </section>
       </main>
+
+      {isAuthModalOpen ? (
+        <div className="donation-modal-backdrop auth-modal-backdrop" onClick={closeAuthModal}>
+          <div className="donation-modal auth-landing-modal" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="auth-modal-close" aria-label="Закрыть окно входа" onClick={closeAuthModal} disabled={submitting}>
+              ×
+            </button>
+            {renderAuthCard(mode)}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
