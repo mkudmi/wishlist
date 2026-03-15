@@ -20,10 +20,10 @@ jobs:
       DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -34,31 +34,31 @@ jobs:
       - name: Build app
         run: npm run build
 
-      - name: Start ssh-agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-
-      - name: Add server to known_hosts
+      - name: Prepare SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
 
       - name: Upload release
         env:
           RELEASE_ID: ${{ github.sha }}
         run: |
-          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH/releases/$RELEASE_ID'"
-          rsync -az --delete \
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH/releases/$RELEASE_ID'"
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key -p $DEPLOY_PORT" \
             dist/ \
             "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/releases/$RELEASE_ID/"
-          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod -R u=rwX,go=rX '$DEPLOY_PATH/releases/$RELEASE_ID'"
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod -R u=rwX,go=rX '$DEPLOY_PATH/releases/$RELEASE_ID'"
 
       - name: Activate release
         env:
           RELEASE_ID: ${{ github.sha }}
         run: |
-          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "\
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "\
             test -f '$DEPLOY_PATH/releases/$RELEASE_ID/index.html' && \
             ln -sfn '$DEPLOY_PATH/releases/$RELEASE_ID' '$DEPLOY_PATH/current' && \
             ls -1dt '$DEPLOY_PATH'/releases/* 2>/dev/null | tail -n +6 | xargs -r rm -rf \
