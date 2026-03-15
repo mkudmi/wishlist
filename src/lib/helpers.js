@@ -329,14 +329,16 @@ export function buildSharedWishlistUrl(shareToken) {
     return "";
   }
 
-  const url = new URL(window.location.href);
-  if (url.hostname === "xn--80ajchdgcktejxc.xn--p1ai") {
-    url.hostname = "списокжеланий.рф";
-  } else if (url.hostname === "www.xn--80ajchdgcktejxc.xn--p1ai") {
-    url.hostname = "www.списокжеланий.рф";
+  const protocol = window.location.protocol;
+  let host = window.location.host;
+
+  if (window.location.hostname === "xn--80ajchdgcktejxc.xn--p1ai") {
+    host = "списокжеланий.рф";
+  } else if (window.location.hostname === "www.xn--80ajchdgcktejxc.xn--p1ai") {
+    host = "www.списокжеланий.рф";
   }
-  url.hash = `/shared/${shareToken}`;
-  return url.toString();
+
+  return `${protocol}//${host}${window.location.pathname}#/shared/${shareToken}`;
 }
 
 export async function copyTextToClipboard(value) {
