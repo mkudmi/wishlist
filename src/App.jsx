@@ -77,6 +77,7 @@ export default function App() {
   const [profileError, setProfileError] = useState("");
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
   const [isIdentitySubmitting, setIsIdentitySubmitting] = useState(false);
+  const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
   const [isProfileBirthdayPickerOpen, setIsProfileBirthdayPickerOpen] = useState(false);
   const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
   const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState("");
@@ -882,6 +883,7 @@ export default function App() {
     setProfileForm(getProfileFormFromUser(currentUser));
     setProfileError("");
     setIsIdentitySubmitting(false);
+    setIsIdentityModalOpen(false);
     setIsDeleteAccountConfirmOpen(false);
     setDeleteAccountConfirmation("");
     setIsProfileOpen(true);
@@ -895,6 +897,7 @@ export default function App() {
     setProfileError("");
     setProfileForm(emptyProfileForm);
     setIsIdentitySubmitting(false);
+    setIsIdentityModalOpen(false);
     setIsProfileBirthdayPickerOpen(false);
     setIsDeleteAccountConfirmOpen(false);
     setDeleteAccountConfirmation("");
@@ -1744,11 +1747,11 @@ export default function App() {
 
       {isProfileOpen ? (
         <div className="donation-modal-backdrop" onClick={closeProfileModal}>
-          <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="donation-modal profile-modal" onClick={(event) => event.stopPropagation()}>
             <h3>Профиль</h3>
             <p className="donation-modal-title">Редактирование данных аккаунта</p>
 
-            <form className="donation-form" onSubmit={submitProfile}>
+            <form className="donation-form profile-form" onSubmit={submitProfile}>
               <label>
                 Имя
                 <input
@@ -1785,57 +1788,14 @@ export default function App() {
                 />
               </label>
 
-              <div className="account-identity-section">
-                <p className="account-identity-title">Способы входа</p>
-
-                <div className="account-identity-row">
-                  <div>
-                    <strong>Пароль</strong>
-                    <p>Обычный вход по email и паролю.</p>
-                  </div>
-                  <span className="account-identity-badge">
-                    {currentUser?.identities?.some((identity) => identity.provider === "password") ? "Подключен" : "Не подключен"}
-                  </span>
-                </div>
-
-                <div className="account-identity-row">
-                  <div>
-                    <strong>Google</strong>
-                    <p>Можно входить через Google без создания нового профиля.</p>
-                  </div>
-                  {currentUser?.identities?.some((identity) => identity.provider === "google") ? (
-                    <span className="account-identity-badge">Подключен</span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="button-secondary account-identity-action"
-                      onClick={startGoogleLink}
-                      disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
-                    >
-                      {isIdentitySubmitting ? "Подключаем..." : "Привязать Google"}
-                    </button>
-                  )}
-                </div>
-
-                <div className="account-identity-row">
-                  <div>
-                    <strong>Яндекс</strong>
-                    <p>Можно привязать даже если у Яндекса другой email.</p>
-                  </div>
-                  {currentUser?.identities?.some((identity) => identity.provider === "yandex") ? (
-                    <span className="account-identity-badge">Подключен</span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="button-secondary account-identity-action"
-                      onClick={startYandexLink}
-                      disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
-                    >
-                      {isIdentitySubmitting ? "Подключаем..." : "Привязать Яндекс"}
-                    </button>
-                  )}
-                </div>
-              </div>
+              <button
+                type="button"
+                className="button-secondary profile-identities-button"
+                onClick={() => setIsIdentityModalOpen(true)}
+                disabled={isProfileSubmitting || isAccountDeleting}
+              >
+                Способы входа
+              </button>
 
               <div className="account-danger-zone">
                 <button
@@ -1893,6 +1853,78 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {isIdentityModalOpen ? (
+        <div className="donation-modal-backdrop" onClick={() => setIsIdentityModalOpen(false)}>
+          <div className="donation-modal identity-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Способы входа</h3>
+            <p className="donation-modal-title">Подключение удобных способов авторизации</p>
+
+            <div className="account-identity-section">
+              <div className="account-identity-row">
+                <div>
+                  <strong>Пароль</strong>
+                  <p>Обычный вход по email и паролю.</p>
+                </div>
+                <span className="account-identity-badge">
+                  {currentUser?.identities?.some((identity) => identity.provider === "password") ? "Подключен" : "Не подключен"}
+                </span>
+              </div>
+
+              <div className="account-identity-row">
+                <div>
+                  <strong>Google</strong>
+                  <p>Можно входить через Google без создания нового профиля.</p>
+                </div>
+                {currentUser?.identities?.some((identity) => identity.provider === "google") ? (
+                  <span className="account-identity-badge">Подключен</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="button-secondary account-identity-action"
+                    onClick={startGoogleLink}
+                    disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
+                  >
+                    {isIdentitySubmitting ? "Подключаем..." : "Привязать Google"}
+                  </button>
+                )}
+              </div>
+
+              <div className="account-identity-row">
+                <div>
+                  <strong>Яндекс</strong>
+                  <p>Можно привязать даже если у Яндекса другой email.</p>
+                </div>
+                {currentUser?.identities?.some((identity) => identity.provider === "yandex") ? (
+                  <span className="account-identity-badge">Подключен</span>
+                ) : (
+                  <button
+                    type="button"
+                    className="button-secondary account-identity-action"
+                    onClick={startYandexLink}
+                    disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
+                  >
+                    {isIdentitySubmitting ? "Подключаем..." : "Привязать"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {profileError ? <p className="donation-error">{profileError}</p> : null}
+
+            <div className="donation-actions">
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => setIsIdentityModalOpen(false)}
+                disabled={isIdentitySubmitting}
+              >
+                Закрыть
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
