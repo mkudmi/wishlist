@@ -1938,19 +1938,19 @@ export default function App() {
                   <p>Можно входить через Google без создания нового профиля.</p>
                 </div>
                 {currentUser?.identities?.some((identity) => identity.provider === "google") ? (
-                  <div className="account-identity-controls">
-                    <span className="account-identity-badge">Подключен</span>
-                    {canUnlinkIdentity("google") ? (
-                      <button
-                        type="button"
-                        className="button-secondary account-identity-action"
-                        onClick={() => handleIdentityUnlink("google")}
-                        disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
-                      >
-                        {isIdentitySubmitting ? "..." : "Отвязать"}
-                      </button>
-                    ) : null}
-                  </div>
+                  <button
+                    type="button"
+                    className="delete-button account-identity-action account-identity-action-danger"
+                    onClick={() => handleIdentityUnlink("google")}
+                    disabled={
+                      isProfileSubmitting ||
+                      isAccountDeleting ||
+                      isIdentitySubmitting ||
+                      !canUnlinkIdentity("google")
+                    }
+                  >
+                    {isIdentitySubmitting ? "..." : "Отвязать"}
+                  </button>
                 ) : (
                   <button
                     type="button"
@@ -1958,7 +1958,7 @@ export default function App() {
                     onClick={startGoogleLink}
                     disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
                   >
-                    {isIdentitySubmitting ? "Подключаем..." : "Привязать Google"}
+                    {isIdentitySubmitting ? "Подключаем..." : "Привязать"}
                   </button>
                 )}
               </div>
@@ -1969,19 +1969,19 @@ export default function App() {
                   <p>Можно привязать даже если у Яндекса другой email.</p>
                 </div>
                 {currentUser?.identities?.some((identity) => identity.provider === "yandex") ? (
-                  <div className="account-identity-controls">
-                    <span className="account-identity-badge">Подключен</span>
-                    {canUnlinkIdentity("yandex") ? (
-                      <button
-                        type="button"
-                        className="button-secondary account-identity-action"
-                        onClick={() => handleIdentityUnlink("yandex")}
-                        disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
-                      >
-                        {isIdentitySubmitting ? "..." : "Отвязать"}
-                      </button>
-                    ) : null}
-                  </div>
+                  <button
+                    type="button"
+                    className="delete-button account-identity-action account-identity-action-danger"
+                    onClick={() => handleIdentityUnlink("yandex")}
+                    disabled={
+                      isProfileSubmitting ||
+                      isAccountDeleting ||
+                      isIdentitySubmitting ||
+                      !canUnlinkIdentity("yandex")
+                    }
+                  >
+                    {isIdentitySubmitting ? "..." : "Отвязать"}
+                  </button>
                 ) : (
                   <button
                     type="button"

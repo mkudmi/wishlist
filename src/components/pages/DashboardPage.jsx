@@ -30,14 +30,20 @@ export function DashboardPage({
     }
 
     function closeOnOutsideClick(event) {
-      if (!celebrationMenuRef.current || celebrationMenuRef.current.contains(event.target)) {
+      const menuNode = celebrationMenuRef.current;
+      if (!menuNode || menuNode.contains(event.target)) {
         return;
       }
       setIsCelebrationMenuOpen(false);
     }
 
-    window.addEventListener("pointerdown", closeOnOutsideClick);
-    return () => window.removeEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("pointerdown", closeOnOutsideClick, true);
+    document.addEventListener("focusin", closeOnOutsideClick, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick, true);
+      document.removeEventListener("focusin", closeOnOutsideClick, true);
+    };
   }, [isCelebrationMenuOpen]);
 
   function getCelebrationLabel(wishlist) {
@@ -74,6 +80,12 @@ export function DashboardPage({
     if (value === "birthday") {
       setEventDate("");
     }
+  }
+
+  function handleCelebrationSelect(event, value) {
+    event.preventDefault();
+    event.stopPropagation();
+    selectCelebration(value);
   }
 
   const isCreateDisabled = useMemo(() => {
@@ -193,8 +205,8 @@ export function DashboardPage({
                 />
               </label>
 
-              <label>
-                Что празднуем?
+              <div className="form-field">
+                <span className="form-field-label">Что празднуем?</span>
                 <div className="custom-select" ref={celebrationMenuRef}>
                   <button
                     type="button"
@@ -214,7 +226,10 @@ export function DashboardPage({
                           type="button"
                           key={option.value}
                           className={`custom-select-item ${option.value === celebrationType ? "custom-select-item-active" : ""}`}
-                          onClick={() => selectCelebration(option.value)}
+                          role="option"
+                          aria-selected={option.value === celebrationType}
+                          onMouseDown={(event) => handleCelebrationSelect(event, option.value)}
+                          onClick={(event) => handleCelebrationSelect(event, option.value)}
                         >
                           {option.label}
                         </button>
@@ -222,7 +237,7 @@ export function DashboardPage({
                     </div>
                   ) : null}
                 </div>
-              </label>
+              </div>
 
               {needsCustomTitle ? (
                 <label>

@@ -852,6 +852,16 @@ h3 {
   font-weight: 700;
 }
 
+.donation-form .form-field {
+  display: grid;
+  gap: 8px;
+}
+
+.donation-form .form-field-label {
+  color: #3e3228;
+  font-weight: 700;
+}
+
 .donation-form input {
   width: 100%;
   border-radius: 12px;
@@ -1997,19 +2007,15 @@ h3 {
   font-weight: 700;
 }
 
-.account-identity-controls {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .account-identity-action {
   min-width: 96px;
   min-height: 34px;
   padding: 7px 12px;
   font-size: 0.8rem;
+}
+
+.account-identity-action-danger {
+  justify-content: center;
 }
 
 .profile-modal {
@@ -2035,6 +2041,10 @@ h3 {
 
 .identity-modal {
   width: min(420px, 100%);
+}
+
+.identity-modal .donation-actions {
+  margin-top: 14px;
 }
 
 .auth-divider {
@@ -2660,10 +2670,6 @@ h3 {
     padding: 7px 0;
   }
 
-  .account-identity-controls {
-    justify-content: flex-start;
-  }
-
   .account-identity-badge,
   .account-identity-action {
     width: auto;
@@ -2990,10 +2996,6 @@ h3 {
   .account-identity-row p {
     margin-top: 2px;
     font-size: 0.72rem;
-  }
-
-  .account-identity-controls {
-    gap: 6px;
   }
 
   .account-identity-badge,
