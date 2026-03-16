@@ -722,34 +722,45 @@ app.get("/api/auth/yandex/callback", async (req, res, next) => {
   }
 });
 
-app.get("/api/auth/yandex/link/start", requireAuth, (req, res) => {
-  const appOrigin = getSafeAppOrigin(req.query?.origin || req.headers.origin);
-  if (!config.yandexClientId || !config.yandexClientSecret || !config.yandexRedirectUri) {
-    return res.status(503).send("Yandex auth is not configured");
+app.get("/api/auth/yandex/link/start", async (req, res, next) => {
+  try {
+    const token = getBearerToken(req) || String(req.query?.authToken || "").trim();
+    const authUser = await getAuthUserFromToken(token);
+
+    if (!authUser) {
+      return res.status(401).send("unauthorized");
+    }
+
+    const appOrigin = getSafeAppOrigin(req.query?.origin || req.headers.origin);
+    if (!config.yandexClientId || !config.yandexClientSecret || !config.yandexRedirectUri) {
+      return res.status(503).send("Yandex auth is not configured");
+    }
+    if (!appOrigin) {
+      return res.status(400).send("Invalid app origin");
+    }
+
+    const state = createOauthState(
+      {
+        provider: "yandex-link",
+        origin: appOrigin,
+        userId: authUser.id,
+        nonce: crypto.randomBytes(12).toString("hex"),
+        ts: Date.now()
+      },
+      config.yandexClientSecret
+    );
+
+    const authorizeUrl = new URL(YANDEX_OAUTH_AUTHORIZE_URL);
+    authorizeUrl.searchParams.set("response_type", "code");
+    authorizeUrl.searchParams.set("client_id", config.yandexClientId);
+    authorizeUrl.searchParams.set("redirect_uri", config.yandexRedirectUri);
+    authorizeUrl.searchParams.set("state", state);
+    authorizeUrl.searchParams.set("force_confirm", "true");
+
+    return res.redirect(authorizeUrl.toString());
+  } catch (error) {
+    return next(error);
   }
-  if (!appOrigin) {
-    return res.status(400).send("Invalid app origin");
-  }
-
-  const state = createOauthState(
-    {
-      provider: "yandex-link",
-      origin: appOrigin,
-      userId: req.authUser.id,
-      nonce: crypto.randomBytes(12).toString("hex"),
-      ts: Date.now()
-    },
-    config.yandexClientSecret
-  );
-
-  const authorizeUrl = new URL(YANDEX_OAUTH_AUTHORIZE_URL);
-  authorizeUrl.searchParams.set("response_type", "code");
-  authorizeUrl.searchParams.set("client_id", config.yandexClientId);
-  authorizeUrl.searchParams.set("redirect_uri", config.yandexRedirectUri);
-  authorizeUrl.searchParams.set("state", state);
-  authorizeUrl.searchParams.set("force_confirm", "true");
-
-  return res.redirect(authorizeUrl.toString());
 });
 
 app.delete("/api/auth/me", requireAuth, async (req, res, next) => {

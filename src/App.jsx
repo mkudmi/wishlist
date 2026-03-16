@@ -37,6 +37,7 @@ import {
   deleteMyWishReservations,
   fetchCurrentUser,
   fetchCurrentUserIdentities,
+  getAuthToken,
   getOrCreateGuestSessionId,
   setAuthToken,
   loginUser,
@@ -776,7 +777,10 @@ export default function App() {
     setIsIdentitySubmitting(true);
 
     const apiBase = getApiBase();
-    const popupUrl = `${apiBase}/api/auth/yandex/link/start?origin=${encodeURIComponent(window.location.origin)}`;
+    const authToken = getAuthToken();
+    const popupUrl = `${apiBase}/api/auth/yandex/link/start?origin=${encodeURIComponent(window.location.origin)}${
+      authToken ? `&authToken=${encodeURIComponent(authToken)}` : ""
+    }`;
     window.open(popupUrl, "wishlist-yandex-link", "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes");
   }
 
