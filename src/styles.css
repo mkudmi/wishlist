@@ -148,7 +148,7 @@ a {
 .eyebrow,
 .section-label,
 .hero-kicker {
-  color: #9a5d24;
+  color: var(--color-accent-deep);
 }
 
 .hero-grid {
@@ -166,7 +166,7 @@ h1,
 h2,
 h3 {
   margin: 0;
-  color: #1f1711;
+  color: var(--color-ink);
 }
 
 h1,
@@ -196,7 +196,7 @@ h3 {
 .contact-card p,
 .rule-item p {
   margin: 0;
-  color: #54483d;
+  color: var(--color-muted);
 }
 
 .hero-copy {
@@ -233,8 +233,9 @@ h3 {
 }
 
 .button-secondary {
-  border: 1px solid rgba(95, 67, 39, 0.16);
-  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  background: color-mix(in srgb, var(--color-surface-strong) 64%, transparent);
+  color: var(--color-ink);
 }
 
 .button-primary:hover,
@@ -250,15 +251,21 @@ h3 {
   padding: 24px;
   border-radius: 28px;
   background:
-    linear-gradient(160deg, rgba(255, 240, 223, 0.92), rgba(255, 252, 247, 0.7)),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--color-surface-strong) 92%, var(--color-accent) 8%),
+      color-mix(in srgb, var(--color-surface) 88%, transparent)
+    ),
+    linear-gradient(135deg, color-mix(in srgb, white 22%, transparent), transparent);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
 }
 
 .date-label {
-  color: #c06d2e;
+  color: var(--color-accent-deep);
 }
 
 .date-panel strong {
+  color: var(--color-ink);
   font-size: clamp(1.7rem, 3vw, 2.4rem);
   line-height: 1.05;
 }
@@ -266,7 +273,7 @@ h3 {
 .date-note {
   margin-top: 2px;
   padding-top: 10px;
-  border-top: 1px solid rgba(95, 67, 39, 0.16);
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
   font-size: 0.9rem;
 }
 
@@ -464,6 +471,53 @@ h3 {
   margin-top: 6px;
   font-size: 0.85rem;
   color: #6d5a4a;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-card {
+  background: rgba(28, 39, 61, 0.86);
+  border-color: rgba(126, 182, 255, 0.18);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-card h3,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-note,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-progress-text {
+  color: rgba(244, 243, 239, 0.92);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-card-create strong,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wishlist-create-plus {
+  color: #dbeaff;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-tag {
+  color: #c9dcff;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-price {
+  color: #9fe7cf;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-progress-track {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .tiny-admin-button {
+  border-color: rgba(126, 182, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(244, 243, 239, 0.92);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .tiny-admin-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .delete-button {
+  background: rgba(184, 66, 55, 0.2);
+  color: #ffb7b0;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .delete-button:hover {
+  background: rgba(184, 66, 55, 0.3);
 }
 
 .wish-participants {
@@ -929,10 +983,10 @@ h3 {
 .custom-select-trigger {
   width: 100%;
   border-radius: 12px;
-  border: 1px solid rgba(95, 67, 39, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 16%, transparent);
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.75);
-  color: #241f1a;
+  background: color-mix(in srgb, var(--color-surface-strong) 76%, transparent);
+  color: var(--color-ink);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -952,8 +1006,8 @@ h3 {
   right: 0;
   z-index: 30;
   border-radius: 12px;
-  border: 1px solid rgba(95, 67, 39, 0.18);
-  background: rgba(255, 252, 247, 0.98);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+  background: color-mix(in srgb, var(--color-surface-strong) 94%, transparent);
   box-shadow: 0 12px 28px rgba(63, 40, 22, 0.16);
   padding: 6px;
   display: grid;
@@ -966,18 +1020,18 @@ h3 {
   border-radius: 8px;
   text-align: left;
   background: transparent;
-  color: #5f4327;
+  color: var(--color-ink);
   padding: 9px 10px;
   cursor: pointer;
 }
 
 .custom-select-item:hover {
-  background: rgba(245, 234, 220, 0.9);
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
 }
 
 .custom-select-item-active {
-  background: rgba(185, 100, 39, 0.14);
-  color: #8e4b1a;
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  color: var(--color-accent-deep);
   font-weight: 700;
 }
 
@@ -988,9 +1042,9 @@ h3 {
 }
 
 .theme-option {
-  border: 1px solid rgba(95, 67, 39, 0.14);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
+  background: color-mix(in srgb, var(--color-surface-strong) 70%, transparent);
   padding: 8px;
   display: grid;
   gap: 8px;
@@ -1005,12 +1059,12 @@ h3 {
 
 .theme-option:hover {
   transform: translateY(-1px);
-  border-color: rgba(185, 100, 39, 0.3);
+  border-color: color-mix(in srgb, var(--color-accent) 32%, transparent);
 }
 
 .theme-option-active {
-  background: rgba(255, 248, 240, 0.96);
-  border-color: rgba(185, 100, 39, 0.46);
+  background: color-mix(in srgb, var(--color-surface-strong) 94%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 46%, transparent);
   box-shadow: 0 10px 20px rgba(96, 68, 34, 0.12);
 }
 
@@ -1027,7 +1081,7 @@ h3 {
 }
 
 .theme-option-label {
-  color: #3e3228;
+  color: var(--color-ink);
   font-size: 0.74rem;
   font-weight: 700;
   line-height: 1.1;
@@ -1043,23 +1097,43 @@ h3 {
 .wishlist-settings-form .form-field {
   display: grid;
   gap: 8px;
-  color: #3e3228;
+  color: var(--color-ink);
   font-weight: 700;
 }
 
 .wishlist-settings-form input {
   width: 100%;
   border-radius: 12px;
-  border: 1px solid rgba(95, 67, 39, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 16%, transparent);
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.75);
+  background: color-mix(in srgb, var(--color-surface-strong) 76%, transparent);
   font: inherit;
-  color: #241f1a;
+  color: var(--color-ink);
 }
 
 .wishlist-settings-form input:focus {
   outline: 2px solid rgba(185, 100, 39, 0.25);
   border-color: rgba(185, 100, 39, 0.45);
+}
+
+.wishlist-settings-status {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-muted);
+}
+
+.wishlist-settings-status-saving,
+.wishlist-settings-status-pending {
+  color: var(--color-accent-deep);
+}
+
+.wishlist-settings-status-saved {
+  color: var(--color-emerald);
+}
+
+.wishlist-settings-status-invalid,
+.wishlist-settings-status-error {
+  color: #b84237;
 }
 
 .donation-error {
@@ -1168,8 +1242,13 @@ h3 {
 
 .contact-card {
   background:
-    linear-gradient(160deg, rgba(255, 246, 234, 0.9), rgba(250, 241, 255, 0.55)),
-    rgba(255, 252, 247, 0.76);
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--color-surface-strong) 90%, var(--color-accent) 10%),
+      color-mix(in srgb, var(--color-surface) 88%, transparent)
+    ),
+    color-mix(in srgb, var(--color-surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
 }
 
 .contact-card > p {
@@ -1179,7 +1258,7 @@ h3 {
 .contact-note {
   margin-top: 22px;
   padding-top: 18px;
-  border-top: 1px solid rgba(95, 67, 39, 0.12);
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
 }
 
 .contact-note span {
@@ -2407,7 +2486,7 @@ h3 {
 
 .auth-userbar-name {
   font-weight: 700;
-  color: #704c2f;
+  color: var(--color-accent-deep);
 }
 
 .auth-userbar-name-button {
@@ -2427,12 +2506,12 @@ h3 {
 }
 
 .header-back-button {
-  border: 1px solid rgba(95, 67, 39, 0.22);
-  border-radius: 10px;
-  background: rgba(255, 248, 239, 0.92);
-  color: #5f4327;
-  width: 36px;
-  height: 36px;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 16%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface-strong) 86%, transparent);
+  color: var(--color-ink);
+  width: 42px;
+  height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2443,7 +2522,7 @@ h3 {
 }
 
 .header-back-button:hover {
-  background: rgba(245, 234, 220, 0.92);
+  background: color-mix(in srgb, var(--color-surface-strong) 96%, transparent);
   transform: translateX(-1px);
 }
 
@@ -2458,13 +2537,33 @@ h3 {
 }
 
 .burger-button {
-  border: 1px solid rgba(95, 67, 39, 0.22);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 16%, transparent);
   border-radius: 12px;
-  background: rgba(255, 248, 239, 0.92);
-  color: #5f4327;
-  padding: 8px 12px;
-  font-size: 1.1rem;
+  background: color-mix(in srgb, var(--color-surface-strong) 86%, transparent);
+  color: var(--color-ink);
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+}
+
+.burger-icon {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 16px;
+}
+
+.burger-icon span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .header-menu-dropdown {
@@ -2475,8 +2574,8 @@ h3 {
   width: 230px;
   max-width: calc(100vw - 24px);
   border-radius: 14px;
-  border: 1px solid rgba(95, 67, 39, 0.16);
-  background: rgba(255, 253, 249, 0.98);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  background: color-mix(in srgb, var(--color-surface-strong) 96%, transparent);
   box-shadow: 0 12px 32px rgba(71, 47, 27, 0.18);
   padding: 8px;
   z-index: 20;
@@ -2487,14 +2586,14 @@ h3 {
   text-align: left;
   border: 0;
   background: transparent;
-  color: #5f4327;
+  color: var(--color-ink);
   border-radius: 10px;
   padding: 10px 12px;
   cursor: pointer;
 }
 
 .header-menu-item:hover {
-  background: rgba(245, 234, 220, 0.9);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
 }
 
 .status-banner {

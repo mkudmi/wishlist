@@ -66,6 +66,10 @@ export function WishlistPage({
     theme: defaultWishlistTheme
   });
   const [isCelebrationMenuOpen, setIsCelebrationMenuOpen] = useState(false);
+  const [settingsSaveState, setSettingsSaveState] = useState("idle");
+  const settingsSaveTimeoutRef = useRef(null);
+  const settingsSaveLabelTimeoutRef = useRef(null);
+  const lastSubmittedSettingsRef = useRef("");
 
   useEffect(() => {
     if (!isRulesEditorOpen) {
@@ -74,13 +78,24 @@ export function WishlistPage({
   }, [rules, isRulesEditorOpen]);
 
   useEffect(() => {
-    setSettingsForm({
+    const nextSettings = {
       title: currentWishlist?.title || "",
       celebrationType: currentWishlist?.celebration_type || "birthday",
       customCelebration: currentWishlist?.custom_celebration || "",
       eventDate: currentWishlist?.event_date || "",
       theme: currentWishlist?.theme || defaultWishlistTheme
-    });
+    };
+
+    setSettingsForm(nextSettings);
+    lastSubmittedSettingsRef.current = JSON.stringify(nextSettings);
+    setSettingsSaveState("idle");
+
+    if (settingsSaveTimeoutRef.current) {
+      clearTimeout(settingsSaveTimeoutRef.current);
+    }
+    if (settingsSaveLabelTimeoutRef.current) {
+      clearTimeout(settingsSaveLabelTimeoutRef.current);
+    }
   }, [currentWishlist]);
 
   useEffect(() => {
@@ -105,10 +120,75 @@ export function WishlistPage({
     };
   }, [isCelebrationMenuOpen]);
 
+  useEffect(() => () => {
+    if (settingsSaveTimeoutRef.current) {
+      clearTimeout(settingsSaveTimeoutRef.current);
+    }
+    if (settingsSaveLabelTimeoutRef.current) {
+      clearTimeout(settingsSaveLabelTimeoutRef.current);
+    }
+  }, []);
+
   const needsCustomTitle = settingsForm.celebrationType === "custom";
   const needsEventDate = settingsForm.celebrationType !== "birthday";
   const currentCelebrationOption =
     celebrationOptions.find((option) => option.value === settingsForm.celebrationType) || celebrationOptions[0];
+
+  useEffect(() => {
+    if (!canEdit || !currentWishlist?.id) {
+      return undefined;
+    }
+
+    const payload = {
+      title: settingsForm.title.trim(),
+      celebrationType: settingsForm.celebrationType,
+      customCelebration: settingsForm.customCelebration.trim(),
+      eventDate: settingsForm.eventDate,
+      theme: settingsForm.theme
+    };
+    const serializedPayload = JSON.stringify(payload);
+
+    if (serializedPayload === lastSubmittedSettingsRef.current) {
+      setSettingsSaveState("idle");
+      return undefined;
+    }
+
+    if (!payload.title || (payload.celebrationType === "custom" && !payload.customCelebration) || (payload.celebrationType !== "birthday" && !payload.eventDate)) {
+      setSettingsSaveState("invalid");
+      return undefined;
+    }
+
+    setSettingsSaveState("pending");
+
+    if (settingsSaveTimeoutRef.current) {
+      clearTimeout(settingsSaveTimeoutRef.current);
+    }
+    if (settingsSaveLabelTimeoutRef.current) {
+      clearTimeout(settingsSaveLabelTimeoutRef.current);
+    }
+
+    settingsSaveTimeoutRef.current = window.setTimeout(async () => {
+      setSettingsSaveState("saving");
+      const saved = await onWishlistSettingsSubmit(payload);
+
+      if (!saved) {
+        setSettingsSaveState("error");
+        return;
+      }
+
+      lastSubmittedSettingsRef.current = serializedPayload;
+      setSettingsSaveState("saved");
+      settingsSaveLabelTimeoutRef.current = window.setTimeout(() => {
+        setSettingsSaveState("idle");
+      }, 1400);
+    }, 450);
+
+    return () => {
+      if (settingsSaveTimeoutRef.current) {
+        clearTimeout(settingsSaveTimeoutRef.current);
+      }
+    };
+  }, [canEdit, currentWishlist?.id, onWishlistSettingsSubmit, settingsForm]);
 
   function openRulesEditor() {
     setRulesDraft(rules.slice(0, 5));
@@ -170,6 +250,19 @@ export function WishlistPage({
       theme: settingsForm.theme
     });
   }
+
+  const settingsStatusLabel =
+    settingsSaveState === "saving"
+      ? "Сохраняем..."
+      : settingsSaveState === "saved"
+        ? "Сохранено"
+        : settingsSaveState === "invalid"
+          ? "Заполни обязательные поля"
+          : settingsSaveState === "error"
+            ? "Не удалось сохранить"
+            : settingsSaveState === "pending"
+              ? "Изменения будут сохранены автоматически"
+              : "Изменения сохраняются автоматически";
 
   return (
     <>
@@ -303,12 +396,7 @@ export function WishlistPage({
             </div>
 
             {wishlistSettingsError ? <p className="donation-error">{wishlistSettingsError}</p> : null}
-
-            <div className="donation-actions">
-              <button type="submit" className="button-primary" disabled={isWishlistSubmitting}>
-                {isWishlistSubmitting ? "Сохраняем..." : "Сохранить настройки"}
-              </button>
-            </div>
+            <p className={`wishlist-settings-status wishlist-settings-status-${settingsSaveState}`}>{settingsStatusLabel}</p>
           </form>
         </section>
       ) : null}

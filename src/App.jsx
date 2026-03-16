@@ -1695,7 +1695,11 @@ export default function App() {
                 aria-label="Открыть меню"
                 onClick={() => setIsHeaderMenuOpen((prev) => !prev)}
               >
-                ☰
+                <span className="burger-icon" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
               </button>
 
               {isHeaderMenuOpen ? (
