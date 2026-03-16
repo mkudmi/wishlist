@@ -1,10 +1,12 @@
 ﻿import { useEffect, useState } from "react";
 import {
   celebrationOptions,
+  defaultWishlistTheme,
   rules as defaultRules,
   emptyAuthForm,
   emptyForm,
-  emptyProfileForm
+  emptyProfileForm,
+  wishlistThemes
 } from "./config/constants";
 import {
   createWish,
@@ -1072,7 +1074,8 @@ export default function App() {
       title,
       celebration_type: celebrationType,
       custom_celebration: celebrationType === "custom" ? customCelebration : null,
-      event_date: celebrationType === "birthday" ? null : eventDate
+      event_date: celebrationType === "birthday" ? null : eventDate,
+      theme: defaultWishlistTheme
     });
 
     if (error) {
@@ -1087,6 +1090,64 @@ export default function App() {
     setIsWishlistSubmitting(false);
     navigate("/wishlist");
     return true;
+  }
+
+  async function updateWishlist(wishlistId, payload) {
+    if (!currentUser || !wishlistId) {
+      return false;
+    }
+
+    const title = String(payload?.title || "").trim();
+    const celebrationType = String(payload?.celebrationType || "birthday");
+    const customCelebration = String(payload?.customCelebration || "").trim();
+    const eventDate = String(payload?.eventDate || "").trim();
+    const theme = String(payload?.theme || defaultWishlistTheme).trim();
+
+    if (!title) {
+      return false;
+    }
+    if (celebrationType === "custom" && !customCelebration) {
+      setWishlistsError("Укажи свой вариант праздника.");
+      return false;
+    }
+    if (celebrationType !== "birthday" && !eventDate) {
+      setWishlistsError("Укажи дату события.");
+      return false;
+    }
+
+    setIsWishlistSubmitting(true);
+    setWishlistsError("");
+
+    const { data, error } = await updateWishlistRecord(wishlistId, {
+      title,
+      celebration_type: celebrationType,
+      custom_celebration: celebrationType === "custom" ? customCelebration : null,
+      event_date: celebrationType === "birthday" ? null : eventDate,
+      theme
+    });
+
+    if (error || !data) {
+      setWishlistsError("Не удалось сохранить вишлист.");
+      setIsWishlistSubmitting(false);
+      return false;
+    }
+
+    setWishlists((prev) => prev.map((item) => (item.id === wishlistId ? { ...item, ...data } : item)));
+
+    if (currentWishlistId === wishlistId) {
+      setCurrentShareToken(data.share_token || null);
+    }
+
+    setIsWishlistSubmitting(false);
+    return true;
+  }
+
+  async function saveCurrentWishlistSettings(payload) {
+    if (!currentWishlistId) {
+      return false;
+    }
+
+    return updateWishlist(currentWishlistId, payload);
   }
 
   async function openWishlistFromDashboard(wishlist) {
@@ -1551,6 +1612,14 @@ export default function App() {
   const sharedCountdownDate =
     sharedCelebrationType === "birthday" ? sharedWishlistMeta?.owner_birthday || "" : sharedWishlistMeta?.event_date || "";
   const sharedOwnerFirstName = sharedWishlistMeta?.owner_first_name || "";
+  const activeWishlistThemeId =
+    page === "shared"
+      ? sharedWishlistMeta?.theme || defaultWishlistTheme
+      : page === "wishlist"
+        ? currentWishlist?.theme || defaultWishlistTheme
+        : defaultWishlistTheme;
+  const activeWishlistTheme = wishlistThemes.find((theme) => theme.value === activeWishlistThemeId) || wishlistThemes[0];
+  const pageShellStyle = page === "wishlist" || page === "shared" ? activeWishlistTheme.vars : undefined;
 
   function isCurrentUserParticipant(person) {
     if (currentUser && person.userId && currentUser.id) {
@@ -1578,7 +1647,7 @@ export default function App() {
   const canManage = page === "wishlist";
 
   return (
-    <div className="page-shell">
+    <div className="page-shell" style={pageShellStyle}>
       <div className="glow glow-left" />
       <div className="glow glow-right" />
 
@@ -1704,17 +1773,21 @@ export default function App() {
           <WishlistPage
             wishes={activeWishes}
             contributions={contributions}
+            currentWishlist={currentWishlist}
             onOpenWish={openWishModal}
             countdownDate={page === "shared" ? sharedCountdownDate : countdownDate}
             isRecurringEvent={page === "shared" ? sharedCelebrationType === "birthday" : currentCelebrationType === "birthday"}
             eventTitle={page === "shared" ? sharedCelebrationTitle : celebrationTitle}
             ownerFirstName={page === "shared" ? sharedOwnerFirstName : currentUser?.firstName || ""}
             canEdit={page !== "shared"}
+            isWishlistSubmitting={isWishlistSubmitting}
+            wishlistSettingsError={wishlistsError}
             rules={page === "shared" ? sharedRules : wishlistRules}
             wishForm={form}
             editingWishId={editingWishId}
             isWishEditorOpen={isWishEditorOpen}
             isWishSubmitting={isWishSubmitting}
+            onWishlistSettingsSubmit={saveCurrentWishlistSettings}
             onWishFormChange={onWishInputChange}
             onWishFormSubmit={onFormSubmit}
             onOpenWishCreate={openWishCreateModal}

@@ -11,6 +11,7 @@ const googleAuthClient = config.googleClientId ? new OAuth2Client(config.googleC
 const YANDEX_OAUTH_AUTHORIZE_URL = "https://oauth.yandex.com/authorize";
 const YANDEX_OAUTH_TOKEN_URL = "https://oauth.yandex.com/token";
 const YANDEX_USER_INFO_URL = "https://login.yandex.ru/info?format=json";
+const WISHLIST_THEME_VALUES = new Set(["sand", "sage", "berry", "sky", "midnight"]);
 
 app.use(cors({ origin: config.corsOrigin === "*" ? true : config.corsOrigin }));
 app.use(express.json({ limit: "1mb" }));
@@ -47,6 +48,19 @@ function normalizeRulesList(items) {
     .map((item) => String(item || "").trim())
     .filter(Boolean)
     .slice(0, 5);
+}
+
+function normalizeWishlistTheme(value, { fallback = "sand", allowMissing = false } = {}) {
+  if (value === undefined || value === null || value === "") {
+    return allowMissing ? undefined : fallback;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (!WISHLIST_THEME_VALUES.has(normalized)) {
+    return null;
+  }
+
+  return normalized;
 }
 
 function createShareToken() {
@@ -829,7 +843,7 @@ app.delete("/api/auth/me", requireAuth, async (req, res, next) => {
 app.get("/api/wishlists", requireAuth, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, title, celebration_type, custom_celebration, event_date, share_token, created_at
+      `SELECT id, title, celebration_type, custom_celebration, event_date, theme, share_token, created_at
        FROM wishlists
        WHERE owner_id = $1
        ORDER BY created_at ASC;`,
@@ -847,17 +861,21 @@ app.post("/api/wishlists", requireAuth, async (req, res, next) => {
     const celebrationType = normalizeName(req.body?.celebration_type) || "birthday";
     const customCelebration = normalizeName(req.body?.custom_celebration) || null;
     const eventDate = req.body?.event_date || null;
+    const theme = normalizeWishlistTheme(req.body?.theme);
     const shareToken = normalizeName(req.body?.share_token) || createShareToken();
 
     if (!title) {
       return res.status(400).json({ error: "title is required" });
     }
+    if (!theme) {
+      return res.status(400).json({ error: "invalid wishlist theme" });
+    }
 
     const { rows } = await pool.query(
-      `INSERT INTO wishlists (owner_id, title, celebration_type, custom_celebration, event_date, share_token, is_public)
-       VALUES ($1, $2, $3, $4, $5, $6, true)
-       RETURNING id, title, celebration_type, custom_celebration, event_date, share_token, created_at;`,
-      [req.authUser.id, title, celebrationType, customCelebration, eventDate, shareToken]
+      `INSERT INTO wishlists (owner_id, title, celebration_type, custom_celebration, event_date, theme, share_token, is_public)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+       RETURNING id, title, celebration_type, custom_celebration, event_date, theme, share_token, created_at;`,
+      [req.authUser.id, title, celebrationType, customCelebration, eventDate, theme, shareToken]
     );
 
     res.status(201).json(rows[0]);
@@ -881,7 +899,12 @@ app.patch("/api/wishlists/:id", requireAuth, async (req, res, next) => {
     const celebrationType = req.body?.celebration_type;
     const customCelebration = req.body?.custom_celebration;
     const eventDate = req.body?.event_date;
+    const theme = normalizeWishlistTheme(req.body?.theme, { allowMissing: true });
     const shareToken = req.body?.share_token;
+
+    if (req.body?.theme !== undefined && !theme) {
+      return res.status(400).json({ error: "invalid wishlist theme" });
+    }
 
     const { rows } = await pool.query(
       `UPDATE wishlists SET
@@ -889,10 +912,11 @@ app.patch("/api/wishlists/:id", requireAuth, async (req, res, next) => {
          celebration_type = COALESCE($4, celebration_type),
          custom_celebration = COALESCE($5, custom_celebration),
          event_date = COALESCE($6, event_date),
-         share_token = COALESCE($7, share_token)
+         theme = COALESCE($7, theme),
+         share_token = COALESCE($8, share_token)
        WHERE id = $1 AND owner_id = $2
-       RETURNING id, title, celebration_type, custom_celebration, event_date, share_token, created_at;`,
-      [id, req.authUser.id, title, celebrationType, customCelebration, eventDate, shareToken]
+       RETURNING id, title, celebration_type, custom_celebration, event_date, theme, share_token, created_at;`,
+      [id, req.authUser.id, title, celebrationType, customCelebration, eventDate, theme, shareToken]
     );
 
     res.json(rows[0]);
@@ -1187,7 +1211,7 @@ app.get("/api/shared/:token/wishes", async (req, res, next) => {
 app.get("/api/shared/:token/meta", async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT wl.id, wl.title, wl.celebration_type, wl.custom_celebration, wl.event_date,
+      `SELECT wl.id, wl.title, wl.celebration_type, wl.custom_celebration, wl.event_date, wl.theme,
               u.first_name AS owner_first_name, u.birthday AS owner_birthday
        FROM wishlists wl
        JOIN users u ON u.id = wl.owner_id

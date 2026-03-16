@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from "react";
-import { useRef } from "react";
+﻿import { useEffect, useRef, useState } from "react";
+import { celebrationOptions, defaultWishlistTheme, wishlistThemes } from "../../config/constants";
 import {
   formatMoney,
   getEventCountdownInfo,
@@ -11,17 +11,21 @@ import {
 export function WishlistPage({
   wishes,
   contributions,
+  currentWishlist,
   onOpenWish,
   countdownDate,
   isRecurringEvent,
   eventTitle,
   ownerFirstName,
   canEdit,
+  isWishlistSubmitting,
+  wishlistSettingsError,
   rules,
   wishForm,
   editingWishId,
   isWishEditorOpen,
   isWishSubmitting,
+  onWishlistSettingsSubmit,
   onWishFormChange,
   onWishFormSubmit,
   onOpenWishCreate,
@@ -53,12 +57,58 @@ export function WishlistPage({
   const [isRulesEditorOpen, setIsRulesEditorOpen] = useState(false);
   const [rulesDraft, setRulesDraft] = useState(() => rules.slice(0, 5));
   const wishEditorBackdropPressedRef = useRef(false);
+  const celebrationMenuRef = useRef(null);
+  const [settingsForm, setSettingsForm] = useState({
+    title: "",
+    celebrationType: "birthday",
+    customCelebration: "",
+    eventDate: "",
+    theme: defaultWishlistTheme
+  });
+  const [isCelebrationMenuOpen, setIsCelebrationMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!isRulesEditorOpen) {
       setRulesDraft(rules.slice(0, 5));
     }
   }, [rules, isRulesEditorOpen]);
+
+  useEffect(() => {
+    setSettingsForm({
+      title: currentWishlist?.title || "",
+      celebrationType: currentWishlist?.celebration_type || "birthday",
+      customCelebration: currentWishlist?.custom_celebration || "",
+      eventDate: currentWishlist?.event_date || "",
+      theme: currentWishlist?.theme || defaultWishlistTheme
+    });
+  }, [currentWishlist]);
+
+  useEffect(() => {
+    if (!isCelebrationMenuOpen) {
+      return undefined;
+    }
+
+    function closeOnOutsideClick(event) {
+      const menuNode = celebrationMenuRef.current;
+      if (!menuNode || menuNode.contains(event.target)) {
+        return;
+      }
+      setIsCelebrationMenuOpen(false);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsideClick, true);
+    document.addEventListener("focusin", closeOnOutsideClick, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick, true);
+      document.removeEventListener("focusin", closeOnOutsideClick, true);
+    };
+  }, [isCelebrationMenuOpen]);
+
+  const needsCustomTitle = settingsForm.celebrationType === "custom";
+  const needsEventDate = settingsForm.celebrationType !== "birthday";
+  const currentCelebrationOption =
+    celebrationOptions.find((option) => option.value === settingsForm.celebrationType) || celebrationOptions[0];
 
   function openRulesEditor() {
     setRulesDraft(rules.slice(0, 5));
@@ -90,6 +140,37 @@ export function WishlistPage({
     setIsRulesEditorOpen(false);
   }
 
+  function updateSettingsField(name, value) {
+    setSettingsForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function selectCelebration(value) {
+    setSettingsForm((prev) => ({
+      ...prev,
+      celebrationType: value,
+      customCelebration: value === "custom" ? prev.customCelebration : "",
+      eventDate: value === "birthday" ? "" : prev.eventDate
+    }));
+    setIsCelebrationMenuOpen(false);
+  }
+
+  function handleCelebrationSelect(event, value) {
+    event.preventDefault();
+    event.stopPropagation();
+    selectCelebration(value);
+  }
+
+  async function submitWishlistSettings(event) {
+    event.preventDefault();
+    await onWishlistSettingsSubmit({
+      title: settingsForm.title,
+      celebrationType: settingsForm.celebrationType,
+      customCelebration: settingsForm.customCelebration,
+      eventDate: settingsForm.eventDate,
+      theme: settingsForm.theme
+    });
+  }
+
   return (
     <>
       <section className="hero-card">
@@ -119,6 +200,118 @@ export function WishlistPage({
           </aside>
         </div>
       </section>
+
+      {canEdit ? (
+        <section className="wishlist-settings-card">
+          <div className="section-head compact">
+            <p className="section-label">Editor</p>
+            <h2>Настройки вишлиста</h2>
+            <p>Открытие из дашборда теперь сразу ведет в режим редактирования. Здесь можно менять событие и оформление страницы.</p>
+          </div>
+
+          <form className="wishlist-settings-form" onSubmit={submitWishlistSettings}>
+            <label>
+              Название
+              <input
+                type="text"
+                value={settingsForm.title}
+                onChange={(event) => updateSettingsField("title", event.target.value)}
+                placeholder="Например: Праздник 2026"
+                required
+              />
+            </label>
+
+            <div className="form-field">
+              <span className="form-field-label">Что празднуем?</span>
+              <div className="custom-select" ref={celebrationMenuRef}>
+                <button
+                  type="button"
+                  className="custom-select-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded={isCelebrationMenuOpen}
+                  onClick={() => setIsCelebrationMenuOpen((prev) => !prev)}
+                >
+                  <span>{currentCelebrationOption.label}</span>
+                  <span className="custom-select-arrow">{isCelebrationMenuOpen ? "▲" : "▼"}</span>
+                </button>
+
+                {isCelebrationMenuOpen ? (
+                  <div className="custom-select-menu" role="listbox">
+                    {celebrationOptions.map((option) => (
+                      <button
+                        type="button"
+                        key={option.value}
+                        className={`custom-select-item ${option.value === settingsForm.celebrationType ? "custom-select-item-active" : ""}`}
+                        role="option"
+                        aria-selected={option.value === settingsForm.celebrationType}
+                        onMouseDown={(event) => handleCelebrationSelect(event, option.value)}
+                        onClick={(event) => handleCelebrationSelect(event, option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {needsCustomTitle ? (
+              <label>
+                Свой вариант
+                <input
+                  type="text"
+                  value={settingsForm.customCelebration}
+                  onChange={(event) => updateSettingsField("customCelebration", event.target.value)}
+                  placeholder="Например: Выпускной"
+                  required
+                />
+              </label>
+            ) : null}
+
+            {needsEventDate ? (
+              <label>
+                Дата события
+                <input
+                  type="date"
+                  value={settingsForm.eventDate}
+                  onChange={(event) => updateSettingsField("eventDate", event.target.value)}
+                  required
+                />
+              </label>
+            ) : null}
+
+            <div className="form-field">
+              <span className="form-field-label">Оформление страницы</span>
+              <div className="theme-palette" role="radiogroup" aria-label="Выбор темы вишлиста">
+                {wishlistThemes.map((theme) => (
+                  <button
+                    key={theme.value}
+                    type="button"
+                    className={`theme-option ${theme.value === settingsForm.theme ? "theme-option-active" : ""}`}
+                    onClick={() => updateSettingsField("theme", theme.value)}
+                    aria-pressed={theme.value === settingsForm.theme}
+                  >
+                    <span className="theme-option-swatches" aria-hidden="true">
+                      {theme.preview.map((color) => (
+                        <span key={`${theme.value}-${color}`} className="theme-option-swatch" style={{ background: color }} />
+                      ))}
+                    </span>
+                    <span className="theme-option-label">{theme.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {wishlistSettingsError ? <p className="donation-error">{wishlistSettingsError}</p> : null}
+
+            <div className="donation-actions">
+              <button type="submit" className="button-primary" disabled={isWishlistSubmitting}>
+                {isWishlistSubmitting ? "Сохраняем..." : "Сохранить настройки"}
+              </button>
+            </div>
+          </form>
+        </section>
+      ) : null}
 
       <section className="wishlist-section" id="wishlist">
         <div className="section-head">

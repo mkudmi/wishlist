@@ -101,19 +101,21 @@ export function DashboardPage({
     return isSubmitting;
   }, [newWishlistTitle, needsCustomTitle, customCelebration, needsEventDate, eventDate, isSubmitting]);
 
-  async function submitCreate(event) {
+  async function submitWishlist(event) {
     event.preventDefault();
 
     if (isCreateDisabled) {
       return;
     }
 
-    const success = await onCreateWishlist({
+    const payload = {
       title: newWishlistTitle.trim(),
       celebrationType,
       customCelebration: customCelebration.trim(),
       eventDate
-    });
+    };
+
+    const success = await onCreateWishlist(payload);
 
     if (success) {
       closeCreateModal();
@@ -159,7 +161,7 @@ export function DashboardPage({
                     onClick={() => onOpenWishlist(wishlist)}
                     disabled={isSubmitting}
                   >
-                    Открыть
+                    Открыть и редактировать
                   </button>
                   <button
                     type="button"
@@ -190,9 +192,9 @@ export function DashboardPage({
         <div className="donation-modal-backdrop" onClick={closeCreateModal}>
           <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
             <h3>Новый вишлист</h3>
-            <p className="donation-modal-title">Заполни параметры события</p>
+            <p className="donation-modal-title">Заполни параметры события, а оформление выберем уже внутри страницы</p>
 
-            <form className="donation-form" onSubmit={submitCreate}>
+            <form className="donation-form" onSubmit={submitWishlist}>
               <label>
                 Название
                 <input
