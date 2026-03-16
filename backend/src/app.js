@@ -722,28 +722,21 @@ app.get("/api/auth/yandex/callback", async (req, res, next) => {
   }
 });
 
-app.get("/api/auth/yandex/link/start", async (req, res, next) => {
+app.post("/api/auth/yandex/link/start", requireAuth, async (req, res, next) => {
   try {
-    const token = getBearerToken(req) || String(req.query?.authToken || "").trim();
-    const authUser = await getAuthUserFromToken(token);
-
-    if (!authUser) {
-      return res.status(401).send("unauthorized");
-    }
-
-    const appOrigin = getSafeAppOrigin(req.query?.origin || req.headers.origin);
+    const appOrigin = getSafeAppOrigin(req.body?.origin || req.headers.origin);
     if (!config.yandexClientId || !config.yandexClientSecret || !config.yandexRedirectUri) {
-      return res.status(503).send("Yandex auth is not configured");
+      return res.status(503).json({ error: "yandex auth is not configured" });
     }
     if (!appOrigin) {
-      return res.status(400).send("Invalid app origin");
+      return res.status(400).json({ error: "invalid app origin" });
     }
 
     const state = createOauthState(
       {
         provider: "yandex-link",
         origin: appOrigin,
-        userId: authUser.id,
+        userId: req.authUser.id,
         nonce: crypto.randomBytes(12).toString("hex"),
         ts: Date.now()
       },
@@ -757,7 +750,7 @@ app.get("/api/auth/yandex/link/start", async (req, res, next) => {
     authorizeUrl.searchParams.set("state", state);
     authorizeUrl.searchParams.set("force_confirm", "true");
 
-    return res.redirect(authorizeUrl.toString());
+    return res.json({ authorizeUrl: authorizeUrl.toString() });
   } catch (error) {
     return next(error);
   }

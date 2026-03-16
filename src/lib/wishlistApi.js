@@ -175,6 +175,18 @@ export async function linkGoogleIdentity(credential) {
   };
 }
 
+export async function startYandexIdentityLink(origin) {
+  const result = await request("/api/auth/yandex/link/start", {
+    method: "POST",
+    body: { origin }
+  });
+
+  return {
+    data: result.data?.authorizeUrl || "",
+    error: result.error
+  };
+}
+
 export async function logoutUser() {
   const result = await request("/api/auth/logout", { method: "POST" });
   setAuthToken(null);

@@ -37,7 +37,6 @@ import {
   deleteMyWishReservations,
   fetchCurrentUser,
   fetchCurrentUserIdentities,
-  getAuthToken,
   getOrCreateGuestSessionId,
   setAuthToken,
   loginUser,
@@ -53,10 +52,10 @@ import {
   fetchRulesByWishlist,
   fetchWishlistsByOwner,
   fetchWishesByWishlist,
+  startYandexIdentityLink,
   updateProfileRecord,
   updateRulesByWishlist,
   updateWishlistRecord,
-  getApiBase,
   updateWishRecord
 } from "./lib/wishlistApi";
 import { AuthPage } from "./components/pages/AuthPage";
@@ -768,7 +767,7 @@ export default function App() {
     }
   }
 
-  function startYandexLink() {
+  async function startYandexLink() {
     if (!currentUser) {
       return;
     }
@@ -776,12 +775,28 @@ export default function App() {
     setProfileError("");
     setIsIdentitySubmitting(true);
 
-    const apiBase = getApiBase();
-    const authToken = getAuthToken();
-    const popupUrl = `${apiBase}/api/auth/yandex/link/start?origin=${encodeURIComponent(window.location.origin)}${
-      authToken ? `&authToken=${encodeURIComponent(authToken)}` : ""
-    }`;
-    window.open(popupUrl, "wishlist-yandex-link", "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes");
+    try {
+      const { data, error } = await startYandexIdentityLink(window.location.origin);
+
+      if (error || !data) {
+        throw new Error(error?.message || error || "Не удалось открыть вход через Яндекс.");
+      }
+
+      const popup = window.open(
+        data,
+        "wishlist-yandex-link",
+        "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes"
+      );
+
+      if (!popup) {
+        throw new Error("Разрешите всплывающее окно, чтобы привязать Яндекс.");
+      }
+
+      popup.focus();
+    } catch (error) {
+      setProfileError(error.message || "Не удалось открыть вход через Яндекс.");
+      setIsIdentitySubmitting(false);
+    }
   }
 
   useEffect(() => {
