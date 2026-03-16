@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /wishlist
+Disallow: /auth/
+Disallow: /api/
+
+Sitemap: https://xn--80ajchdgcktejxc.xn--p1ai/sitemap.xml

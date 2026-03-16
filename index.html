@@ -3,10 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Wishlist - умный вишлист для событий</title>
+    <title>Wishlist - вишлист для подарков на день рождения, свадьбу и праздники</title>
     <meta
       name="description"
-      content="Создавайте красивые вишлисты для дня рождения, свадьбы и других событий. Делитесь одной ссылкой и собирайте подарки без хаоса."
+      content="Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков."
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://xn--80ajchdgcktejxc.xn--p1ai/" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Wishlist" />
+    <meta property="og:title" content="Wishlist - вишлист для подарков на день рождения, свадьбу и праздники" />
+    <meta
+      property="og:description"
+      content="Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков."
+    />
+    <meta property="og:url" content="https://xn--80ajchdgcktejxc.xn--p1ai/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Wishlist - вишлист для подарков на праздники" />
+    <meta
+      name="twitter:description"
+      content="Удобный онлайн-вишлист: одна ссылка для гостей, список желаний и совместные подарки без хаоса."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,6 +31,68 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Playfair+Display:wght@700&display=swap"
       rel="stylesheet"
     />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Wishlist",
+        "url": "https://xn--80ajchdgcktejxc.xn--p1ai/",
+        "inLanguage": "ru-RU",
+        "description": "Сервис для создания вишлистов подарков на день рождения, свадьбу, новоселье и другие события."
+      }
+    </script>
+    <script>
+      (function () {
+        var origin = "https://xn--80ajchdgcktejxc.xn--p1ai";
+        var path = window.location.pathname || "/";
+        var title = "Wishlist - вишлист для подарков на день рождения, свадьбу и праздники";
+        var description =
+          "Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков.";
+        var robots = "index,follow,max-image-preview:large";
+        var canonicalPath = "/";
+
+        if (path === "/dashboard") {
+          title = "Мои вишлисты - Wishlist";
+          description = "Личный кабинет сервиса Wishlist.";
+          robots = "noindex,nofollow";
+          canonicalPath = "/dashboard";
+        } else if (path === "/wishlist") {
+          title = "Редактирование вишлиста - Wishlist";
+          description = "Управление вашим списком подарков в сервисе Wishlist.";
+          robots = "noindex,nofollow";
+          canonicalPath = "/wishlist";
+        } else if (path === "/auth/yandex/callback") {
+          title = "Вход через Яндекс - Wishlist";
+          description = "Служебная страница авторизации Wishlist.";
+          robots = "noindex,nofollow";
+          canonicalPath = "/auth/yandex/callback";
+        } else if (/^\/shared\/[a-zA-Z0-9_-]+$/.test(path)) {
+          title = "Вишлист по ссылке - Wishlist";
+          description = "Публичная ссылка на вишлист в сервисе Wishlist.";
+          robots = "noindex,nofollow";
+          canonicalPath = path;
+        }
+
+        var canonical = document.querySelector('link[rel="canonical"]');
+        var robotsMeta = document.querySelector('meta[name="robots"]');
+        var descMeta = document.querySelector('meta[name="description"]');
+        var ogTitle = document.querySelector('meta[property="og:title"]');
+        var ogDescription = document.querySelector('meta[property="og:description"]');
+        var ogUrl = document.querySelector('meta[property="og:url"]');
+        var twitterTitle = document.querySelector('meta[name="twitter:title"]');
+        var twitterDescription = document.querySelector('meta[name="twitter:description"]');
+
+        document.title = title;
+        if (canonical) canonical.href = origin + canonicalPath;
+        if (robotsMeta) robotsMeta.content = robots;
+        if (descMeta) descMeta.content = description;
+        if (ogTitle) ogTitle.content = title;
+        if (ogDescription) ogDescription.content = description;
+        if (ogUrl) ogUrl.content = origin + canonicalPath;
+        if (twitterTitle) twitterTitle.content = title;
+        if (twitterDescription) twitterDescription.content = description;
+      })();
+    </script>
     <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
       (function (m, e, t, r, i, k, a) {
@@ -53,6 +132,29 @@
     <noscript>
       <div><img src="https://mc.yandex.ru/watch/107711291" style="position:absolute; left:-9999px;" alt="" /></div>
     </noscript>
-    <div id="root"></div>
+    <div id="root">
+      <main>
+        <section>
+          <h1>Wishlist: вишлист подарков для дня рождения, свадьбы и других событий</h1>
+          <p>
+            Создайте онлайн-вишлист, добавьте идеи подарков, укажите ссылки и бюджет, а потом отправьте гостям одну понятную
+            ссылку.
+          </p>
+          <p>
+            Сервис подходит для дня рождения, свадьбы, новоселья и других праздников. Гости видят актуальные желания, могут
+            скооперироваться на общий подарок и не покупают дубликаты.
+          </p>
+        </section>
+        <section>
+          <h2>Что умеет сервис</h2>
+          <ul>
+            <li>Один список желаний вместо хаоса в переписках.</li>
+            <li>Ссылки на товары, комментарии и приоритеты в одном месте.</li>
+            <li>Совместные подарки с понятным прогрессом сбора.</li>
+            <li>Публичная ссылка для гостей без сложной регистрации.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
   </body>
 </html>

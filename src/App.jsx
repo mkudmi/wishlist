@@ -111,6 +111,7 @@ export default function App() {
   const [donationError, setDonationError] = useState("");
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
   const [guestSessionId] = useState(() => getOrCreateGuestSessionId());
+  const siteOrigin = "https://xn--80ajchdgcktejxc.xn--p1ai";
 
   function navigate(path, options = {}) {
     if (typeof window === "undefined") {
@@ -420,6 +421,66 @@ export default function App() {
   useEffect(() => {
     setIsHeaderMenuOpen(false);
   }, [page]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const seo = {
+      title: "Wishlist - вишлист для подарков на день рождения, свадьбу и праздники",
+      description:
+        "Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков.",
+      robots: "index,follow,max-image-preview:large",
+      canonical: `${siteOrigin}/`
+    };
+
+    if (page === "dashboard") {
+      seo.title = "Мои вишлисты - Wishlist";
+      seo.description = "Личный кабинет сервиса Wishlist.";
+      seo.robots = "noindex,nofollow";
+      seo.canonical = `${siteOrigin}/dashboard`;
+    } else if (page === "wishlist") {
+      seo.title = "Редактирование вишлиста - Wishlist";
+      seo.description = "Управление вашим списком подарков в сервисе Wishlist.";
+      seo.robots = "noindex,nofollow";
+      seo.canonical = `${siteOrigin}/wishlist`;
+    } else if (page === "shared") {
+      seo.title = sharedWishlistMeta?.title
+        ? `${sharedWishlistMeta.title} - Wishlist`
+        : "Вишлист по ссылке - Wishlist";
+      seo.description = sharedWishlistMeta?.title
+        ? `Публичная ссылка на вишлист "${sharedWishlistMeta.title}" в сервисе Wishlist.`
+        : "Публичная ссылка на вишлист в сервисе Wishlist.";
+      seo.robots = "noindex,nofollow";
+      seo.canonical = `${siteOrigin}/shared/${shareToken || ""}`;
+    } else if (page === "yandex-callback") {
+      seo.title = "Вход через Яндекс - Wishlist";
+      seo.description = "Служебная страница авторизации Wishlist.";
+      seo.robots = "noindex,nofollow";
+      seo.canonical = `${siteOrigin}/auth/yandex/callback`;
+    }
+
+    document.title = seo.title;
+
+    const mappings = [
+      ['meta[name="description"]', "content", seo.description],
+      ['meta[name="robots"]', "content", seo.robots],
+      ['link[rel="canonical"]', "href", seo.canonical],
+      ['meta[property="og:title"]', "content", seo.title],
+      ['meta[property="og:description"]', "content", seo.description],
+      ['meta[property="og:url"]', "content", seo.canonical],
+      ['meta[name="twitter:title"]', "content", seo.title],
+      ['meta[name="twitter:description"]', "content", seo.description]
+    ];
+
+    mappings.forEach(([selector, attribute, value]) => {
+      const node = document.querySelector(selector);
+      if (node && value) {
+        node.setAttribute(attribute, value);
+      }
+    });
+  }, [page, shareToken, sharedWishlistMeta, siteOrigin]);
 
   function onAuthInputChange(event) {
     const { name, value } = event.target;
