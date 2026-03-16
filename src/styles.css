@@ -26,6 +26,16 @@
 
 * {
   box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"],
+[contenteditable="plaintext-only"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 html {
@@ -1850,6 +1860,7 @@ h3 {
   color: #7a624d;
   font-size: 0.83rem;
   font-weight: 700;
+  text-align: center;
 }
 
 .auth-oauth-row {
@@ -1915,6 +1926,22 @@ h3 {
   width: 18px;
   height: 18px;
   flex: 0 0 18px;
+}
+
+.auth-button-spinner {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(31, 31, 31, 0.18);
+  border-top-color: #1f1f1f;
+  animation: auth-spin 0.8s linear infinite;
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .account-identity-section {
@@ -2020,6 +2047,10 @@ h3 {
 
 .auth-form .donation-actions {
   margin-top: 2px;
+}
+
+.auth-login-actions {
+  margin-top: 8px;
 }
 
 .auth-register-actions {

@@ -21,6 +21,7 @@ export function AuthPage({
   const [registerStep, setRegisterStep] = useState(1);
   const [isBirthdayPickerOpen, setIsBirthdayPickerOpen] = useState(false);
   const [hasTriedRegisterSubmit, setHasTriedRegisterSubmit] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const googleCallbackRef = useRef(onGoogleAuth);
   const googleInitializedClientIdRef = useRef("");
 
@@ -118,6 +119,35 @@ export function AuthPage({
   }, [mode, isAuthModalOpen]);
 
   useEffect(() => {
+    if (typeof document === "undefined" || !isAuthModalOpen) {
+      return undefined;
+    }
+
+    const scrollY = window.scrollY;
+    const { documentElement, body } = document;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const previousOverflow = body.style.overflow;
+    const previousPosition = body.style.position;
+    const previousTop = body.style.top;
+    const previousWidth = body.style.width;
+
+    documentElement.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    return () => {
+      documentElement.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousOverflow;
+      body.style.position = previousPosition;
+      body.style.top = previousTop;
+      body.style.width = previousWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isAuthModalOpen]);
+
+  useEffect(() => {
     if (!googleClientId || typeof window === "undefined") {
       return undefined;
     }
@@ -134,8 +164,12 @@ export function AuthPage({
       window.google.accounts.id.initialize({
         client_id: googleClientId,
         callback: async (response) => {
-          if (response?.credential) {
-            await googleCallbackRef.current(response.credential);
+          try {
+            if (response?.credential) {
+              await googleCallbackRef.current(response.credential);
+            }
+          } finally {
+            setIsGoogleSubmitting(false);
           }
         }
       });
@@ -175,7 +209,16 @@ export function AuthPage({
     if (!window.google?.accounts?.id) {
       return;
     }
-    window.google.accounts.id.prompt();
+
+    setIsGoogleSubmitting(true);
+    window.google.accounts.id.prompt((notification) => {
+      const noPromptShown =
+        notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.();
+
+      if (noPromptShown) {
+        setIsGoogleSubmitting(false);
+      }
+    });
   }
 
   function switchMode(nextMode) {
@@ -401,7 +444,7 @@ export function AuthPage({
 
           {error && (isLogin || hasTriedRegisterSubmit) ? <p className="donation-error">{error}</p> : null}
 
-          <div className={`donation-actions${!cardIsLogin ? " auth-register-actions" : ""}`}>
+          <div className={`donation-actions${cardIsLogin ? " auth-login-actions" : " auth-register-actions"}`}>
             {!cardIsLogin && registerStep > 1 ? (
               <button type="button" className="button-secondary auth-register-nav-button" onClick={goToPreviousRegisterStep} disabled={submitting}>
                 Назад
@@ -425,9 +468,7 @@ export function AuthPage({
 
           {showOauthBlock ? (
             <>
-              <div className="auth-divider auth-divider-after-submit" aria-hidden="true">
-                <span>или</span>
-              </div>
+              <div className="auth-divider auth-divider-after-submit" aria-hidden="true" />
 
               <p className="auth-oauth-label">Войти с помощью</p>
               <div className="auth-oauth-row">
@@ -441,26 +482,36 @@ export function AuthPage({
                 ) : null}
 
                 {googleClientId ? (
-                  <button type="button" className="button-secondary auth-oauth-button auth-google-custom-button" onClick={openGoogleAuth}>
-                    <svg className="auth-google-logo" viewBox="0 0 18 18" aria-hidden="true">
-                      <path
-                        fill="#4285F4"
-                        d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9v3.4818h4.8436c-.2087 1.125-.8427 2.0782-1.796 2.7164v2.2582h2.9087c1.7018-1.5668 2.6837-3.8741 2.6837-6.6155z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M9 18c2.43 0 4.4673-.8059 5.9563-2.1791l-2.9087-2.2582c-.806.54-1.8369.8591-3.0476.8591-2.3441 0-4.3282-1.5832-5.0364-3.7105H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M3.9636 10.7105C3.7832 10.1705 3.6818 9.5932 3.6818 9s.1014-1.1705.2818-1.7105V4.9577H.9573C.3477 6.1732 0 7.5482 0 9s.3477 2.8268.9573 4.0423l3.0063-2.3318z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M9 3.5782c1.3214 0 2.5077.4541 3.4405 1.3459l2.5809-2.5809C13.4632.8918 11.4264 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9577l3.0063 2.3318C4.6718 5.1614 6.6559 3.5782 9 3.5782z"
-                      />
-                    </svg>
-                    <span>Войти через Google</span>
+                  <button
+                    type="button"
+                    className="button-secondary auth-oauth-button auth-google-custom-button"
+                    onClick={openGoogleAuth}
+                    disabled={isGoogleSubmitting}
+                    aria-label={isGoogleSubmitting ? "Google авторизация загружается" : "Войти через Google"}
+                  >
+                    {isGoogleSubmitting ? (
+                      <span className="auth-button-spinner" aria-hidden="true" />
+                    ) : (
+                      <svg className="auth-google-logo" viewBox="0 0 18 18" aria-hidden="true">
+                        <path
+                          fill="#4285F4"
+                          d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9v3.4818h4.8436c-.2087 1.125-.8427 2.0782-1.796 2.7164v2.2582h2.9087c1.7018-1.5668 2.6837-3.8741 2.6837-6.6155z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M9 18c2.43 0 4.4673-.8059 5.9563-2.1791l-2.9087-2.2582c-.806.54-1.8369.8591-3.0476.8591-2.3441 0-4.3282-1.5832-5.0364-3.7105H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M3.9636 10.7105C3.7832 10.1705 3.6818 9.5932 3.6818 9s.1014-1.1705.2818-1.7105V4.9577H.9573C.3477 6.1732 0 7.5482 0 9s.3477 2.8268.9573 4.0423l3.0063-2.3318z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M9 3.5782c1.3214 0 2.5077.4541 3.4405 1.3459l2.5809-2.5809C13.4632.8918 11.4264 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9577l3.0063 2.3318C4.6718 5.1614 6.6559 3.5782 9 3.5782z"
+                        />
+                      </svg>
+                    )}
+                    {isGoogleSubmitting ? null : <span>Войти через Google</span>}
                   </button>
                 ) : null}
               </div>
