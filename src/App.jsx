@@ -412,6 +412,14 @@ export default function App() {
   }, [page, currentWishlistId, currentUser]);
 
   useEffect(() => {
+    if (isAuthLoading || currentUser || page === "shared" || page === "landing") {
+      return;
+    }
+
+    navigate("/", { replace: true });
+  }, [currentUser, isAuthLoading, page]);
+
+  useEffect(() => {
     if (page !== "shared") {
       return;
     }
@@ -844,7 +852,7 @@ export default function App() {
   async function logout() {
     await logoutUser();
     clearAuthenticatedState();
-    navigate("/dashboard");
+    navigate("/", { replace: true });
   }
 
   function clearAuthenticatedState() {
@@ -866,7 +874,8 @@ export default function App() {
     setIsProfileOpen(false);
     setIsDeleteAccountConfirmOpen(false);
     setDeleteAccountConfirmation("");
-    setPage("dashboard");
+    setPage("landing");
+    setShareToken(null);
   }
 
   function openProfileModal() {
