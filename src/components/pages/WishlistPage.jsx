@@ -70,6 +70,7 @@ export function WishlistPage({
   const settingsSaveTimeoutRef = useRef(null);
   const settingsSaveLabelTimeoutRef = useRef(null);
   const lastSubmittedSettingsRef = useRef("");
+  const [priceSortDirection, setPriceSortDirection] = useState("desc");
 
   useEffect(() => {
     if (!isRulesEditorOpen) {
@@ -133,6 +134,16 @@ export function WishlistPage({
   const needsEventDate = settingsForm.celebrationType !== "birthday";
   const currentCelebrationOption =
     celebrationOptions.find((option) => option.value === settingsForm.celebrationType) || celebrationOptions[0];
+  const sortedWishes = [...wishes].sort((left, right) => {
+    const leftPrice = parseTargetFromPrice(left.price) || 0;
+    const rightPrice = parseTargetFromPrice(right.price) || 0;
+
+    if (leftPrice === rightPrice) {
+      return left.title.localeCompare(right.title, "ru");
+    }
+
+    return priceSortDirection === "desc" ? rightPrice - leftPrice : leftPrice - rightPrice;
+  });
 
   useEffect(() => {
     if (!canEdit || !currentWishlist?.id) {
@@ -402,9 +413,18 @@ export function WishlistPage({
       ) : null}
 
       <section className="wishlist-section" id="wishlist">
-        <div className="section-head">
-          <p className="section-label">Wishlist</p>
-          <h2>Что можно подарить</h2>
+        <div className="section-head section-head-with-action">
+          <div>
+            <p className="section-label">Wishlist</p>
+            <h2>Что можно подарить</h2>
+          </div>
+          <button
+            type="button"
+            className="tiny-admin-button wish-sort-button"
+            onClick={() => setPriceSortDirection((prev) => (prev === "desc" ? "asc" : "desc"))}
+          >
+            {priceSortDirection === "desc" ? "Сначала дороже" : "Сначала дешевле"}
+          </button>
         </div>
 
         <div className="wish-grid">
@@ -415,7 +435,7 @@ export function WishlistPage({
             </button>
           ) : null}
 
-          {wishes.map((wish) => {
+          {sortedWishes.map((wish) => {
             const target = parseTargetFromPrice(wish.price);
             const donated = getWishDonated(contributions, wish.id);
             const progressPercent = target ? Math.min(100, Math.round((donated / target) * 100)) : 0;

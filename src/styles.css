@@ -287,6 +287,13 @@ h3 {
   margin-bottom: 20px;
 }
 
+.section-head-with-action {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .section-head p {
   margin-top: 10px;
   max-width: 64ch;
@@ -300,6 +307,11 @@ h3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+}
+
+.wish-sort-button {
+  flex-shrink: 0;
+  min-height: 38px;
 }
 
 .wish-card {
@@ -2653,6 +2665,15 @@ h3 {
 
   .glow {
     display: none;
+  }
+
+  .section-head-with-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wish-sort-button {
+    width: 100%;
   }
 
   h1 {
