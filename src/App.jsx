@@ -53,6 +53,7 @@ import {
   fetchWishlistsByOwner,
   fetchWishesByWishlist,
   startYandexIdentityLink,
+  unlinkIdentity,
   updateProfileRecord,
   updateRulesByWishlist,
   updateWishlistRecord,
@@ -671,6 +672,44 @@ export default function App() {
     }
 
     setCurrentUser((prev) => (prev ? { ...prev, identities: data || [] } : prev));
+  }
+
+  function canUnlinkIdentity(provider) {
+    const identities = currentUser?.identities || [];
+    if (!identities.some((identity) => identity.provider === provider)) {
+      return false;
+    }
+
+    return identities.length > 1;
+  }
+
+  async function handleIdentityUnlink(provider) {
+    if (!currentUser) {
+      return;
+    }
+
+    setProfileError("");
+    setIsIdentitySubmitting(true);
+
+    try {
+      const { data, error } = await unlinkIdentity(provider);
+
+      if (error) {
+        if (error.message === "cannot_unlink_last_identity") {
+          throw new Error("Нельзя отвязать последний способ входа.");
+        }
+        if (error.message === "identity_not_found") {
+          throw new Error("Этот способ входа уже отвязан.");
+        }
+        throw new Error("Не удалось отвязать способ входа.");
+      }
+
+      setCurrentUser((prev) => (prev ? { ...prev, identities: data || [] } : prev));
+    } catch (error) {
+      setProfileError(error.message || "Не удалось отвязать способ входа.");
+    } finally {
+      setIsIdentitySubmitting(false);
+    }
   }
 
   async function ensureGoogleSdkLoaded() {
@@ -1899,7 +1938,19 @@ export default function App() {
                   <p>Можно входить через Google без создания нового профиля.</p>
                 </div>
                 {currentUser?.identities?.some((identity) => identity.provider === "google") ? (
-                  <span className="account-identity-badge">Подключен</span>
+                  <div className="account-identity-controls">
+                    <span className="account-identity-badge">Подключен</span>
+                    {canUnlinkIdentity("google") ? (
+                      <button
+                        type="button"
+                        className="button-secondary account-identity-action"
+                        onClick={() => handleIdentityUnlink("google")}
+                        disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
+                      >
+                        {isIdentitySubmitting ? "..." : "Отвязать"}
+                      </button>
+                    ) : null}
+                  </div>
                 ) : (
                   <button
                     type="button"
@@ -1918,7 +1969,19 @@ export default function App() {
                   <p>Можно привязать даже если у Яндекса другой email.</p>
                 </div>
                 {currentUser?.identities?.some((identity) => identity.provider === "yandex") ? (
-                  <span className="account-identity-badge">Подключен</span>
+                  <div className="account-identity-controls">
+                    <span className="account-identity-badge">Подключен</span>
+                    {canUnlinkIdentity("yandex") ? (
+                      <button
+                        type="button"
+                        className="button-secondary account-identity-action"
+                        onClick={() => handleIdentityUnlink("yandex")}
+                        disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
+                      >
+                        {isIdentitySubmitting ? "..." : "Отвязать"}
+                      </button>
+                    ) : null}
+                  </div>
                 ) : (
                   <button
                     type="button"

@@ -1997,6 +1997,14 @@ h3 {
   font-weight: 700;
 }
 
+.account-identity-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .account-identity-action {
   min-width: 96px;
   min-height: 34px;
@@ -2652,6 +2660,10 @@ h3 {
     padding: 7px 0;
   }
 
+  .account-identity-controls {
+    justify-content: flex-start;
+  }
+
   .account-identity-badge,
   .account-identity-action {
     width: auto;
@@ -2978,6 +2990,10 @@ h3 {
   .account-identity-row p {
     margin-top: 2px;
     font-size: 0.72rem;
+  }
+
+  .account-identity-controls {
+    gap: 6px;
   }
 
   .account-identity-badge,

@@ -217,6 +217,17 @@ export async function fetchCurrentUserIdentities() {
   };
 }
 
+export async function unlinkIdentity(provider) {
+  const result = await request(`/api/auth/identities/${provider}`, {
+    method: "DELETE"
+  });
+
+  return {
+    data: result.data?.identities || [],
+    error: result.error
+  };
+}
+
 export function fetchWishlistsByOwner() {
   return request("/api/wishlists");
 }

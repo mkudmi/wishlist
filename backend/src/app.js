@@ -283,6 +283,17 @@ async function linkIdentity(client, userId, { provider, providerUserId, provider
   );
 }
 
+async function removeIdentity(client, userId, provider) {
+  const { rows } = await client.query(
+    `DELETE FROM user_identities
+     WHERE user_id = $1 AND provider = $2
+     RETURNING provider;`,
+    [userId, provider]
+  );
+
+  return rows[0] || null;
+}
+
 async function resolveOauthUser(client, { provider, providerUserId, providerEmail, emailVerified, firstName, lastName }) {
   const normalizedEmail = normalizeEmail(providerEmail);
   let user = await findUserByIdentity(client, provider, providerUserId);
@@ -513,6 +524,43 @@ app.get("/api/auth/identities", requireAuth, async (req, res, next) => {
     return res.json({ identities });
   } catch (error) {
     return next(error);
+  }
+});
+
+app.delete("/api/auth/identities/:provider", requireAuth, async (req, res, next) => {
+  const client = await pool.connect();
+
+  try {
+    const provider = String(req.params?.provider || "").trim().toLowerCase();
+
+    if (!["google", "yandex"].includes(provider)) {
+      return res.status(400).json({ error: "invalid identity provider" });
+    }
+
+    await client.query("BEGIN");
+
+    const identities = await fetchUserIdentities(client, req.authUser.id);
+    const linkedProviders = new Set(identities.map((identity) => identity.provider));
+
+    if (!linkedProviders.has(provider)) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "identity_not_found" });
+    }
+
+    if (identities.length <= 1) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "cannot_unlink_last_identity" });
+    }
+
+    await removeIdentity(client, req.authUser.id, provider);
+    await client.query("COMMIT");
+
+    return res.json({ identities: await fetchUserIdentities(pool, req.authUser.id) });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return next(error);
+  } finally {
+    client.release();
   }
 });
 
