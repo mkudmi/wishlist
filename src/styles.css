@@ -492,13 +492,19 @@ h3 {
 
 .page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-card h3,
 .page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-note,
-.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-progress-text {
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-progress-text,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-participants-empty,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-participants-item {
   color: rgba(244, 243, 239, 0.92);
 }
 
 .page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-card-create strong,
 .page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wishlist-create-plus {
   color: #dbeaff;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-card-create {
+  background: rgba(38, 53, 82, 0.78);
 }
 
 .page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-tag {
@@ -509,8 +515,23 @@ h3 {
   color: #9fe7cf;
 }
 
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-participants-label {
+  color: rgba(201, 220, 255, 0.82);
+}
+
 .page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-progress-track {
   background: rgba(255, 255, 255, 0.14);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-shop-link {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(126, 182, 255, 0.18);
+  color: #dbeaff;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-shop-link:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 
 .page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .tiny-admin-button {
@@ -885,6 +906,81 @@ h3 {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid rgba(95, 67, 39, 0.12);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal {
+  background: rgba(24, 34, 54, 0.96);
+  border-color: rgba(126, 182, 255, 0.18);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal h3,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal-note,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-participants-empty,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-participants-item,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-progress-text {
+  color: rgba(244, 243, 239, 0.92);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-tag {
+  color: #c9dcff;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-price {
+  color: #9fe7cf;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-progress-track {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal-participants {
+  border-top-color: rgba(126, 182, 255, 0.16);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-participants-label {
+  color: rgba(201, 220, 255, 0.82);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-shop-link {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(126, 182, 255, 0.18);
+  color: #dbeaff;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-shop-link:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-donate-button {
+  background: rgba(126, 182, 255, 0.16);
+  color: #dbeaff;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-donate-button:hover {
+  background: rgba(126, 182, 255, 0.24);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-donate-button:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(244, 243, 239, 0.56);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .button-secondary {
+  border-color: rgba(126, 182, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(244, 243, 239, 0.92);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .delete-button,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-participants-remove {
+  background: rgba(184, 66, 55, 0.2);
+  color: #ffb7b0;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .delete-button:hover,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-modal .wish-participants-remove:hover {
+  background: rgba(184, 66, 55, 0.3);
 }
 
 .donation-modal-backdrop {
