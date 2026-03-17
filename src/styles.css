@@ -611,22 +611,36 @@ h3 {
 .wish-actions-modal {
   margin-top: 14px;
   flex-direction: row;
-  justify-content: flex-end;
-  flex-wrap: wrap;
+  justify-content: stretch;
+  flex-wrap: nowrap;
 }
 
 .wish-actions-modal .wish-donate-button,
 .wish-actions-modal .wish-shop-link,
 .wish-actions-modal .button-secondary {
-  min-height: 30px;
-  padding: 0 10px;
-  font-size: 0.82rem;
+  flex: 1 1 0;
+  min-height: 42px;
+  padding: 0 14px;
+  font-size: 0.88rem;
+}
+
+.wish-actions-modal-secondary {
+  margin-top: 8px;
+  flex-direction: row;
+  justify-content: stretch;
+}
+
+.wish-actions-modal-secondary .button-secondary {
+  min-height: 42px;
+  padding: 0 14px;
+  font-size: 0.88rem;
+  width: 100%;
 }
 
 .wish-donate-button {
   border: 0;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 46px;
+  padding: 0 16px;
   border-radius: 999px;
   background: rgba(79, 107, 166, 0.16);
   color: #3f5d95;
@@ -1325,9 +1339,9 @@ h3 {
 
 .donation-actions .button-primary,
 .donation-actions .button-secondary {
-  min-height: 30px;
-  padding: 0 10px;
-  font-size: 0.82rem;
+  min-height: 42px;
+  padding: 0 14px;
+  font-size: 0.88rem;
 }
 
 .checkbox-row {

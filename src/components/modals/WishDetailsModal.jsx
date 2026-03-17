@@ -85,6 +85,9 @@ export function WishDetailsModal({
               В магазин
             </a>
           ) : null}
+        </div>
+
+        <div className="wish-actions wish-actions-modal-secondary">
           <button type="button" className="button-secondary" onClick={onClose}>
             Закрыть
           </button>
