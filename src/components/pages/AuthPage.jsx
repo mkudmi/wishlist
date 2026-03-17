@@ -555,7 +555,7 @@ export function AuthPage({
 
         <section className="landing-hero">
           <div className="landing-hero-copy">
-            <h1 className="landing-title">{seoPage.heroTitle}</h1>
+            <h1 className={`landing-title${seoPage.heroTitle.length > 50 ? " landing-title-compact" : ""}`}>{seoPage.heroTitle}</h1>
             <p className="landing-subtitle">{seoPage.heroText}</p>
 
             <div className="landing-hero-actions">
@@ -580,16 +580,16 @@ export function AuthPage({
           <div className="landing-hero-visual" aria-hidden="true">
             <div className="landing-showcase">
               <div className="landing-showcase-top">
-                <span className="landing-showcase-chip">wishlist</span>
-                <span className="landing-showcase-status">ссылка готова к отправке</span>
+                <span className="landing-showcase-chip">{seoPage.showcaseChip}</span>
+                <span className="landing-showcase-status">{seoPage.showcaseStatus}</span>
               </div>
 
               <div className="landing-showcase-grid">
                 <div className="landing-showcase-main">
                   <div className="landing-showcase-heading">
-                    <span>Wishlist</span>
-                    <strong>День рождения 2026</strong>
-                    <p>Аккуратный список желаний с возможностью собрать подарок вместе.</p>
+                    <span>{seoPage.showcaseLabel}</span>
+                    <strong>{seoPage.showcaseHeading}</strong>
+                    <p>{seoPage.showcaseText}</p>
                   </div>
 
                   <div className="landing-showcase-list">
@@ -636,13 +636,13 @@ export function AuthPage({
             </div>
 
             <div className="landing-floating-card landing-floating-card-top">
-              <span>Что подарить?</span>
-              <strong>Теперь ответ всегда один: открой ссылку</strong>
+              <span>{seoPage.floatingTopLabel}</span>
+              <strong>{seoPage.floatingTopText}</strong>
             </div>
 
             <div className="landing-floating-card landing-floating-card-bottom">
-              <span>Гости не теряются</span>
-              <strong>Видят список, бюджет и приоритет прямо с первого экрана</strong>
+              <span>{seoPage.floatingBottomLabel}</span>
+              <strong>{seoPage.floatingBottomText}</strong>
             </div>
           </div>
         </section>
@@ -724,39 +724,34 @@ export function AuthPage({
               </button>
             </div>
           </div>
+
+          <div className="landing-faq-panel">
+            <div className="section-head landing-section-head compact">
+              <p className="section-label">FAQ</p>
+              <h2>{seoPage.faqTitle}</h2>
+            </div>
+
+            <div className="landing-faq-grid">
+              {seoPage.faqItems.map((item) => (
+                <article className="landing-faq-card" key={item.question}>
+                  <h3>{item.question}</h3>
+                  <p>{item.answer}</p>
+                </article>
+              ))}
+            </div>
+          </div>
         </section>
 
-        <section className="landing-section landing-faq-section">
-          <div className="section-head landing-section-head compact">
-            <p className="section-label">FAQ</p>
-            <h2>{seoPage.faqTitle}</h2>
-          </div>
-
-          <div className="landing-faq-grid">
-            {seoPage.faqItems.map((item) => (
-              <article className="landing-faq-card" key={item.question}>
-                <h3>{item.question}</h3>
-                <p>{item.answer}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="landing-section landing-seo-links-section">
-          <div className="section-head landing-section-head compact">
-            <p className="section-label">{seoPage.relatedLabel}</p>
-            <h2>Страницы, которые помогают быстро понять сценарий использования</h2>
-          </div>
-
-          <div className="landing-seo-links-grid">
+        <footer className="landing-thin-footer">
+          <nav className="landing-thin-footer-links" aria-label="Полезные страницы">
             {relatedSeoPages.map((page) => (
-              <a key={page.key} className="landing-seo-link-card" href={page.path}>
-                <strong>{page.navLabel}</strong>
-                <p>{page.title}</p>
+              <a key={page.key} className="landing-thin-footer-link" href={page.path}>
+                {page.navLabel}
               </a>
             ))}
-          </div>
-        </section>
+          </nav>
+        </footer>
+
       </main>
 
       {isAuthModalOpen ? (
