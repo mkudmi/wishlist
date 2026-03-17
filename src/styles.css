@@ -3062,6 +3062,14 @@ h3 {
 }
 
 @media (max-width: 720px) {
+  .copy-toast {
+    top: max(14px, env(safe-area-inset-top, 0px) + 10px);
+    bottom: auto;
+    min-width: 0;
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+  }
+
   .layout {
     width: min(100%, calc(100% - 20px));
     padding: 16px 0 40px;
