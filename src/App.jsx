@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import {
   celebrationOptions,
   defaultWishlistTheme,
@@ -78,10 +78,8 @@ export default function App() {
   const [sharedWishes, setSharedWishes] = useState([]);
   const [sharedRules, setSharedRules] = useState(defaultRules);
   const [sharedWishlistMeta, setSharedWishlistMeta] = useState(null);
-  const [sharedError, setSharedError] = useState("");
-  const [shareCopied, setShareCopied] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [wishesError, setWishesError] = useState("");
+  const [toast, setToast] = useState(null);
   const [isWishSubmitting, setIsWishSubmitting] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [authForm, setAuthForm] = useState(emptyAuthForm);
@@ -102,6 +100,7 @@ export default function App() {
   const [donationError, setDonationError] = useState("");
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
   const [guestSessionId] = useState(() => getOrCreateGuestSessionId());
+  const toastTimeoutRef = useRef(null);
   const siteOrigin = "https://xn--80ajchdgcktejxc.xn--p1ai";
   const {
     isProfileOpen,
@@ -158,6 +157,23 @@ export default function App() {
     setShareToken(route.shareToken);
   }
 
+  function showToast(message, tone = "success", duration = 2000) {
+    if (!message) {
+      return;
+    }
+
+    setToast({ message, tone });
+
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimeoutRef.current = null;
+    }, duration);
+  }
+
   async function saveRulesForWishlist(nextRules) {
     if (!currentWishlistId) {
       return;
@@ -165,7 +181,7 @@ export default function App() {
     const normalized = normalizeRulesList(nextRules);
     const { data, error } = await updateRulesByWishlist(currentWishlistId, normalized);
     if (error) {
-      setWishesError("Не удалось сохранить пожелания.");
+      showToast("Не удалось сохранить пожелания.", "error");
       return;
     }
     setWishlistRules(normalizeRulesList(data));
@@ -190,12 +206,10 @@ export default function App() {
   }
 
   async function loadWishes(wishlistId) {
-    setWishesError("");
-
     const { data, error } = await fetchWishesByWishlist(wishlistId);
 
     if (error) {
-      setWishesError("Не удалось загрузить список подарков.");
+      showToast("Не удалось загрузить список подарков.", "error");
       setWishes([]);
       return;
     }
@@ -237,11 +251,10 @@ export default function App() {
       setSharedWishlistMeta(null);
       setSharedRules(defaultRules.slice(0, 5));
       setContributions({});
-      setSharedError("Некорректная ссылка.");
+      showToast("Некорректная ссылка.", "error");
       return;
     }
 
-    setSharedError("");
     const [
       { data: meta, error: metaError },
       { data, error },
@@ -259,14 +272,14 @@ export default function App() {
       setSharedWishes([]);
       setSharedRules(defaultRules.slice(0, 5));
       setContributions({});
-      setSharedError("Не удалось открыть вишлист по ссылке.");
+      showToast("Не удалось открыть вишлист по ссылке.", "error");
       return;
     }
 
     setSharedWishlistMeta(meta);
 
     if (error) {
-      setSharedError("Не удалось открыть вишлист по ссылке.");
+      showToast("Не удалось открыть вишлист по ссылке.", "error");
       setSharedWishes([]);
       setSharedRules(defaultRules.slice(0, 5));
       setContributions({});
@@ -287,8 +300,7 @@ export default function App() {
     const currentWishlist = wishlists.find((wishlist) => wishlist.id === currentWishlistId) || null;
     const shareToken = await ensureWishlistShareToken(currentWishlist);
     if (!shareToken) {
-      setShareCopied("Не удалось подготовить ссылку");
-      setTimeout(() => setShareCopied(""), 2000);
+      showToast("Не удалось подготовить ссылку", "error");
       return;
     }
 
@@ -299,11 +311,9 @@ export default function App() {
       if (!copied) {
         throw new Error("copy_failed");
       }
-      setShareCopied("Ссылка скопирована");
-      setTimeout(() => setShareCopied(""), 1800);
+      showToast("Ссылка скопирована");
     } catch {
-      setShareCopied("Не удалось скопировать ссылку");
-      setTimeout(() => setShareCopied(""), 2000);
+      showToast("Не удалось скопировать ссылку", "error");
     }
   }
 
@@ -314,8 +324,7 @@ export default function App() {
 
     const shareToken = await ensureWishlistShareToken(wishlist);
     if (!shareToken) {
-      setShareCopied("Не удалось подготовить ссылку");
-      setTimeout(() => setShareCopied(""), 2000);
+      showToast("Не удалось подготовить ссылку", "error");
       return;
     }
 
@@ -325,11 +334,9 @@ export default function App() {
       if (!copied) {
         throw new Error("copy_failed");
       }
-      setShareCopied("Ссылка скопирована");
-      setTimeout(() => setShareCopied(""), 1800);
+      showToast("Ссылка скопирована");
     } catch {
-      setShareCopied("Не удалось скопировать ссылку");
-      setTimeout(() => setShareCopied(""), 2000);
+      showToast("Не удалось скопировать ссылку", "error");
     }
   }
 
@@ -423,6 +430,14 @@ export default function App() {
     window.addEventListener("popstate", handleLocationChange);
 
     return () => window.removeEventListener("popstate", handleLocationChange);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -770,8 +785,11 @@ export default function App() {
     setSharedWishes([]);
     setSharedWishlistMeta(null);
     setSharedRules(defaultRules.slice(0, 5));
-    setShareCopied("");
-    setWishesError("");
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = null;
+    }
+    setToast(null);
     setProfileError("");
     setWishlistToDelete(null);
     setIsHeaderMenuOpen(false);
@@ -955,7 +973,7 @@ export default function App() {
     }
 
     if (!currentWishlistId) {
-      setWishesError("Список подарков еще не готов.");
+      showToast("Список подарков еще не готов.", "error");
       return;
     }
 
@@ -964,7 +982,6 @@ export default function App() {
     }
 
     setIsWishSubmitting(true);
-    setWishesError("");
 
     try {
       if (editingWishId) {
@@ -1005,18 +1022,16 @@ export default function App() {
       setEditingWishId(null);
       setIsWishEditorOpen(false);
     } catch {
-      setWishesError("Не удалось сохранить подарок.");
+      showToast("Не удалось сохранить подарок.", "error");
     } finally {
       setIsWishSubmitting(false);
     }
   }
 
   async function deleteWish(id) {
-    setWishesError("");
-
     const { error } = await deleteWishRecord(id);
     if (error) {
-      setWishesError("Не удалось удалить подарок.");
+      showToast("Не удалось удалить подарок.", "error");
       return;
     }
 
@@ -1419,11 +1434,6 @@ export default function App() {
           />
         ) : null}
 
-        {showUserBar && shareCopied ? <p className="status-banner">{shareCopied}</p> : null}
-
-        {page === "shared" && sharedError ? <p className="status-banner status-banner-error">{sharedError}</p> : null}
-        {page !== "shared" && wishesError ? <p className="status-banner status-banner-error">{wishesError}</p> : null}
-
         {page === "dashboard" ? (
           <DashboardPage
             wishlists={wishlists}
@@ -1568,6 +1578,11 @@ export default function App() {
         onConfirm={confirmDeleteWishlist}
       />
 
+      {toast ? (
+        <div className={`copy-toast copy-toast-${toast.tone}`} role="status" aria-live="polite">
+          {toast.message}
+        </div>
+      ) : null}
     </div>
   );
 }
