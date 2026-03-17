@@ -61,9 +61,10 @@ import { DonationModal } from "./components/modals/DonationModal";
 import { IdentityModal } from "./components/modals/IdentityModal";
 import { ProfileModal } from "./components/modals/ProfileModal";
 import { WishDetailsModal } from "./components/modals/WishDetailsModal";
+import { seoLandingPageMap } from "./config/seoPages";
 import { useAccountPanel } from "./hooks/useAccountPanel";
-export default function App() {
-  const initialRoute = getRouteFromLocation();
+export default function App({ initialRouteOverride = null }) {
+  const initialRoute = initialRouteOverride || getRouteFromLocation();
   const [wishes, setWishes] = useState([]);
   const [contributions, setContributions] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
@@ -91,6 +92,7 @@ export default function App() {
   const [wishlistRules, setWishlistRules] = useState(defaultRules);
   const [page, setPage] = useState(initialRoute.page);
   const [shareToken, setShareToken] = useState(initialRoute.shareToken);
+  const [seoPageKey, setSeoPageKey] = useState(initialRoute.seoPageKey || "home");
 
   const [openedWishId, setOpenedWishId] = useState(null);
   const [donationWish, setDonationWish] = useState(null);
@@ -155,6 +157,7 @@ export default function App() {
     const route = getRouteFromLocation();
     setPage(route.page);
     setShareToken(route.shareToken);
+    setSeoPageKey(route.seoPageKey || "home");
   }
 
   function showToast(message, tone = "success", duration = 2000) {
@@ -425,6 +428,7 @@ export default function App() {
       const route = getRouteFromLocation();
       setPage(route.page);
       setShareToken(route.shareToken);
+      setSeoPageKey(route.seoPageKey || "home");
     }
 
     window.addEventListener("popstate", handleLocationChange);
@@ -469,41 +473,42 @@ export default function App() {
     setIsHeaderMenuOpen(false);
   }, [page]);
 
+  const activeSeoPage = seoLandingPageMap[seoPageKey] || seoLandingPageMap.home;
+
   useEffect(() => {
     if (typeof document === "undefined") {
       return;
     }
 
     const seo = {
-      title: "Wishlist - вишлист для подарков на день рождения, свадьбу и праздники",
-      description:
-        "Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков.",
+      title: activeSeoPage.title,
+      description: activeSeoPage.description,
       robots: "index,follow,max-image-preview:large",
-      canonical: `${siteOrigin}/`
+      canonical: `${siteOrigin}${activeSeoPage.path}`
     };
 
     if (page === "dashboard") {
-      seo.title = "Мои вишлисты - Wishlist";
-      seo.description = "Личный кабинет сервиса Wishlist.";
+      seo.title = "Мои вишлисты - Список желаний";
+      seo.description = "Личный кабинет сервиса Список желаний.";
       seo.robots = "noindex,nofollow";
       seo.canonical = `${siteOrigin}/dashboard`;
     } else if (page === "wishlist") {
-      seo.title = "Редактирование вишлиста - Wishlist";
-      seo.description = "Управление вашим списком подарков в сервисе Wishlist.";
+      seo.title = "Редактирование вишлиста - Список желаний";
+      seo.description = "Управление вашим списком подарков в сервисе Список желаний.";
       seo.robots = "noindex,nofollow";
       seo.canonical = `${siteOrigin}/wishlist`;
     } else if (page === "shared") {
       seo.title = sharedWishlistMeta?.title
-        ? `${sharedWishlistMeta.title} - Wishlist`
-        : "Вишлист по ссылке - Wishlist";
+        ? `${sharedWishlistMeta.title} - Список желаний`
+        : "Вишлист по ссылке - Список желаний";
       seo.description = sharedWishlistMeta?.title
-        ? `Публичная ссылка на вишлист "${sharedWishlistMeta.title}" в сервисе Wishlist.`
-        : "Публичная ссылка на вишлист в сервисе Wishlist.";
+        ? `Публичная ссылка на вишлист "${sharedWishlistMeta.title}" в сервисе Список желаний.`
+        : "Публичная ссылка на вишлист в сервисе Список желаний.";
       seo.robots = "noindex,nofollow";
       seo.canonical = `${siteOrigin}/shared/${shareToken || ""}`;
     } else if (page === "yandex-callback") {
-      seo.title = "Вход через Яндекс - Wishlist";
-      seo.description = "Служебная страница авторизации Wishlist.";
+      seo.title = "Вход через Яндекс - Список желаний";
+      seo.description = "Служебная страница авторизации Список желаний.";
       seo.robots = "noindex,nofollow";
       seo.canonical = `${siteOrigin}/auth/yandex/callback`;
     }
@@ -527,7 +532,7 @@ export default function App() {
         node.setAttribute(attribute, value);
       }
     });
-  }, [page, shareToken, sharedWishlistMeta, siteOrigin]);
+  }, [activeSeoPage.description, activeSeoPage.path, activeSeoPage.title, page, shareToken, sharedWishlistMeta, siteOrigin]);
 
   function onAuthInputChange(event) {
     const { name, value } = event.target;
@@ -798,6 +803,7 @@ export default function App() {
     setDeleteAccountConfirmation("");
     setPage("landing");
     setShareToken(null);
+    setSeoPageKey("home");
   }
 
   async function createWishlist(payload) {
@@ -1291,7 +1297,7 @@ export default function App() {
       .catch(() => {});
   }
 
-  if (isAuthLoading) {
+  if (isAuthLoading && page !== "landing") {
     return null;
   }
 
@@ -1321,6 +1327,7 @@ export default function App() {
         onSubmit={submitAuth}
         onGoogleAuth={submitGoogleAuth}
         onYandexAuth={completeYandexAuth}
+        seoPage={activeSeoPage}
       />
     );
   }
@@ -1338,6 +1345,7 @@ export default function App() {
         onSubmit={submitAuth}
         onGoogleAuth={submitGoogleAuth}
         onYandexAuth={completeYandexAuth}
+        seoPage={activeSeoPage}
       />
     );
   }

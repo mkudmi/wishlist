@@ -1,4 +1,5 @@
 ﻿import { emptyProfileForm, rules as defaultRules } from "../config/constants";
+import { seoLandingPathMap } from "../config/seoPages";
 
 export function sanitizeWishes(items) {
   if (!Array.isArray(items)) {
@@ -267,27 +268,28 @@ export function getEventCountdownInfo(dateValue, options = {}) {
 
 export function getRouteFromLocation() {
   if (typeof window === "undefined") {
-    return { page: "landing", shareToken: null };
+    return { page: "landing", shareToken: null, seoPageKey: "home" };
   }
 
   const raw = window.location.pathname || "/";
-  if (raw === "/") {
-    return { page: "landing", shareToken: null };
+  const seoPage = seoLandingPathMap[raw];
+  if (seoPage) {
+    return { page: "landing", shareToken: null, seoPageKey: seoPage.key };
   }
   if (raw === "/dashboard") {
-    return { page: "dashboard", shareToken: null };
+    return { page: "dashboard", shareToken: null, seoPageKey: null };
   }
   if (raw === "/auth/yandex/callback") {
-    return { page: "yandex-callback", shareToken: null };
+    return { page: "yandex-callback", shareToken: null, seoPageKey: null };
   }
   if (raw === "/wishlist") {
-    return { page: "wishlist", shareToken: null };
+    return { page: "wishlist", shareToken: null, seoPageKey: null };
   }
   const sharedMatch = raw.match(/^\/shared\/([a-zA-Z0-9_-]+)$/);
   if (sharedMatch) {
-    return { page: "shared", shareToken: sharedMatch[1] };
+    return { page: "shared", shareToken: sharedMatch[1], seoPageKey: null };
   }
-  return { page: "landing", shareToken: null };
+  return { page: "landing", shareToken: null, seoPageKey: "home" };
 }
 
 export function groupReservationsByWish(items) {

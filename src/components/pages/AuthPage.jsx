@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { seoLandingPages } from "../../config/seoPages";
 import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
 import { BirthdayPickerModal } from "../BirthdayPickerModal";
 
@@ -12,11 +13,12 @@ export function AuthPage({
   onInputChange,
   onSubmit,
   onGoogleAuth,
-  onYandexAuth
+  onYandexAuth,
+  seoPage = seoLandingPages[0]
 }) {
   const isLogin = mode === "login";
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-  const yandexClientId = import.meta.env.VITE_YANDEX_CLIENT_ID || "";
+  const googleClientId = import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
+  const yandexClientId = import.meta.env?.VITE_YANDEX_CLIENT_ID || "";
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [registerStep, setRegisterStep] = useState(1);
   const [isBirthdayPickerOpen, setIsBirthdayPickerOpen] = useState(false);
@@ -70,6 +72,7 @@ export function AuthPage({
     "Для каждого события формируется отдельная ссылка.",
     "Гостям не нужен аккаунт, чтобы открыть публичную страницу."
   ];
+  const relatedSeoPages = seoLandingPages.filter((page) => page.key !== seoPage.key);
 
   function scrollToSection(sectionId) {
     if (typeof document === "undefined") {
@@ -545,25 +548,22 @@ export function AuthPage({
               Как это работает
             </button>
             <button type="button" className="button-primary landing-nav-cta" onClick={() => openAuthModal("login")}>
-              Создать вишлист
+              {seoPage.navCta}
             </button>
           </div>
         </header>
 
         <section className="landing-hero">
           <div className="landing-hero-copy">
-            <h1 className="landing-title">Подарки без догадок. Вишлист, которым удобно делиться.</h1>
-            <p className="landing-subtitle">
-              Собери желания в красивой странице, отправь гостям одну ссылку и закрой вопрос с подарками без хаоса,
-              переписок и случайных покупок.
-            </p>
+            <h1 className="landing-title">{seoPage.heroTitle}</h1>
+            <p className="landing-subtitle">{seoPage.heroText}</p>
 
             <div className="landing-hero-actions">
               <button type="button" className="button-primary" onClick={() => openAuthModal("login")}>
-                Начать бесплатно
+                {seoPage.heroPrimaryCta}
               </button>
               <button type="button" className="button-secondary landing-secondary-action" onClick={() => scrollToSection("landing-flow")}>
-                Посмотреть сценарий
+                {seoPage.heroSecondaryCta}
               </button>
             </div>
 
@@ -650,8 +650,8 @@ export function AuthPage({
         <section className="landing-section" id="landing-benefits">
           <div className="section-head landing-section-head">
             <p className="section-label">Преимущества</p>
-            <h2>Все, что нужно для подарков без неловких переписок</h2>
-            <p>Один аккуратный вишлист помогает сразу показать, что хочется и как лучше подарить.</p>
+            <h2>{seoPage.benefitsTitle}</h2>
+            <p>{seoPage.benefitsText}</p>
           </div>
 
           <div className="landing-feature-grid">
@@ -669,7 +669,7 @@ export function AuthPage({
           <div className="landing-flow-card">
             <div className="section-head compact landing-section-head">
               <p className="section-label">Как это работает</p>
-              <h2>Простой путь от идеи до готовой ссылки</h2>
+              <h2>{seoPage.flowTitle}</h2>
             </div>
 
             <div className="landing-step-list">
@@ -687,7 +687,7 @@ export function AuthPage({
 
           <aside className="landing-events-card">
             <p className="section-label">Сценарии</p>
-            <h2>Подходит не только для дня рождения</h2>
+            <h2>{seoPage.eventsTitle}</h2>
 
             <div className="landing-event-list">
               {eventCards.map((card) => (
@@ -703,8 +703,8 @@ export function AuthPage({
         <section className="landing-auth-section" id="landing-auth">
           <div className="landing-auth-copy">
             <p className="section-label">Запуск за минуту</p>
-            <h2>Создай первый вишлист и сразу отправь его гостям</h2>
-            <p>Регистрация короткая, а публичная страница готова сразу после первого списка.</p>
+            <h2>{seoPage.authTitle}</h2>
+            <p>{seoPage.authText}</p>
 
             <div className="landing-auth-benefits">
               {authBenefits.map((benefit) => (
@@ -723,6 +723,38 @@ export function AuthPage({
                 Уже есть аккаунт
               </button>
             </div>
+          </div>
+        </section>
+
+        <section className="landing-section landing-faq-section">
+          <div className="section-head landing-section-head compact">
+            <p className="section-label">FAQ</p>
+            <h2>{seoPage.faqTitle}</h2>
+          </div>
+
+          <div className="landing-faq-grid">
+            {seoPage.faqItems.map((item) => (
+              <article className="landing-faq-card" key={item.question}>
+                <h3>{item.question}</h3>
+                <p>{item.answer}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="landing-section landing-seo-links-section">
+          <div className="section-head landing-section-head compact">
+            <p className="section-label">{seoPage.relatedLabel}</p>
+            <h2>Страницы, которые помогают быстро понять сценарий использования</h2>
+          </div>
+
+          <div className="landing-seo-links-grid">
+            {relatedSeoPages.map((page) => (
+              <a key={page.key} className="landing-seo-link-card" href={page.path}>
+                <strong>{page.navLabel}</strong>
+                <p>{page.title}</p>
+              </a>
+            ))}
           </div>
         </section>
       </main>

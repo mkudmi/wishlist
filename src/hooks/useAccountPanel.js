@@ -106,7 +106,7 @@ export function useAccountPanel({ currentUser, setCurrentUser, clearAuthenticate
       return;
     }
 
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+    const googleClientId = import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
     if (!googleClientId) {
       setProfileError("Google вход не настроен.");
       return;

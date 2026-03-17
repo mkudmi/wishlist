@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD19A" />
+      <stop offset="0.55" stop-color="#EC9552" />
+      <stop offset="1" stop-color="#C96A2C" />
+    </linearGradient>
+    <linearGradient id="shine" x1="18" y1="10" x2="47" y2="38" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF6EC" stop-opacity="0.84" />
+      <stop offset="1" stop-color="#FFF6EC" stop-opacity="0" />
+    </linearGradient>
+    <filter id="shadow" x="6" y="5" width="52" height="54" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#A14F1F" flood-opacity="0.24" />
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#FFF8F1" />
+  <g filter="url(#shadow)">
+    <rect x="10" y="8" width="44" height="48" rx="14" fill="url(#bg)" />
+    <path
+      d="M18 18h6.2l3.4 19.2L31.1 24h2.4l3.5 13.2L40.4 18H47l-5.7 28h-5.6l-3.5-13-3.5 13h-5.6L18 18Z"
+      fill="#2F180C"
+    />
+    <path d="M16 8h28c-6.4 4.4-16 7.2-28 7.7V8Z" fill="url(#shine)" />
+  </g>
+</svg>

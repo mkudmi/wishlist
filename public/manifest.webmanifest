@@ -1,0 +1,23 @@
+{
+  "name": "Список желаний",
+  "short_name": "Wishlist",
+  "description": "Онлайн-вишлист для подарков, списков желаний и совместных сборов на один подарок.",
+  "lang": "ru-RU",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff8f1",
+  "theme_color": "#c96a2c",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -25,6 +25,11 @@
       name="twitter:description"
       content="Удобный онлайн-вишлист: одна ссылка для гостей, список желаний и совместные подарки без хаоса."
     />
+    <meta name="theme-color" content="#c96a2c" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.ico" sizes="64x64" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="/src/styles.css" />
@@ -35,41 +40,142 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Список желаний",
-        "url": "https://xn--80ajchdgcktejxc.xn--p1ai/",
-        "inLanguage": "ru-RU",
-        "description": "Сервис для создания вишлистов подарков на день рождения, свадьбу, новоселье и другие события."
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://xn--80ajchdgcktejxc.xn--p1ai/#organization",
+            "name": "Список желаний",
+            "url": "https://xn--80ajchdgcktejxc.xn--p1ai/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://xn--80ajchdgcktejxc.xn--p1ai/icon-512.png"
+            },
+            "image": "https://xn--80ajchdgcktejxc.xn--p1ai/icon-512.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://xn--80ajchdgcktejxc.xn--p1ai/#website",
+            "url": "https://xn--80ajchdgcktejxc.xn--p1ai/",
+            "name": "Список желаний",
+            "inLanguage": "ru-RU",
+            "description": "Сервис для создания вишлистов подарков на день рождения, свадьбу, новоселье и другие события.",
+            "publisher": {
+              "@id": "https://xn--80ajchdgcktejxc.xn--p1ai/#organization"
+            }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://xn--80ajchdgcktejxc.xn--p1ai/#webapp",
+            "name": "Список желаний",
+            "url": "https://xn--80ajchdgcktejxc.xn--p1ai/",
+            "applicationCategory": "LifestyleApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "ru-RU",
+            "description": "Онлайн-вишлист для подарков, списков желаний и совместных сборов на один подарок.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "RUB"
+            },
+            "publisher": {
+              "@id": "https://xn--80ajchdgcktejxc.xn--p1ai/#organization"
+            }
+          }
+        ]
+      }
+    </script>
+    <script id="seo-page-faq-schema" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Что такое вишлист?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Вишлист — это онлайн-список желаний или подарков, который можно собрать в одной странице и отправить гостям по ссылке."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Нужно ли гостям регистрироваться, чтобы открыть список?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Нет. Публичную страницу вишлиста можно открыть по ссылке без регистрации, чтобы посмотреть подарки и при желании поучаствовать в общем сборе."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Можно ли собрать деньги на один большой подарок?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Да. Вишлист подходит не только для отдельных вещей, но и для совместного подарка, когда несколько человек участвуют в одной цели."
+            }
+          }
+        ]
       }
     </script>
     <script>
       (function () {
         var origin = "https://xn--80ajchdgcktejxc.xn--p1ai";
         var path = window.location.pathname || "/";
-        var title = "Список желаний - Онлайн-вишлист для подарков";
-        var description =
-          "Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков.";
+        var seoPages = {
+          "/": {
+            title: "Список желаний - Онлайн-вишлист для подарков",
+            description:
+              "Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков."
+          },
+          "/vishlist": {
+            title: "Вишлист онлайн - Список желаний для подарков",
+            description:
+              "Онлайн-вишлист для подарков: соберите список желаний, добавьте ссылки и цены, отправьте одну страницу гостям и собирайте совместные подарки без лишних вопросов."
+          },
+          "/spisok-podarkov": {
+            title: "Список подарков онлайн - Удобный сервис для гостей и именинника",
+            description:
+              "Список подарков онлайн для дня рождения, свадьбы и других событий. Добавьте конкретные идеи, укажите ссылки и бюджет, чтобы гостям было проще выбрать подарок."
+          },
+          "/vishlist-na-den-rozhdeniya": {
+            title: "Вишлист на день рождения - Список подарков без хаоса",
+            description:
+              "Создайте вишлист на день рождения: список подарков, ссылки, цены, правила и совместные сборы на один подарок. Удобно для именинника и гостей."
+          },
+          "/spisok-zhelaniy-online": {
+            title: "Список желаний онлайн - Красивый и понятный вишлист",
+            description:
+              "Список желаний онлайн для подарков и событий. Соберите всё, что хочется получить, в одной красивой странице и поделитесь ею по ссылке."
+          },
+          "/sovmestniy-podarok": {
+            title: "Совместный подарок - Как собрать деньги на один хороший подарок",
+            description:
+              "Совместный подарок без хаоса: соберите деньги на один большой подарок через вишлист, покажите прогресс и дайте друзьям понятный способ поучаствовать."
+          }
+        };
+        var currentSeoPage = seoPages[path] || seoPages["/"];
+        var title = currentSeoPage.title;
+        var description = currentSeoPage.description;
         var robots = "index,follow,max-image-preview:large";
-        var canonicalPath = "/";
+        var canonicalPath = seoPages[path] ? path : "/";
 
         if (path === "/dashboard") {
           title = "Мои вишлисты - Список желаний";
-          description = "Личный кабинет сервиса Wishlist.";
+          description = "Личный кабинет сервиса Список желаний.";
           robots = "noindex,nofollow";
           canonicalPath = "/dashboard";
         } else if (path === "/wishlist") {
           title = "Редактирование вишлиста - Список желаний";
-          description = "Управление вашим списком подарков в сервисе Wishlist.";
+          description = "Управление вашим списком подарков в сервисе Список желаний.";
           robots = "noindex,nofollow";
           canonicalPath = "/wishlist";
         } else if (path === "/auth/yandex/callback") {
           title = "Вход через Яндекс - Список желаний";
-          description = "Служебная страница авторизации Wishlist.";
+          description = "Служебная страница авторизации Список желаний.";
           robots = "noindex,nofollow";
           canonicalPath = "/auth/yandex/callback";
         } else if (/^\/shared\/[a-zA-Z0-9_-]+$/.test(path)) {
           title = "Вишлист по ссылке - Список желаний";
-          description = "Публичная ссылка на вишлист в сервисе Wishlist.";
+          description = "Публичная ссылка на вишлист в сервисе Список желаний.";
           robots = "noindex,nofollow";
           canonicalPath = path;
         }

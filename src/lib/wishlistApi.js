@@ -2,7 +2,7 @@ const AUTH_TOKEN_KEY = "wishlist-auth-token-v1";
 const GUEST_SESSION_KEY = "wishlist-guest-session-v1";
 
 function getApiBaseUrl() {
-  const envUrl = import.meta.env.VITE_API_URL;
+  const envUrl = import.meta.env?.VITE_API_URL;
   if (envUrl) {
     if (typeof window !== "undefined") {
       const currentOrigin = window.location.origin;
