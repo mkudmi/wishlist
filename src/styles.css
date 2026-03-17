@@ -1013,6 +1013,49 @@ h3 {
   font-size: 0.92rem;
 }
 
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-modal {
+  background: rgba(24, 34, 54, 0.96);
+  border-color: rgba(126, 182, 255, 0.18);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-modal h3,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-modal-title,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-modal-subtitle,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form label,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form .form-field-label {
+  color: rgba(244, 243, 239, 0.92);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form input,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form select,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form textarea {
+  border-color: rgba(126, 182, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(244, 243, 239, 0.92);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form input::placeholder,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form textarea::placeholder {
+  color: rgba(244, 243, 239, 0.52);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form input:focus,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form select:focus,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-form textarea:focus {
+  border-color: rgba(126, 182, 255, 0.38);
+  outline-color: rgba(126, 182, 255, 0.2);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-modal .button-secondary {
+  border-color: rgba(126, 182, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(244, 243, 239, 0.92);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .donation-modal .button-primary {
+  box-shadow: 0 12px 28px rgba(126, 182, 255, 0.18);
+}
+
 .donation-form {
   margin-top: 14px;
   display: grid;
