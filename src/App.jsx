@@ -5,14 +5,11 @@ import {
   rules as defaultRules,
   emptyAuthForm,
   emptyForm,
-  emptyProfileForm,
   wishlistThemes
 } from "./config/constants";
 import {
   createWish,
   createShareToken,
-  formatMoney,
-  getProfileFormFromUser,
   getRouteFromLocation,
   getUserDisplayName,
   getWishDonated,
@@ -20,7 +17,6 @@ import {
   buildSharedWishlistUrl,
   copyTextToClipboard,
   mapWishToForm,
-  normalizeName,
   normalizeRulesList,
   groupReservationsByWish,
   parseDdMmYyyyToStorageDate,
@@ -33,16 +29,13 @@ import {
   createWishRecord,
   createWishlistRecord,
   createWishReservationRecord,
-  deleteCurrentUserAccount,
   deleteWishRecord,
   deleteWishlistRecord,
   deleteMyWishReservations,
   fetchCurrentUser,
-  fetchCurrentUserIdentities,
   getOrCreateGuestSessionId,
   setAuthToken,
   loginUser,
-  linkGoogleIdentity,
   loginWithGoogleCredential,
   logoutUser,
   registerUser,
@@ -54,9 +47,6 @@ import {
   fetchRulesByWishlist,
   fetchWishlistsByOwner,
   fetchWishesByWishlist,
-  startYandexIdentityLink,
-  unlinkIdentity,
-  updateProfileRecord,
   updateRulesByWishlist,
   updateWishlistRecord,
   updateWishRecord
@@ -65,6 +55,13 @@ import { AuthPage } from "./components/pages/AuthPage";
 import { BirthdayPickerModal } from "./components/BirthdayPickerModal";
 import { DashboardPage } from "./components/pages/DashboardPage";
 import { WishlistPage } from "./components/pages/WishlistPage";
+import { UserBar } from "./components/app/UserBar";
+import { DeleteWishlistModal } from "./components/modals/DeleteWishlistModal";
+import { DonationModal } from "./components/modals/DonationModal";
+import { IdentityModal } from "./components/modals/IdentityModal";
+import { ProfileModal } from "./components/modals/ProfileModal";
+import { WishDetailsModal } from "./components/modals/WishDetailsModal";
+import { useAccountPanel } from "./hooks/useAccountPanel";
 export default function App() {
   const initialRoute = getRouteFromLocation();
   const [wishes, setWishes] = useState([]);
@@ -75,16 +72,6 @@ export default function App() {
   const [wishlistsError, setWishlistsError] = useState("");
   const [isWishlistSubmitting, setIsWishlistSubmitting] = useState(false);
   const [wishlistToDelete, setWishlistToDelete] = useState(null);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [profileForm, setProfileForm] = useState(emptyProfileForm);
-  const [profileError, setProfileError] = useState("");
-  const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
-  const [isIdentitySubmitting, setIsIdentitySubmitting] = useState(false);
-  const [isIdentityModalOpen, setIsIdentityModalOpen] = useState(false);
-  const [isProfileBirthdayPickerOpen, setIsProfileBirthdayPickerOpen] = useState(false);
-  const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
-  const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState("");
-  const [isAccountDeleting, setIsAccountDeleting] = useState(false);
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [currentWishlistId, setCurrentWishlistId] = useState(null);
   const [currentShareToken, setCurrentShareToken] = useState(null);
@@ -116,6 +103,39 @@ export default function App() {
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
   const [guestSessionId] = useState(() => getOrCreateGuestSessionId());
   const siteOrigin = "https://xn--80ajchdgcktejxc.xn--p1ai";
+  const {
+    isProfileOpen,
+    profileForm,
+    profileError,
+    isProfileSubmitting,
+    isIdentitySubmitting,
+    isIdentityModalOpen,
+    isProfileBirthdayPickerOpen,
+    isDeleteAccountConfirmOpen,
+    deleteAccountConfirmation,
+    isAccountDeleting,
+    setProfileError,
+    setIsIdentitySubmitting,
+    setIsIdentityModalOpen,
+    setIsProfileBirthdayPickerOpen,
+    setIsDeleteAccountConfirmOpen,
+    setDeleteAccountConfirmation,
+    refreshCurrentUserIdentities,
+    canUnlinkIdentity,
+    handleIdentityUnlink,
+    startGoogleLink,
+    startYandexLink,
+    openProfileModal,
+    closeProfileModal,
+    onProfileInputChange,
+    submitProfile,
+    deleteAccount
+  } = useAccountPanel({
+    currentUser,
+    setCurrentUser,
+    clearAuthenticatedState,
+    navigate
+  });
 
   function navigate(path, options = {}) {
     if (typeof window === "undefined") {
@@ -663,183 +683,6 @@ export default function App() {
     }
   }
 
-  async function refreshCurrentUserIdentities() {
-    if (!currentUser) {
-      return;
-    }
-
-    const { data, error } = await fetchCurrentUserIdentities();
-    if (error) {
-      throw new Error("Не удалось обновить способы входа.");
-    }
-
-    setCurrentUser((prev) => (prev ? { ...prev, identities: data || [] } : prev));
-  }
-
-  function canUnlinkIdentity(provider) {
-    const identities = currentUser?.identities || [];
-    if (!identities.some((identity) => identity.provider === provider)) {
-      return false;
-    }
-
-    return identities.length > 1;
-  }
-
-  async function handleIdentityUnlink(provider) {
-    if (!currentUser) {
-      return;
-    }
-
-    setProfileError("");
-    setIsIdentitySubmitting(true);
-
-    try {
-      const { data, error } = await unlinkIdentity(provider);
-
-      if (error) {
-        if (error.message === "cannot_unlink_last_identity") {
-          throw new Error("Нельзя отвязать последний способ входа.");
-        }
-        if (error.message === "identity_not_found") {
-          throw new Error("Этот способ входа уже отвязан.");
-        }
-        throw new Error("Не удалось отвязать способ входа.");
-      }
-
-      setCurrentUser((prev) => (prev ? { ...prev, identities: data || [] } : prev));
-    } catch (error) {
-      setProfileError(error.message || "Не удалось отвязать способ входа.");
-    } finally {
-      setIsIdentitySubmitting(false);
-    }
-  }
-
-  async function ensureGoogleSdkLoaded() {
-    if (typeof window === "undefined") {
-      throw new Error("Google SDK недоступен.");
-    }
-
-    if (window.google?.accounts?.id) {
-      return;
-    }
-
-    await new Promise((resolve, reject) => {
-      const existingScript = document.querySelector('script[data-google-gsi="true"]');
-      if (existingScript) {
-        existingScript.addEventListener("load", resolve, { once: true });
-        existingScript.addEventListener("error", reject, { once: true });
-        return;
-      }
-
-      const script = document.createElement("script");
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.defer = true;
-      script.dataset.googleGsi = "true";
-      script.addEventListener("load", resolve, { once: true });
-      script.addEventListener("error", reject, { once: true });
-      document.head.appendChild(script);
-    });
-  }
-
-  async function startGoogleLink() {
-    if (!currentUser) {
-      return;
-    }
-
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-    if (!googleClientId) {
-      setProfileError("Google вход не настроен.");
-      return;
-    }
-
-    setProfileError("");
-    setIsIdentitySubmitting(true);
-
-    try {
-      await ensureGoogleSdkLoaded();
-
-      const credential = await new Promise((resolve, reject) => {
-        if (!window.google?.accounts?.id) {
-          reject(new Error("Google SDK недоступен."));
-          return;
-        }
-
-        let settled = false;
-        const finish = (handler, value) => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          handler(value);
-        };
-
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: (response) => {
-            if (response?.credential) {
-              finish(resolve, response.credential);
-              return;
-            }
-            finish(reject, new Error("Google не вернул токен входа."));
-          }
-        });
-
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
-            finish(reject, new Error("Не удалось открыть вход через Google."));
-          }
-        });
-      });
-
-      const { error } = await linkGoogleIdentity(credential);
-      if (error) {
-        if (error.message === "identity_link_conflict") {
-          throw new Error("Этот Google-аккаунт уже привязан к другому профилю.");
-        }
-        throw new Error("Не удалось привязать Google.");
-      }
-
-      await refreshCurrentUserIdentities();
-    } catch (error) {
-      setProfileError(error.message || "Не удалось привязать Google.");
-    } finally {
-      setIsIdentitySubmitting(false);
-    }
-  }
-
-  async function startYandexLink() {
-    if (!currentUser) {
-      return;
-    }
-
-    setProfileError("");
-    setIsIdentitySubmitting(true);
-
-    try {
-      const { data, error } = await startYandexIdentityLink(window.location.origin);
-
-      if (error || !data) {
-        throw new Error(error?.message || error || "Не удалось открыть вход через Яндекс.");
-      }
-
-      const popup = window.open(
-        data,
-        "wishlist-yandex-link",
-        "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes"
-      );
-
-      if (!popup) {
-        throw new Error("Разрешите всплывающее окно, чтобы привязать Яндекс.");
-      }
-
-      popup.focus();
-    } catch (error) {
-      setProfileError(error.message || "Не удалось открыть вход через Яндекс.");
-      setIsIdentitySubmitting(false);
-    }
-  }
-
   useEffect(() => {
     if (page !== "yandex-callback" || typeof window === "undefined") {
       return;
@@ -937,111 +780,6 @@ export default function App() {
     setDeleteAccountConfirmation("");
     setPage("landing");
     setShareToken(null);
-  }
-
-  function openProfileModal() {
-    setProfileForm(getProfileFormFromUser(currentUser));
-    setProfileError("");
-    setIsIdentitySubmitting(false);
-    setIsIdentityModalOpen(false);
-    setIsDeleteAccountConfirmOpen(false);
-    setDeleteAccountConfirmation("");
-    setIsProfileOpen(true);
-  }
-
-  function closeProfileModal() {
-    if (isProfileSubmitting || isAccountDeleting || isIdentitySubmitting) {
-      return;
-    }
-    setIsProfileOpen(false);
-    setProfileError("");
-    setProfileForm(emptyProfileForm);
-    setIsIdentitySubmitting(false);
-    setIsIdentityModalOpen(false);
-    setIsProfileBirthdayPickerOpen(false);
-    setIsDeleteAccountConfirmOpen(false);
-    setDeleteAccountConfirmation("");
-  }
-
-  function onProfileInputChange(event) {
-    const { name, value } = event.target;
-    setProfileForm((prev) => ({
-      ...prev,
-      [name]: value
-    }));
-    if (profileError) {
-      setProfileError("");
-    }
-  }
-
-  async function submitProfile(event) {
-    event.preventDefault();
-    if (!currentUser) {
-      return;
-    }
-
-    const firstName = normalizeName(profileForm.firstName);
-    const lastName = normalizeName(profileForm.lastName);
-    const birthday = parseDdMmYyyyToStorageDate(profileForm.birthday);
-
-    if (!firstName || !lastName) {
-      setProfileError("Укажи имя и фамилию.");
-      return;
-    }
-    if (!birthday) {
-      setProfileError("Укажи дату рождения в формате ДД-ММ-ГГГГ.");
-      return;
-    }
-
-    setIsProfileSubmitting(true);
-    setProfileError("");
-
-    const { error: profileUpdateError } = await updateProfileRecord({
-      first_name: firstName,
-      last_name: lastName,
-      birthday
-    });
-
-    if (profileUpdateError) {
-      setProfileError("Не удалось обновить профиль.");
-      setIsProfileSubmitting(false);
-      return;
-    }
-
-    setCurrentUser((prev) => ({
-      ...prev,
-      name: [firstName, lastName].join(" "),
-      firstName,
-      lastName,
-      birthday
-    }));
-    setIsProfileSubmitting(false);
-    closeProfileModal();
-  }
-
-  async function deleteAccount() {
-    if (!currentUser) {
-      return;
-    }
-
-    if (deleteAccountConfirmation.trim().toUpperCase() !== "УДАЛИТЬ") {
-      setProfileError("Введи УДАЛИТЬ для подтверждения.");
-      return;
-    }
-
-    setIsAccountDeleting(true);
-    setProfileError("");
-
-    const { error } = await deleteCurrentUserAccount();
-    if (error) {
-      setProfileError("Не удалось удалить аккаунт.");
-      setIsAccountDeleting(false);
-      return;
-    }
-
-    clearAuthenticatedState();
-    navigate("/dashboard");
-    setIsAccountDeleting(false);
   }
 
   async function createWishlist(payload) {
@@ -1636,7 +1374,6 @@ export default function App() {
     ? Math.min(100, Math.round((openedWishDonated / openedWishTarget) * 100))
     : 0;
   const isSharedView = page === "shared";
-  const openedWishCompleted = Boolean(openedWishTarget) && openedWishDonated >= openedWishTarget;
   const donationWishTarget = donationWish ? parseTargetFromPrice(donationWish.price) : null;
   const donationWishDonated = donationWish ? getWishDonated(contributions, donationWish.id) : 0;
   const donationWishRemaining = donationWishTarget
@@ -1653,107 +1390,33 @@ export default function App() {
 
       <main className="layout">
         {showUserBar ? (
-          <div className="auth-userbar">
-            {canManage ? (
-              <button
-                type="button"
-                className="header-back-button"
-                aria-label="Назад к вишлистам"
-                onClick={() => {
-                  setIsHeaderMenuOpen(false);
-                  openDashboardPage();
-                }}
-              >
-                <svg
-                  className="header-back-icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path d="M11 5L4 12L11 19" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" />
-                  <path d="M5 12H20" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" />
-                </svg>
-              </button>
-            ) : null}
-
-            <button
-              type="button"
-              className="auth-userbar-name auth-userbar-name-button"
-              onClick={() => {
-                setIsHeaderMenuOpen(false);
-                openProfileModal();
-              }}
-            >
-              {currentUserName}
-            </button>
-
-            <div className="header-menu">
-              <button
-                type="button"
-                className="burger-button"
-                aria-label="Открыть меню"
-                onClick={() => setIsHeaderMenuOpen((prev) => !prev)}
-              >
-                <span className="burger-icon" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              </button>
-
-              {isHeaderMenuOpen ? (
-                <div className="header-menu-dropdown">
-                  {canManage ? (
-                    <button
-                      type="button"
-                      className="header-menu-item"
-                      onClick={() => {
-                        setIsHeaderMenuOpen(false);
-                        copyShareLink();
-                      }}
-                    >
-                      Поделиться ссылкой
-                    </button>
-                  ) : null}
-                  {page !== "dashboard" ? (
-                    <button
-                      type="button"
-                      className="header-menu-item"
-                      onClick={() => {
-                        setIsHeaderMenuOpen(false);
-                        openDashboardPage();
-                      }}
-                    >
-                      Мои вишлисты
-                    </button>
-                  ) : null}
-                  {canManage ? (
-                    <button
-                      type="button"
-                      className="header-menu-item"
-                      onClick={() => {
-                        setIsHeaderMenuOpen(false);
-                        openWishCreateModal();
-                      }}
-                    >
-                      Добавить подарок
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="header-menu-item"
-                    onClick={() => {
-                      setIsHeaderMenuOpen(false);
-                      logout();
-                    }}
-                  >
-                    Выйти
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <UserBar
+            canManage={canManage}
+            showDashboardLink={page !== "dashboard"}
+            currentUserName={currentUserName}
+            isHeaderMenuOpen={isHeaderMenuOpen}
+            onOpenProfile={() => {
+              setIsHeaderMenuOpen(false);
+              openProfileModal();
+            }}
+            onToggleHeaderMenu={() => setIsHeaderMenuOpen((prev) => !prev)}
+            onOpenDashboard={() => {
+              setIsHeaderMenuOpen(false);
+              openDashboardPage();
+            }}
+            onCopyShareLink={() => {
+              setIsHeaderMenuOpen(false);
+              copyShareLink();
+            }}
+            onOpenWishCreate={() => {
+              setIsHeaderMenuOpen(false);
+              openWishCreateModal();
+            }}
+            onLogout={() => {
+              setIsHeaderMenuOpen(false);
+              logout();
+            }}
+          />
         ) : null}
 
         {showUserBar && shareCopied ? <p className="status-banner">{shareCopied}</p> : null}
@@ -1804,289 +1467,61 @@ export default function App() {
       </main>
 
       {openedWish ? (
-        <div className="wish-modal-backdrop" onClick={closeWishModal}>
-          <div className="wish-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="wish-modal-head">
-              <span className="wish-tag">{openedWish.tag}</span>
-              <span className="wish-price">{openedWish.price || "Цена не указана"}</span>
-            </div>
-
-            <h3>{openedWish.title}</h3>
-            <p className="wish-modal-note">{openedWish.note}</p>
-
-            <div className="wish-progress">
-              <div className="wish-progress-track">
-                <span className="wish-progress-fill" style={{ width: `${openedWishProgressPercent}%` }} />
-              </div>
-              <p className="wish-progress-text">
-                {openedWishTarget
-                  ? `${formatMoney(openedWishDonated)} / ${formatMoney(openedWishTarget)} руб.`
-                  : `${formatMoney(openedWishDonated)} руб. собрано`}
-              </p>
-            </div>
-
-            <div className="wish-modal-participants">
-              <span className="wish-participants-label">Участвуют</span>
-              {openedWishParticipants.length === 0 ? (
-                <p className="wish-participants-empty">Пока никого</p>
-              ) : (
-                openedWishParticipants.map((person) => (
-                  <div className="wish-participants-row" key={person.key}>
-                    <p className="wish-participants-item">
-                      {person.name} - {formatMoney(person.total)} руб.
-                    </p>
-                    {isCurrentUserParticipant(person) ? (
-                      <button
-                        type="button"
-                        className="wish-participants-remove"
-                        aria-label="Удалить мое участие"
-                        onClick={() => removeMyParticipation(openedWish.id)}
-                      >
-                        x
-                      </button>
-                    ) : null}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="wish-actions wish-actions-modal">
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => openDonationModal(openedWish, "reserve")}
-                disabled={openedWishCompleted || !openedWishTarget}
-              >
-                {openedWishCompleted ? "Собрано" : !openedWishTarget ? "Нет суммы" : "Забронировать"}
-              </button>
-              <button
-                type="button"
-                className="wish-donate-button"
-                onClick={() => openDonationModal(openedWish, "contribute")}
-                disabled={openedWishCompleted}
-              >
-                {openedWishCompleted ? "Собрано" : "Поучаствовать"}
-              </button>
-              {openedWish.url ? (
-                <a className="wish-shop-link" href={openedWish.url} target="_blank" rel="noreferrer">
-                  В магазин
-                </a>
-              ) : null}
-              <button type="button" className="button-secondary" onClick={closeWishModal}>
-                Закрыть
-              </button>
-            </div>
-          </div>
-        </div>
+        <WishDetailsModal
+          wish={openedWish}
+          progressPercent={openedWishProgressPercent}
+          target={openedWishTarget}
+          donated={openedWishDonated}
+          participants={openedWishParticipants}
+          isCurrentUserParticipant={isCurrentUserParticipant}
+          onRemoveMyParticipation={removeMyParticipation}
+          onOpenReservation={() => openDonationModal(openedWish, "reserve")}
+          onOpenContribution={() => openDonationModal(openedWish, "contribute")}
+          onClose={closeWishModal}
+        />
       ) : null}
 
-      {isProfileOpen ? (
-        <div className="donation-modal-backdrop" onClick={closeProfileModal}>
-          <div className="donation-modal profile-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Профиль</h3>
-            <p className="donation-modal-title">Редактирование данных аккаунта</p>
+      <ProfileModal
+        isOpen={isProfileOpen}
+        profileForm={profileForm}
+        profileError={profileError}
+        isProfileSubmitting={isProfileSubmitting}
+        isAccountDeleting={isAccountDeleting}
+        isDeleteAccountConfirmOpen={isDeleteAccountConfirmOpen}
+        deleteAccountConfirmation={deleteAccountConfirmation}
+        onClose={closeProfileModal}
+        onSubmit={submitProfile}
+        onInputChange={onProfileInputChange}
+        onOpenBirthdayPicker={() => setIsProfileBirthdayPickerOpen(true)}
+        onOpenIdentityModal={() => setIsIdentityModalOpen(true)}
+        onToggleDeleteConfirm={() => {
+          setIsDeleteAccountConfirmOpen((prev) => !prev);
+          setDeleteAccountConfirmation("");
+          setProfileError("");
+        }}
+        onDeleteAccountConfirmationChange={(event) => {
+          setDeleteAccountConfirmation(event.target.value);
+          if (profileError) {
+            setProfileError("");
+          }
+        }}
+        onDeleteAccount={deleteAccount}
+      />
 
-            <form className="donation-form profile-form" onSubmit={submitProfile}>
-              <label>
-                Имя
-                <input
-                  type="text"
-                  name="firstName"
-                  value={profileForm.firstName}
-                  onChange={onProfileInputChange}
-                  placeholder="Имя"
-                />
-              </label>
-
-              <label>
-                Фамилия
-                <input
-                  type="text"
-                  name="lastName"
-                  value={profileForm.lastName}
-                  onChange={onProfileInputChange}
-                  placeholder="Фамилия"
-                />
-              </label>
-
-              <label>
-                Дата рождения
-                <input
-                  type="text"
-                  name="birthday"
-                  value={profileForm.birthday}
-                  onClick={() => setIsProfileBirthdayPickerOpen(true)}
-                  onFocus={() => setIsProfileBirthdayPickerOpen(true)}
-                  placeholder="ДД-ММ-ГГГГ"
-                  readOnly
-                  className="birthday-picker-trigger"
-                />
-              </label>
-
-              <button
-                type="button"
-                className="button-secondary profile-identities-button"
-                onClick={() => setIsIdentityModalOpen(true)}
-                disabled={isProfileSubmitting || isAccountDeleting}
-              >
-                Способы входа
-              </button>
-
-              <div className="account-danger-zone">
-                <button
-                  type="button"
-                  className="delete-button"
-                  onClick={() => {
-                    setIsDeleteAccountConfirmOpen((prev) => !prev);
-                    setDeleteAccountConfirmation("");
-                    setProfileError("");
-                  }}
-                  disabled={isProfileSubmitting || isAccountDeleting}
-                >
-                  Удалить аккаунт
-                </button>
-
-                {isDeleteAccountConfirmOpen ? (
-                  <div className="account-danger-confirm">
-                    <p className="account-danger-text">
-                      Аккаунт будет удален полностью вместе с вишлистами, подарками и связанными данными. Для подтверждения введи
-                      {" "}
-                      <strong>УДАЛИТЬ</strong>.
-                    </p>
-                    <input
-                      type="text"
-                      value={deleteAccountConfirmation}
-                      onChange={(event) => {
-                        setDeleteAccountConfirmation(event.target.value);
-                        if (profileError) {
-                          setProfileError("");
-                        }
-                      }}
-                      placeholder="УДАЛИТЬ"
-                      autoComplete="off"
-                    />
-                    <button
-                      type="button"
-                      className="delete-button"
-                      onClick={deleteAccount}
-                      disabled={isProfileSubmitting || isAccountDeleting || deleteAccountConfirmation.trim().toUpperCase() !== "УДАЛИТЬ"}
-                    >
-                      {isAccountDeleting ? "Удаляем..." : "Подтвердить удаление"}
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
-              {profileError ? <p className="donation-error">{profileError}</p> : null}
-
-              <div className="donation-actions">
-                <button type="button" className="button-secondary" onClick={closeProfileModal} disabled={isProfileSubmitting || isAccountDeleting}>
-                  Отмена
-                </button>
-                <button type="submit" className="button-primary" disabled={isProfileSubmitting || isAccountDeleting}>
-                  {isProfileSubmitting ? "Сохраняем..." : "Сохранить"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
-      {isIdentityModalOpen ? (
-        <div className="donation-modal-backdrop" onClick={() => setIsIdentityModalOpen(false)}>
-          <div className="donation-modal identity-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Способы входа</h3>
-            <p className="donation-modal-title">Подключение удобных способов авторизации</p>
-
-            <div className="account-identity-section">
-              <div className="account-identity-row">
-                <div>
-                  <strong>Пароль</strong>
-                  <p>Обычный вход по email и паролю.</p>
-                </div>
-                <span className="account-identity-badge">
-                  {currentUser?.identities?.some((identity) => identity.provider === "password") ? "Подключен" : "Не подключен"}
-                </span>
-              </div>
-
-              <div className="account-identity-row">
-                <div>
-                  <strong>Google</strong>
-                  <p>Можно входить через Google без создания нового профиля.</p>
-                </div>
-                {currentUser?.identities?.some((identity) => identity.provider === "google") ? (
-                  <button
-                    type="button"
-                    className="delete-button account-identity-action account-identity-action-danger"
-                    onClick={() => handleIdentityUnlink("google")}
-                    disabled={
-                      isProfileSubmitting ||
-                      isAccountDeleting ||
-                      isIdentitySubmitting ||
-                      !canUnlinkIdentity("google")
-                    }
-                  >
-                    {isIdentitySubmitting ? "..." : "Отвязать"}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="button-secondary account-identity-action"
-                    onClick={startGoogleLink}
-                    disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
-                  >
-                    {isIdentitySubmitting ? "Подключаем..." : "Привязать"}
-                  </button>
-                )}
-              </div>
-
-              <div className="account-identity-row">
-                <div>
-                  <strong>Яндекс</strong>
-                  <p>Можно привязать даже если у Яндекса другой email.</p>
-                </div>
-                {currentUser?.identities?.some((identity) => identity.provider === "yandex") ? (
-                  <button
-                    type="button"
-                    className="delete-button account-identity-action account-identity-action-danger"
-                    onClick={() => handleIdentityUnlink("yandex")}
-                    disabled={
-                      isProfileSubmitting ||
-                      isAccountDeleting ||
-                      isIdentitySubmitting ||
-                      !canUnlinkIdentity("yandex")
-                    }
-                  >
-                    {isIdentitySubmitting ? "..." : "Отвязать"}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="button-secondary account-identity-action"
-                    onClick={startYandexLink}
-                    disabled={isProfileSubmitting || isAccountDeleting || isIdentitySubmitting}
-                  >
-                    {isIdentitySubmitting ? "Подключаем..." : "Привязать"}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {profileError ? <p className="donation-error">{profileError}</p> : null}
-
-            <div className="donation-actions">
-              <button
-                type="button"
-                className="button-secondary"
-                onClick={() => setIsIdentityModalOpen(false)}
-                disabled={isIdentitySubmitting}
-              >
-                Закрыть
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <IdentityModal
+        isOpen={isIdentityModalOpen}
+        currentUser={currentUser}
+        profileError={profileError}
+        isProfileSubmitting={isProfileSubmitting}
+        isAccountDeleting={isAccountDeleting}
+        isIdentitySubmitting={isIdentitySubmitting}
+        canUnlinkIdentity={canUnlinkIdentity}
+        onClose={() => setIsIdentityModalOpen(false)}
+        onStartGoogleLink={startGoogleLink}
+        onStartYandexLink={startYandexLink}
+        onUnlinkGoogle={() => handleIdentityUnlink("google")}
+        onUnlinkYandex={() => handleIdentityUnlink("yandex")}
+      />
 
       <BirthdayPickerModal
         isOpen={isProfileBirthdayPickerOpen}
@@ -2098,92 +1533,40 @@ export default function App() {
         }}
       />
 
-      {donationWish ? (
-        <div className="donation-modal-backdrop" onClick={closeDonationModal}>
-          <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>{donationMode === "reserve" ? "Забронировать подарок" : "Поучаствовать в подарке"}</h3>
-            <p className="donation-modal-title">{donationWish.title}</p>
-            <p className="donation-modal-subtitle">
-              {donationMode === "reserve" ? "Кто бронирует подарок" : `Участвует: ${currentUser ? getUserDisplayName(currentUser) : donationName.trim() || "Гость"}`}
-            </p>
+      <DonationModal
+        wish={donationWish}
+        mode={donationMode}
+        currentUser={currentUser}
+        donationName={donationName}
+        donationAmount={donationAmount}
+        donationError={donationError}
+        isDonationSubmitting={isDonationSubmitting}
+        target={donationWishTarget}
+        remaining={donationWishRemaining}
+        onNameChange={(event) => {
+          setDonationName(event.target.value);
+          if (donationError) {
+            setDonationError("");
+          }
+        }}
+        onAmountChange={(event) => {
+          setDonationAmount(event.target.value);
+          if (donationError) {
+            setDonationError("");
+          }
+        }}
+        onDonateFullRemaining={donateFullRemaining}
+        onSubmitContribution={submitDonation}
+        onSubmitReservation={submitReservation}
+        onClose={closeDonationModal}
+      />
 
-            <form className="donation-form" onSubmit={donationMode === "reserve" ? submitReservation : submitDonation}>
-              {donationMode === "reserve" || !currentUser ? (
-                <label>
-                  Твое имя
-                  <input
-                    type="text"
-                    value={donationName}
-                    onChange={(event) => {
-                      setDonationName(event.target.value);
-                      if (donationError) {
-                        setDonationError("");
-                      }
-                    }}
-                    placeholder="Например: Аня"
-                    autoFocus
-                  />
-                </label>
-              ) : null}
-
-              {donationMode !== "reserve" ? (
-                <label>
-                  Сумма
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={donationAmount}
-                    onChange={(event) => {
-                      setDonationAmount(event.target.value);
-                      if (donationError) {
-                        setDonationError("");
-                      }
-                    }}
-                    placeholder="Например: 1000"
-                    autoFocus={Boolean(currentUser)}
-                  />
-                </label>
-              ) : null}
-
-              {donationError ? <p className="donation-error">{donationError}</p> : null}
-
-              <div className="donation-actions">
-                {donationMode !== "reserve" && donationWishTarget && donationWishRemaining > 0 ? (
-                  <button type="button" className="button-secondary" onClick={donateFullRemaining} disabled={isDonationSubmitting}>
-                    Закрыть все ({formatMoney(donationWishRemaining)} руб.)
-                  </button>
-                ) : null}
-                <button type="submit" className="button-primary" disabled={isDonationSubmitting}>
-                  {isDonationSubmitting ? "Сохраняем..." : donationMode === "reserve" ? "Забронировать" : "Добавить"}
-                </button>
-                <button type="button" className="button-secondary" onClick={closeDonationModal} disabled={isDonationSubmitting}>
-                  Отмена
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
-      {wishlistToDelete ? (
-        <div className="donation-modal-backdrop" onClick={cancelDeleteWishlist}>
-          <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Удалить вишлист?</h3>
-            <p className="donation-modal-title">
-              {`Удалить вишлист "${wishlistToDelete.title}"? Это удалит и все подарки внутри.`}
-            </p>
-
-            <div className="donation-actions">
-              <button type="button" className="button-secondary" onClick={cancelDeleteWishlist} disabled={isWishlistSubmitting}>
-                Отмена
-              </button>
-              <button type="button" className="delete-button" onClick={confirmDeleteWishlist} disabled={isWishlistSubmitting}>
-                {isWishlistSubmitting ? "Удаляем..." : "Удалить"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <DeleteWishlistModal
+        wishlist={wishlistToDelete}
+        isSubmitting={isWishlistSubmitting}
+        onClose={cancelDeleteWishlist}
+        onConfirm={confirmDeleteWishlist}
+      />
 
     </div>
   );
