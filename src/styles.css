@@ -71,6 +71,38 @@ a {
   font: inherit;
 }
 
+button,
+[role="button"],
+.button-primary,
+.button-secondary,
+.wish-donate-button,
+.wish-shop-link,
+.edit-button,
+.delete-button,
+.tiny-admin-button,
+.custom-select-trigger,
+.custom-select-item,
+.theme-option,
+.wish-sort-button,
+.header-back-button,
+.burger-button,
+.header-menu-item,
+.auth-oauth-button,
+.auth-google-custom-button,
+.account-identity-action,
+.profile-identities-button,
+.wishlist-open-button,
+.copy-link-button {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.22s ease,
+    background-color 0.22s ease,
+    border-color 0.22s ease,
+    color 0.22s ease,
+    opacity 0.22s ease;
+  will-change: transform;
+}
+
 button:focus,
 button:focus-visible,
 [type="button"]:focus,
@@ -91,6 +123,70 @@ select:focus-visible,
 [role="button"]:focus-visible {
   outline: none;
   box-shadow: none;
+}
+
+@media (hover: hover) {
+  button:hover,
+  [role="button"]:hover,
+  .custom-select-trigger:hover,
+  .custom-select-item:hover,
+  .theme-option:hover,
+  .header-menu-item:hover {
+    transform: translateY(-1px);
+  }
+}
+
+button:active,
+[role="button"]:active,
+.button-primary:active,
+.button-secondary:active,
+.wish-donate-button:active,
+.wish-shop-link:active,
+.edit-button:active,
+.delete-button:active,
+.tiny-admin-button:active,
+.custom-select-trigger:active,
+.custom-select-item:active,
+.theme-option:active,
+.wish-sort-button:active,
+.header-back-button:active,
+.burger-button:active,
+.header-menu-item:active,
+.auth-oauth-button:active,
+.auth-google-custom-button:active,
+.account-identity-action:active,
+.profile-identities-button:active,
+.wishlist-open-button:active,
+.copy-link-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.button-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.button-primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -32%;
+  width: 32%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: skewX(-18deg);
+  opacity: 0;
+  transition:
+    transform 0.45s ease,
+    opacity 0.25s ease;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .button-primary:hover::after {
+    opacity: 1;
+    transform: translateX(420%) skewX(-18deg);
+  }
 }
 
 #root {
