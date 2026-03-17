@@ -33,6 +33,14 @@
   user-select: none;
 }
 
+button,
+a,
+[role="button"],
+summary,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
 input,
 textarea,
 [contenteditable="true"],
@@ -61,6 +69,28 @@ a {
 button,
 a {
   font: inherit;
+}
+
+button:focus,
+button:focus-visible,
+[type="button"]:focus,
+[type="button"]:focus-visible,
+[type="submit"]:focus,
+[type="submit"]:focus-visible,
+[type="reset"]:focus,
+[type="reset"]:focus-visible,
+a:focus,
+a:focus-visible,
+[role="button"]:focus,
+[role="button"]:focus-visible,
+summary:focus,
+summary:focus-visible,
+select:focus,
+select:focus-visible,
+[role="button"]:focus,
+[role="button"]:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 #root {
