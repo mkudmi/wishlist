@@ -1,5 +1,7 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BirthdayPickerModal } from "../BirthdayPickerModal";
 import { celebrationOptions } from "../../config/constants";
+import { formatDateToDdMmYyyy } from "../../lib/helpers";
 
 export function DashboardPage({
   wishlists,
@@ -18,11 +20,26 @@ export function DashboardPage({
   const [customCelebration, setCustomCelebration] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [isCelebrationMenuOpen, setIsCelebrationMenuOpen] = useState(false);
+  const [isEventDatePickerOpen, setIsEventDatePickerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const celebrationMenuRef = useRef(null);
 
   const needsCustomTitle = celebrationType === "custom";
   const needsEventDate = celebrationType !== "birthday";
   const currentCelebrationOption = celebrationOptions.find((option) => option.value === celebrationType) || celebrationOptions[0];
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const syncIsMobile = () => setIsMobile(mediaQuery.matches);
+    syncIsMobile();
+
+    mediaQuery.addEventListener("change", syncIsMobile);
+    return () => mediaQuery.removeEventListener("change", syncIsMobile);
+  }, []);
 
   useEffect(() => {
     if (!isCelebrationMenuOpen) {
@@ -63,11 +80,13 @@ export function DashboardPage({
     setCustomCelebration("");
     setEventDate("");
     setIsCelebrationMenuOpen(false);
+    setIsEventDatePickerOpen(false);
     setIsCreateModalOpen(true);
   }
 
   function closeCreateModal() {
     setIsCelebrationMenuOpen(false);
+    setIsEventDatePickerOpen(false);
     setIsCreateModalOpen(false);
   }
 
@@ -79,6 +98,7 @@ export function DashboardPage({
     }
     if (value === "birthday") {
       setEventDate("");
+      setIsEventDatePickerOpen(false);
     }
   }
 
@@ -257,7 +277,20 @@ export function DashboardPage({
               {needsEventDate ? (
                 <label>
                   Дата события
-                  <input type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} required />
+                  {isMobile ? (
+                    <input type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} required />
+                  ) : (
+                    <input
+                      type="text"
+                      value={formatDateToDdMmYyyy(eventDate)}
+                      onClick={() => setIsEventDatePickerOpen(true)}
+                      onFocus={() => setIsEventDatePickerOpen(true)}
+                      placeholder="ДД-ММ-ГГГГ"
+                      readOnly
+                      required
+                      className="birthday-picker-trigger"
+                    />
+                  )}
                 </label>
               ) : null}
 
@@ -273,6 +306,21 @@ export function DashboardPage({
           </div>
         </div>
       ) : null}
+
+      <BirthdayPickerModal
+        isOpen={isCreateModalOpen && isEventDatePickerOpen && !isMobile}
+        value={eventDate}
+        onClose={() => setIsEventDatePickerOpen(false)}
+        onConfirm={(nextValue) => {
+          setEventDate(nextValue);
+          setIsEventDatePickerOpen(false);
+        }}
+        kicker="Дата события"
+        title="Выбери день, месяц и год события"
+        outputFormat="storage"
+        defaultYearOffset={0}
+        maxYear={new Date().getFullYear() + 10}
+      />
     </section>
   );
 }

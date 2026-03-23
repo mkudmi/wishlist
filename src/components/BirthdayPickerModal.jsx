@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { parseDdMmYyyyToStorageDate } from "../lib/helpers";
+import { normalizeStorageDate, parseDdMmYyyyToStorageDate } from "../lib/helpers";
 
 const MONTHS = [
   "Январь",
@@ -20,8 +20,8 @@ function getDaysInMonth(year, month) {
   return new Date(year, month, 0).getDate();
 }
 
-function parseDisplayDate(value) {
-  const storageDate = parseDdMmYyyyToStorageDate(value);
+function parsePickerValue(value) {
+  const storageDate = normalizeStorageDate(value) || parseDdMmYyyyToStorageDate(value);
   if (!storageDate) {
     return null;
   }
@@ -38,9 +38,25 @@ function formatDisplayDate(day, month, year) {
   return `${String(day).padStart(2, "0")}-${String(month).padStart(2, "0")}-${String(year)}`;
 }
 
-export function BirthdayPickerModal({ isOpen, value, onClose, onConfirm }) {
+function formatStorageDate(day, month, year) {
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function BirthdayPickerModal({
+  isOpen,
+  value,
+  onClose,
+  onConfirm,
+  kicker = "Дата рождения",
+  title = "Выбери день, месяц и год",
+  outputFormat = "display",
+  defaultYearOffset = 25,
+  minYear = 1900,
+  maxYear
+}) {
   const today = new Date();
-  const defaultYear = today.getFullYear() - 25;
+  const resolvedMaxYear = maxYear ?? today.getFullYear();
+  const defaultYear = resolvedMaxYear - defaultYearOffset;
   const [selectedDay, setSelectedDay] = useState(1);
   const [selectedMonth, setSelectedMonth] = useState(1);
   const [selectedYear, setSelectedYear] = useState(defaultYear);
@@ -65,7 +81,7 @@ export function BirthdayPickerModal({ isOpen, value, onClose, onConfirm }) {
       return;
     }
 
-    const parsed = parseDisplayDate(value);
+    const parsed = parsePickerValue(value);
     if (parsed) {
       setSelectedDay(parsed.day);
       setSelectedMonth(parsed.month);
@@ -77,7 +93,7 @@ export function BirthdayPickerModal({ isOpen, value, onClose, onConfirm }) {
     }
 
     setMobileStep(1);
-  }, [defaultYear, isOpen, value]);
+  }, [defaultYear, isOpen, today, value]);
 
   useEffect(() => {
     const maxDay = getDaysInMonth(selectedYear, selectedMonth);
@@ -91,13 +107,21 @@ export function BirthdayPickerModal({ isOpen, value, onClose, onConfirm }) {
   }
 
   const years = [];
-  for (let year = today.getFullYear(); year >= 1900; year -= 1) {
+  for (let year = resolvedMaxYear; year >= minYear; year -= 1) {
     years.push(year);
   }
 
   const days = [];
   for (let day = 1; day <= getDaysInMonth(selectedYear, selectedMonth); day += 1) {
     days.push(day);
+  }
+
+  function handleConfirm() {
+    const formatted =
+      outputFormat === "storage"
+        ? formatStorageDate(selectedDay, selectedMonth, selectedYear)
+        : formatDisplayDate(selectedDay, selectedMonth, selectedYear);
+    onConfirm(formatted);
   }
 
   function renderDesktopColumns() {
@@ -219,8 +243,8 @@ export function BirthdayPickerModal({ isOpen, value, onClose, onConfirm }) {
       <div className="birthday-picker-modal" onClick={(event) => event.stopPropagation()}>
         <div className="birthday-picker-head">
           <div>
-            <p className="birthday-picker-kicker">Дата рождения</p>
-            <h3>Выбери день, месяц и год</h3>
+            <p className="birthday-picker-kicker">{kicker}</p>
+            <h3>{title}</h3>
           </div>
         </div>
 
@@ -241,7 +265,11 @@ export function BirthdayPickerModal({ isOpen, value, onClose, onConfirm }) {
         <p className="birthday-picker-preview">{formatDisplayDate(selectedDay, selectedMonth, selectedYear)}</p>
 
         <div className={`birthday-picker-actions${isMobile ? " birthday-picker-actions-mobile" : ""}`}>
-          <button type="button" className="button-secondary" onClick={isMobile && mobileStep > 1 ? () => setMobileStep((prev) => prev - 1) : onClose}>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={isMobile && mobileStep > 1 ? () => setMobileStep((prev) => prev - 1) : onClose}
+          >
             {isMobile && mobileStep > 1 ? "Назад" : "Отмена"}
           </button>
 
@@ -250,11 +278,7 @@ export function BirthdayPickerModal({ isOpen, value, onClose, onConfirm }) {
               Далее
             </button>
           ) : (
-            <button
-              type="button"
-              className="button-primary"
-              onClick={() => onConfirm(formatDisplayDate(selectedDay, selectedMonth, selectedYear))}
-            >
+            <button type="button" className="button-primary" onClick={handleConfirm}>
               Выбрать
             </button>
           )}

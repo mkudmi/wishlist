@@ -1196,6 +1196,43 @@ h3 {
   box-shadow: 0 12px 28px rgba(126, 182, 255, 0.18);
 }
 
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .account-identity-section {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(126, 182, 255, 0.18);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .account-identity-title,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .account-identity-row strong {
+  color: rgba(244, 243, 239, 0.96);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .account-identity-row + .account-identity-row {
+  border-top-color: rgba(126, 182, 255, 0.14);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .account-identity-row p {
+  color: rgba(230, 236, 246, 0.8);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .account-identity-badge {
+  border-color: rgba(137, 215, 196, 0.28);
+  background: rgba(137, 215, 196, 0.16);
+  color: #d6fff6;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .account-identity-action {
+  border-color: rgba(126, 182, 255, 0.22);
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(244, 243, 239, 0.96);
+}
+
+@media (hover: hover) {
+  .page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .account-identity-action:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(126, 182, 255, 0.3);
+  }
+}
+
 .donation-form {
   margin-top: 14px;
   display: grid;
@@ -2511,13 +2548,13 @@ h3 {
   margin-top: 8px;
   padding: 10px 12px;
   border-radius: 16px;
-  background: rgba(255, 250, 243, 0.86);
-  border: 1px solid rgba(95, 67, 39, 0.1);
+  background: color-mix(in srgb, var(--color-surface-strong) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
 }
 
 .account-identity-title {
   margin: 0 0 8px;
-  color: #5d4331;
+  color: color-mix(in srgb, var(--color-ink) 76%, var(--color-muted) 24%);
   font-size: 0.84rem;
   font-weight: 700;
 }
@@ -2531,17 +2568,17 @@ h3 {
 }
 
 .account-identity-row + .account-identity-row {
-  border-top: 1px solid rgba(95, 67, 39, 0.08);
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
 }
 
 .account-identity-row strong {
   display: block;
-  color: #241811;
+  color: var(--color-ink);
 }
 
 .account-identity-row p {
   margin: 3px 0 0;
-  color: #73543f;
+  color: color-mix(in srgb, var(--color-muted) 88%, var(--color-ink) 12%);
   font-size: 0.82rem;
   line-height: 1.28;
 }
@@ -2554,8 +2591,9 @@ h3 {
   min-height: 34px;
   padding: 7px 12px;
   border-radius: 999px;
-  background: rgba(38, 122, 68, 0.12);
-  color: #1c6f3c;
+  border: 1px solid color-mix(in srgb, var(--color-emerald) 28%, transparent);
+  background: color-mix(in srgb, var(--color-emerald) 18%, var(--color-surface-strong));
+  color: color-mix(in srgb, var(--color-emerald-soft) 78%, var(--color-emerald) 22%);
   font-size: 0.8rem;
   font-weight: 700;
 }
