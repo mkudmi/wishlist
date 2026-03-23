@@ -26,6 +26,7 @@ import {
 } from "./lib/helpers";
 import { buildAppUser } from "./lib/authUser";
 import {
+  AUTH_TOKEN_KEY,
   createWishRecord,
   createWishlistRecord,
   createWishReservationRecord,
@@ -175,6 +176,36 @@ export default function App({ initialRouteOverride = null }) {
       setToast(null);
       toastTimeoutRef.current = null;
     }, duration);
+  }
+
+  async function hydrateSession({ withWishlistSelection = true } = {}) {
+    const { data: sessionUser } = await fetchCurrentUser();
+
+    if (!sessionUser) {
+      setCurrentUser(null);
+      setWishlists([]);
+      setCurrentWishlistId(null);
+      setCurrentShareToken(null);
+      setWishes([]);
+      setWishlistRules(defaultRules.slice(0, 5));
+      return null;
+    }
+
+    const appUser = buildAppUser(sessionUser);
+    setCurrentUser(appUser);
+
+    const lists = await loadWishlistsForUser();
+
+    if (withWishlistSelection && lists.length > 0) {
+      await selectWishlist(lists[0]);
+    } else if (lists.length === 0) {
+      setCurrentWishlistId(null);
+      setCurrentShareToken(null);
+      setWishes([]);
+      setWishlistRules(defaultRules.slice(0, 5));
+    }
+
+    return appUser;
   }
 
   async function saveRulesForWishlist(nextRules) {
@@ -381,37 +412,9 @@ export default function App({ initialRouteOverride = null }) {
     let mounted = true;
 
     async function loadSession() {
-      const { data: sessionUser } = await fetchCurrentUser();
-
+      await hydrateSession();
       if (!mounted) {
         return;
-      }
-
-      if (!sessionUser) {
-        setCurrentUser(null);
-        setWishlists([]);
-        setCurrentWishlistId(null);
-        setCurrentShareToken(null);
-        setWishes([]);
-        setWishlistRules(defaultRules.slice(0, 5));
-        setIsAuthLoading(false);
-        return;
-      }
-
-      const appUser = buildAppUser(sessionUser);
-      setCurrentUser(appUser);
-
-      const lists = await loadWishlistsForUser();
-      if (!mounted) {
-        return;
-      }
-
-      if (lists.length > 0) {
-        await selectWishlist(lists[0]);
-      } else {
-        setCurrentWishlistId(null);
-        setCurrentShareToken(null);
-        setWishes([]);
       }
       setIsAuthLoading(false);
     }
@@ -437,6 +440,24 @@ export default function App({ initialRouteOverride = null }) {
   }, []);
 
   useEffect(() => {
+    async function handleStorage(event) {
+      if (event.key !== AUTH_TOKEN_KEY) {
+        return;
+      }
+
+      if (!event.newValue) {
+        clearAuthenticatedState();
+        return;
+      }
+
+      await hydrateSession();
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (toastTimeoutRef.current) {
         window.clearTimeout(toastTimeoutRef.current);
@@ -449,10 +470,15 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
+    if (page === "landing" && !isAuthLoading) {
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+
     if (page === "wishlist" && !currentWishlistId) {
       navigate("/dashboard", { replace: true });
     }
-  }, [page, currentWishlistId, currentUser]);
+  }, [page, currentWishlistId, currentUser, isAuthLoading]);
 
   useEffect(() => {
     if (isAuthLoading || currentUser || page === "shared" || page === "landing") {
@@ -1321,12 +1347,14 @@ export default function App({ initialRouteOverride = null }) {
         form={authForm}
         error={authError}
         submitting={isAuthSubmitting}
+        currentUser={currentUser}
         onModeChange={onAuthModeChange}
         onErrorReset={resetAuthError}
         onInputChange={onAuthInputChange}
         onSubmit={submitAuth}
         onGoogleAuth={submitGoogleAuth}
         onYandexAuth={completeYandexAuth}
+        onContinueAuthenticated={openDashboardPage}
         seoPage={activeSeoPage}
       />
     );
@@ -1339,12 +1367,14 @@ export default function App({ initialRouteOverride = null }) {
         form={authForm}
         error={authError}
         submitting={isAuthSubmitting}
+        currentUser={currentUser}
         onModeChange={onAuthModeChange}
         onErrorReset={resetAuthError}
         onInputChange={onAuthInputChange}
         onSubmit={submitAuth}
         onGoogleAuth={submitGoogleAuth}
         onYandexAuth={completeYandexAuth}
+        onContinueAuthenticated={openDashboardPage}
         seoPage={activeSeoPage}
       />
     );

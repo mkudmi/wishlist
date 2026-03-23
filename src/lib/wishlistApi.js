@@ -1,4 +1,4 @@
-const AUTH_TOKEN_KEY = "wishlist-auth-token-v1";
+export const AUTH_TOKEN_KEY = "wishlist-auth-token-v1";
 const GUEST_SESSION_KEY = "wishlist-guest-session-v1";
 
 function getApiBaseUrl() {

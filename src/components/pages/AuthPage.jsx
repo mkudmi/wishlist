@@ -8,12 +8,14 @@ export function AuthPage({
   form,
   error,
   submitting,
+  currentUser = null,
   onModeChange,
   onErrorReset,
   onInputChange,
   onSubmit,
   onGoogleAuth,
   onYandexAuth,
+  onContinueAuthenticated,
   seoPage = seoLandingPages[0]
 }) {
   const isLogin = mode === "login";
@@ -231,6 +233,11 @@ export function AuthPage({
   }
 
   function openAuthModal(nextMode) {
+    if (currentUser) {
+      onContinueAuthenticated?.();
+      return;
+    }
+
     switchMode(nextMode);
     setIsAuthModalOpen(true);
   }
@@ -240,6 +247,15 @@ export function AuthPage({
       return;
     }
     setIsAuthModalOpen(false);
+  }
+
+  function handlePrimaryCta(nextMode = "login") {
+    if (currentUser) {
+      onContinueAuthenticated?.();
+      return;
+    }
+
+    openAuthModal(nextMode);
   }
 
   function goToNextRegisterStep() {
@@ -547,7 +563,7 @@ export function AuthPage({
             <button type="button" className="landing-nav-link" onClick={() => scrollToSection("landing-flow")}>
               Как это работает
             </button>
-            <button type="button" className="button-primary landing-nav-cta" onClick={() => openAuthModal("login")}>
+            <button type="button" className="button-primary landing-nav-cta" onClick={() => handlePrimaryCta("login")}>
               {seoPage.navCta}
             </button>
           </div>
@@ -559,7 +575,7 @@ export function AuthPage({
             <p className="landing-subtitle">{seoPage.heroText}</p>
 
             <div className="landing-hero-actions">
-              <button type="button" className="button-primary" onClick={() => openAuthModal("login")}>
+              <button type="button" className="button-primary" onClick={() => handlePrimaryCta("login")}>
                 {seoPage.heroPrimaryCta}
               </button>
               <button type="button" className="button-secondary landing-secondary-action" onClick={() => scrollToSection("landing-flow")}>
@@ -716,11 +732,11 @@ export function AuthPage({
             </div>
 
             <div className="landing-auth-cta-row">
-              <button type="button" className="button-primary" onClick={() => openAuthModal("login")}>
-                Создать аккаунт
+              <button type="button" className="button-primary" onClick={() => handlePrimaryCta("login")}>
+                {currentUser ? "Перейти к вишлистам" : "Создать аккаунт"}
               </button>
-              <button type="button" className="button-secondary landing-auth-cta-secondary" onClick={() => openAuthModal("login")}>
-                Уже есть аккаунт
+              <button type="button" className="button-secondary landing-auth-cta-secondary" onClick={() => handlePrimaryCta("login")}>
+                {currentUser ? "Открыть дашборд" : "Уже есть аккаунт"}
               </button>
             </div>
           </div>

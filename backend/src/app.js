@@ -185,14 +185,25 @@ async function getAuthUserFromToken(token) {
   }
   const tokenHash = hashToken(token);
   const { rows } = await pool.query(
-    `SELECT u.id, u.email, u.first_name, u.last_name, u.birthday, u.created_at
-     FROM user_sessions s
-     JOIN users u ON u.id = s.user_id
-     WHERE s.token_hash = $1 AND s.expires_at > NOW()
-     LIMIT 1;`,
+    `UPDATE user_sessions
+     SET expires_at = NOW() + INTERVAL '${SESSION_TTL_DAYS} days'
+     WHERE token_hash = $1 AND expires_at > NOW()
+     RETURNING user_id;`,
     [tokenHash]
   );
-  return rows[0] || null;
+
+  if (!rows[0]?.user_id) {
+    return null;
+  }
+
+  const { rows: userRows } = await pool.query(
+    `SELECT u.id, u.email, u.first_name, u.last_name, u.birthday, u.created_at
+     FROM users u
+     WHERE u.id = $1
+     LIMIT 1;`,
+    [rows[0].user_id]
+  );
+  return userRows[0] || null;
 }
 
 async function requireAuth(req, res, next) {
