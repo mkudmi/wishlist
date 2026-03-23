@@ -271,7 +271,8 @@ export function getRouteFromLocation() {
     return { page: "landing", shareToken: null, seoPageKey: "home" };
   }
 
-  const raw = window.location.pathname || "/";
+  const pathname = window.location.pathname || "/";
+  const raw = pathname !== "/" && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
   const seoPage = seoLandingPathMap[raw];
   if (seoPage) {
     return { page: "landing", shareToken: null, seoPageKey: seoPage.key };

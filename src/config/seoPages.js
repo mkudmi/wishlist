@@ -296,4 +296,15 @@ export const seoLandingPages = [
 ];
 
 export const seoLandingPageMap = Object.fromEntries(seoLandingPages.map((page) => [page.key, page]));
-export const seoLandingPathMap = Object.fromEntries(seoLandingPages.map((page) => [page.path, page]));
+export const seoLandingPathMap = Object.fromEntries(
+  seoLandingPages.flatMap((page) => {
+    if (page.path === "/") {
+      return [[page.path, page]];
+    }
+
+    return [
+      [page.path, page],
+      [`${page.path}/`, page]
+    ];
+  })
+);

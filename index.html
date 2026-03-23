@@ -119,7 +119,8 @@
     <script>
       (function () {
         var origin = "https://xn--80ajchdgcktejxc.xn--p1ai";
-        var path = window.location.pathname || "/";
+        var pathname = window.location.pathname || "/";
+        var path = pathname !== "/" && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
         var seoPages = {
           "/": {
             title: "Список желаний - Онлайн-вишлист для подарков",
