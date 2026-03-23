@@ -470,15 +470,10 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
-    if (page === "landing" && !isAuthLoading) {
-      navigate("/dashboard", { replace: true });
-      return;
-    }
-
     if (page === "wishlist" && !currentWishlistId) {
       navigate("/dashboard", { replace: true });
     }
-  }, [page, currentWishlistId, currentUser, isAuthLoading]);
+  }, [page, currentWishlistId, currentUser]);
 
   useEffect(() => {
     if (isAuthLoading || currentUser || page === "shared" || page === "landing") {
