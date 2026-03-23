@@ -67,7 +67,7 @@ jobs:
             backend/ \
             "$DEPLOY_USER@$DEPLOY_HOST:$APP_PATH/backend/"
           rsync -az -e "ssh -i ~/.ssh/deploy_key -p $DEPLOY_PORT" \
-            package.json package-lock.json \
+            package.json package-lock.json deploy/nginx/wishlist.conf \
             "$DEPLOY_USER@$DEPLOY_HOST:$APP_PATH/"
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod -R u=rwX,go=rX '$APP_PATH/backend' '$APP_PATH/package.json' '$APP_PATH/package-lock.json'"
 
@@ -79,6 +79,15 @@ jobs:
             npm run db:migrate && \
             systemctl restart wishlist-api.service && \
             systemctl is-active --quiet wishlist-api.service \
+          "
+
+      - name: Install nginx config and reload
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "\
+            install -D -m 644 '$APP_PATH/wishlist.conf' /etc/nginx/sites-available/wishlist.conf && \
+            ln -sfn /etc/nginx/sites-available/wishlist.conf /etc/nginx/sites-enabled/wishlist.conf && \
+            nginx -t && \
+            systemctl reload nginx \
           "
 
       - name: Activate release
