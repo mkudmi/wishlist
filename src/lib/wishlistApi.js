@@ -1,4 +1,5 @@
 export const AUTH_TOKEN_KEY = "wishlist-auth-token-v1";
+export const AUTH_EXPIRED_EVENT = "wishlist:auth-expired";
 const GUEST_SESSION_KEY = "wishlist-guest-session-v1";
 
 function getApiBaseUrl() {
@@ -67,8 +68,11 @@ export function getOrCreateGuestSessionId() {
   return created;
 }
 
-function toApiError(message) {
-  return { message: message || "API request failed" };
+function toApiError(message, extra = {}) {
+  return {
+    message: message || "API request failed",
+    ...extra
+  };
 }
 
 async function request(path, options = {}) {
@@ -104,9 +108,21 @@ async function request(path, options = {}) {
     }
 
     if (!response.ok) {
+      const errorCode = payload?.error || null;
+
+      if (response.status === 401 && token) {
+        setAuthToken(null);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+        }
+      }
+
       return {
         data: null,
-        error: toApiError(payload?.error || `${response.status} ${response.statusText}`)
+        error: toApiError(payload?.error || `${response.status} ${response.statusText}`, {
+          status: response.status,
+          code: errorCode
+        })
       };
     }
 

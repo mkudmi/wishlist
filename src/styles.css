@@ -2538,6 +2538,32 @@ h3 {
   animation: auth-spin 0.8s linear infinite;
 }
 
+.landing-cta-loading {
+  position: relative;
+}
+
+.landing-cta-loading .landing-cta-label {
+  opacity: 0;
+}
+
+.landing-cta-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -9px 0 0 -9px;
+  pointer-events: none;
+}
+
+.button-primary.landing-cta-loading .landing-cta-spinner {
+  border-color: rgba(255, 248, 241, 0.34);
+  border-top-color: #fff8f1;
+}
+
+.button-secondary.landing-cta-loading .landing-cta-spinner {
+  border-color: color-mix(in srgb, var(--color-ink) 16%, transparent);
+  border-top-color: var(--color-ink);
+}
+
 @keyframes auth-spin {
   to {
     transform: rotate(360deg);

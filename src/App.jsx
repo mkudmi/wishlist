@@ -26,6 +26,7 @@ import {
 } from "./lib/helpers";
 import { buildAppUser } from "./lib/authUser";
 import {
+  AUTH_EXPIRED_EVENT,
   AUTH_TOKEN_KEY,
   createWishRecord,
   createWishlistRecord,
@@ -104,6 +105,7 @@ export default function App({ initialRouteOverride = null }) {
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
   const [guestSessionId] = useState(() => getOrCreateGuestSessionId());
   const toastTimeoutRef = useRef(null);
+  const authExpiryHandledRef = useRef(false);
   const siteOrigin = "https://xn--80ajchdgcktejxc.xn--p1ai";
   const {
     isProfileOpen,
@@ -178,6 +180,41 @@ export default function App({ initialRouteOverride = null }) {
     }, duration);
   }
 
+  async function continueAuthenticatedFromLanding() {
+    const { data: sessionUser, error } = await fetchCurrentUser();
+
+    if (error || !sessionUser) {
+      return false;
+    }
+
+    const appUser = buildAppUser(sessionUser);
+    setCurrentUser(appUser);
+
+    const lists = await loadWishlistsForUser();
+    if (lists.length > 0) {
+      await selectWishlist(lists[0]);
+    } else {
+      setCurrentWishlistId(null);
+      setCurrentShareToken(null);
+      setWishes([]);
+      setWishlistRules(defaultRules.slice(0, 5));
+    }
+
+    navigate("/dashboard");
+    return true;
+  }
+
+  function handleUnauthorizedSession() {
+    if (authExpiryHandledRef.current) {
+      return;
+    }
+
+    authExpiryHandledRef.current = true;
+    clearAuthenticatedState();
+    navigate("/", { replace: true });
+    showToast("Сессия истекла. Войдите снова.", "error", 3000);
+  }
+
   async function hydrateSession({ withWishlistSelection = true } = {}) {
     const { data: sessionUser } = await fetchCurrentUser();
 
@@ -228,6 +265,11 @@ export default function App({ initialRouteOverride = null }) {
     const { data, error } = await fetchWishlistsByOwner();
 
     if (error) {
+      if (error.code === "unauthorized" || error.status === 401) {
+        setWishlists([]);
+        setIsWishlistsLoading(false);
+        return [];
+      }
       setWishlistsError("Не удалось загрузить вишлисты.");
       setWishlists([]);
       setIsWishlistsLoading(false);
@@ -243,6 +285,10 @@ export default function App({ initialRouteOverride = null }) {
     const { data, error } = await fetchWishesByWishlist(wishlistId);
 
     if (error) {
+      if (error.code === "unauthorized" || error.status === 401) {
+        setWishes([]);
+        return;
+      }
       showToast("Не удалось загрузить список подарков.", "error");
       setWishes([]);
       return;
@@ -458,12 +504,27 @@ export default function App({ initialRouteOverride = null }) {
   }, []);
 
   useEffect(() => {
+    function handleAuthExpired() {
+      handleUnauthorizedSession();
+    }
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (toastTimeoutRef.current) {
         window.clearTimeout(toastTimeoutRef.current);
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      authExpiryHandledRef.current = false;
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -1349,7 +1410,7 @@ export default function App({ initialRouteOverride = null }) {
         onSubmit={submitAuth}
         onGoogleAuth={submitGoogleAuth}
         onYandexAuth={completeYandexAuth}
-        onContinueAuthenticated={openDashboardPage}
+        onContinueAuthenticated={continueAuthenticatedFromLanding}
         seoPage={activeSeoPage}
       />
     );
@@ -1369,7 +1430,7 @@ export default function App({ initialRouteOverride = null }) {
         onSubmit={submitAuth}
         onGoogleAuth={submitGoogleAuth}
         onYandexAuth={completeYandexAuth}
-        onContinueAuthenticated={openDashboardPage}
+        onContinueAuthenticated={continueAuthenticatedFromLanding}
         seoPage={activeSeoPage}
       />
     );

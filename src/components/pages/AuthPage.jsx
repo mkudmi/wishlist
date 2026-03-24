@@ -26,6 +26,7 @@ export function AuthPage({
   const [isBirthdayPickerOpen, setIsBirthdayPickerOpen] = useState(false);
   const [hasTriedRegisterSubmit, setHasTriedRegisterSubmit] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [isPrimaryCtaLoading, setIsPrimaryCtaLoading] = useState(false);
   const googleCallbackRef = useRef(onGoogleAuth);
   const googleInitializedClientIdRef = useRef("");
 
@@ -233,11 +234,6 @@ export function AuthPage({
   }
 
   function openAuthModal(nextMode) {
-    if (currentUser) {
-      onContinueAuthenticated?.();
-      return;
-    }
-
     switchMode(nextMode);
     setIsAuthModalOpen(true);
   }
@@ -249,13 +245,23 @@ export function AuthPage({
     setIsAuthModalOpen(false);
   }
 
-  function handlePrimaryCta(nextMode = "login") {
-    if (currentUser) {
-      onContinueAuthenticated?.();
+  async function handlePrimaryCta(nextMode = "login") {
+    if (isPrimaryCtaLoading) {
       return;
     }
 
-    openAuthModal(nextMode);
+    setIsPrimaryCtaLoading(true);
+
+    try {
+      const shouldContinue = await onContinueAuthenticated?.();
+      if (shouldContinue) {
+        return;
+      }
+
+      openAuthModal(nextMode);
+    } finally {
+      setIsPrimaryCtaLoading(false);
+    }
   }
 
   function goToNextRegisterStep() {
@@ -563,8 +569,14 @@ export function AuthPage({
             <button type="button" className="landing-nav-link" onClick={() => scrollToSection("landing-flow")}>
               Как это работает
             </button>
-            <button type="button" className="button-primary landing-nav-cta" onClick={() => handlePrimaryCta("login")}>
-              {seoPage.navCta}
+            <button
+              type="button"
+              className={`button-primary landing-nav-cta${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
+              onClick={() => handlePrimaryCta("login")}
+              disabled={isPrimaryCtaLoading}
+            >
+              <span className="landing-cta-label">{seoPage.navCta}</span>
+              {isPrimaryCtaLoading ? <span className="landing-cta-spinner auth-button-spinner" aria-hidden="true" /> : null}
             </button>
           </div>
         </header>
@@ -575,8 +587,14 @@ export function AuthPage({
             <p className="landing-subtitle">{seoPage.heroText}</p>
 
             <div className="landing-hero-actions">
-              <button type="button" className="button-primary" onClick={() => handlePrimaryCta("login")}>
-                {seoPage.heroPrimaryCta}
+              <button
+                type="button"
+                className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
+                onClick={() => handlePrimaryCta("login")}
+                disabled={isPrimaryCtaLoading}
+              >
+                <span className="landing-cta-label">{seoPage.heroPrimaryCta}</span>
+                {isPrimaryCtaLoading ? <span className="landing-cta-spinner auth-button-spinner" aria-hidden="true" /> : null}
               </button>
               <button type="button" className="button-secondary landing-secondary-action" onClick={() => scrollToSection("landing-flow")}>
                 {seoPage.heroSecondaryCta}
@@ -732,11 +750,23 @@ export function AuthPage({
             </div>
 
             <div className="landing-auth-cta-row">
-              <button type="button" className="button-primary" onClick={() => handlePrimaryCta("login")}>
-                {currentUser ? "Перейти к вишлистам" : "Создать аккаунт"}
+              <button
+                type="button"
+                className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
+                onClick={() => handlePrimaryCta("login")}
+                disabled={isPrimaryCtaLoading}
+              >
+                <span className="landing-cta-label">{currentUser ? "Перейти к вишлистам" : "Создать аккаунт"}</span>
+                {isPrimaryCtaLoading ? <span className="landing-cta-spinner auth-button-spinner" aria-hidden="true" /> : null}
               </button>
-              <button type="button" className="button-secondary landing-auth-cta-secondary" onClick={() => handlePrimaryCta("login")}>
-                {currentUser ? "Открыть дашборд" : "Уже есть аккаунт"}
+              <button
+                type="button"
+                className={`button-secondary landing-auth-cta-secondary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
+                onClick={() => handlePrimaryCta("login")}
+                disabled={isPrimaryCtaLoading}
+              >
+                <span className="landing-cta-label">{currentUser ? "Открыть дашборд" : "Уже есть аккаунт"}</span>
+                {isPrimaryCtaLoading ? <span className="landing-cta-spinner auth-button-spinner" aria-hidden="true" /> : null}
               </button>
             </div>
           </div>
