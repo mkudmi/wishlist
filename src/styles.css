@@ -1256,24 +1256,38 @@ span.snap-accent-word {
     align-items: center;
   }
 
+  .snap-panel-auth {
+    padding-top: 0;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  }
+
   .snap-auth-panel {
-    min-height: calc(100svh - 132px);
+    min-height: calc(100svh - max(10px, env(safe-area-inset-bottom, 0px)));
     justify-content: center;
   }
 
   .snap-auth-copy {
     padding: 0;
+    transform: translateY(3svh);
   }
 
+  .snap-panel-auth .snap-actions {
+    margin-top: 18px;
+  }
+
+  .snap-panel-hero .snap-actions .button-primary,
   .snap-panel-auth .snap-actions .button-primary {
     min-width: 0;
     width: 100%;
+    min-height: 54px;
+    padding: 0 20px;
     font-size: 1.08rem;
   }
 
   .snap-legal-footer {
     margin-top: 8px;
     padding-top: 0;
+    padding-bottom: 0;
     gap: 10px;
   }
 
