@@ -25,7 +25,6 @@ export function AuthPage({
   form,
   error,
   submitting,
-  currentUser = null,
   onModeChange,
   onErrorReset,
   onInputChange,
@@ -44,12 +43,10 @@ export function AuthPage({
   const [hasTriedRegisterSubmit, setHasTriedRegisterSubmit] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isPrimaryCtaLoading, setIsPrimaryCtaLoading] = useState(false);
+  const [giftScene, setGiftScene] = useState({ scrollTop: 0, width: 0, height: 0, offsets: [] });
   const googleCallbackRef = useRef(onGoogleAuth);
   const googleInitializedClientIdRef = useRef("");
   const scrollRef = useRef(null);
-  const snapLockRef = useRef(false);
-  const heroSectionRef = useRef(null);
-  const giftCardRef = useRef(null);
 
   useEffect(() => {
     googleCallbackRef.current = onGoogleAuth;
@@ -61,9 +58,157 @@ export function AuthPage({
     }
 
     const section = document.getElementById(sectionId);
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    const container = scrollRef.current;
+    if (section && container) {
+      container.scrollTo({ top: section.offsetTop, behavior: "auto" });
     }
+  }
+
+  function clampValue(min, value, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function lerp(start, end, progress) {
+    return start + (end - start) * progress;
+  }
+
+  function smoothstep(progress) {
+    return progress * progress * (3 - 2 * progress);
+  }
+
+  function getGiftBaseMetrics(width, height) {
+    const containerWidth = Math.min(1180, width - 40);
+    const containerLeft = (width - containerWidth) / 2;
+
+    if (width >= 1440) {
+      return {
+        containerWidth,
+        containerLeft,
+        giftWidth: clampValue(460, width * 0.35, 720),
+        baseRight: Math.max(0, (width - Math.min(1180, width - 40)) / 2 - 10),
+        baseCenterY: height * 0.4
+      };
+    }
+
+    if (width >= 721 && width <= 1024) {
+      return {
+        containerWidth,
+        containerLeft,
+        giftWidth: clampValue(340, width * 0.41, 480),
+        baseRight: clampValue(-4, width * 0.008, 8),
+        baseCenterY: height * 0.42
+      };
+    }
+
+    return {
+      containerWidth,
+      containerLeft,
+      giftWidth: clampValue(400, width * 0.39, 650),
+      baseRight: Math.max(-10, (width - Math.min(1180, width - 40)) / 2 - 10),
+      baseCenterY: height * 0.41
+    };
+  }
+
+  function getGiftTarget(section, width, height) {
+    if (width > 720 && (section === 1 || section === 2)) {
+      const { containerWidth, containerLeft, giftWidth, baseRight, baseCenterY } = getGiftBaseMetrics(width, height);
+      const safeWidth = clampValue(180, width * 0.2, 320);
+      const scale = 1;
+      const visualGiftWidth = giftWidth * scale;
+      const desiredCenterX =
+        section === 1 ? containerLeft + containerWidth - safeWidth / 2 : containerLeft + safeWidth / 2;
+
+      return {
+        shiftX: desiredCenterX - (width - baseRight - visualGiftWidth / 2),
+        shiftY: height / 2 - baseCenterY,
+        rotate: 0,
+        scale
+      };
+    }
+
+    if (width > 720 && section === 3) {
+      const { containerWidth, containerLeft, giftWidth, baseRight, baseCenterY } = getGiftBaseMetrics(width, height);
+      const scale = 1.38;
+      const visualGiftWidth = giftWidth * scale;
+      const textColumnWidth = Math.min(464, containerWidth * 0.48);
+      const gap = clampValue(20, width * 0.03, 48);
+      const rightColumnWidth = Math.max(containerWidth - textColumnWidth - gap, 280);
+      const opticalOffsetX = Math.min(rightColumnWidth * 0.08, 40);
+      const opticalOffsetY = Math.min(giftWidth * (scale - 1) * 0.08, 22);
+      const desiredCenterX = containerLeft + textColumnWidth + gap + rightColumnWidth / 2 - opticalOffsetX;
+
+      return {
+        shiftX: desiredCenterX - (width - baseRight - visualGiftWidth / 2),
+        shiftY: height / 2 - baseCenterY - opticalOffsetY,
+        rotate: 0,
+        scale
+      };
+    }
+
+    switch (section) {
+      case 1:
+        return {
+          shiftX: width * 0.11,
+          shiftY: -height * 0.075,
+          rotate: 0,
+          scale: 1
+        };
+      case 2:
+        return {
+          shiftX: width * -0.43,
+          shiftY: height * 0.12,
+          rotate: 0,
+          scale: 1
+        };
+      case 3:
+        return {
+          shiftX: width * 0.07,
+          shiftY: height * 0.09,
+          rotate: 0,
+          scale: 1.5
+        };
+      default:
+        return {
+          shiftX: 0,
+          shiftY: 0,
+          rotate: 0,
+          scale: 1
+        };
+    }
+  }
+
+  function getGiftMotion(scrollTop, width, height, offsets) {
+    if (!offsets?.length) {
+      return getGiftTarget(0, width, height);
+    }
+
+    const lastIndex = offsets.length - 1;
+    let currentIndex = lastIndex;
+
+    for (let index = 0; index < lastIndex; index += 1) {
+      if (scrollTop < offsets[index + 1]) {
+        currentIndex = index;
+        break;
+      }
+    }
+
+    if (currentIndex === lastIndex) {
+      return getGiftTarget(lastIndex, width, height);
+    }
+
+    const startOffset = offsets[currentIndex];
+    const endOffset = offsets[currentIndex + 1];
+    const rawProgress = (scrollTop - startOffset) / Math.max(endOffset - startOffset, 1);
+    const progress = smoothstep(clampValue(0, rawProgress, 1));
+    const from = getGiftTarget(currentIndex, width, height);
+    const to = getGiftTarget(currentIndex + 1, width, height);
+
+    return {
+      shiftX: lerp(from.shiftX, to.shiftX, progress),
+      shiftY: lerp(from.shiftY, to.shiftY, progress),
+      rotate: lerp(from.rotate, to.rotate, progress),
+      scale: lerp(from.scale, to.scale, progress)
+    };
   }
 
   useEffect(() => {
@@ -183,117 +328,40 @@ export function AuthPage({
       return undefined;
     }
 
-    function handleWheel(event) {
-      if (snapLockRef.current || isAuthModalOpen) {
-        event.preventDefault();
-        return;
-      }
+    function updateGiftScene() {
+      const scrollTop = container.scrollTop;
+      const offsets = sections.map((section) => section.offsetTop);
+      setGiftScene((prev) => {
+        if (
+          prev.scrollTop === scrollTop &&
+          prev.width === container.clientWidth &&
+          prev.height === container.clientHeight &&
+          prev.offsets.length === offsets.length &&
+          prev.offsets.every((offset, index) => offset === offsets[index])
+        ) {
+          return prev;
+        }
 
-      const threshold = 18;
-      if (Math.abs(event.deltaY) < threshold) {
-        return;
-      }
-
-      event.preventDefault();
-
-      const currentIndex = sections.reduce(
-        (bestMatch, section, index) => {
-          const distance = Math.abs(section.offsetTop - container.scrollTop);
-          if (distance < bestMatch.distance) {
-            return { index, distance };
-          }
-          return bestMatch;
-        },
-        { index: 0, distance: Number.POSITIVE_INFINITY }
-      ).index;
-      const direction = event.deltaY > 0 ? 1 : -1;
-      const nextIndex = Math.max(0, Math.min(sections.length - 1, currentIndex + direction));
-
-      if (nextIndex === currentIndex) {
-        return;
-      }
-
-      snapLockRef.current = true;
-      sections[nextIndex].scrollIntoView({ behavior: "smooth", block: "start" });
-      window.setTimeout(() => {
-        snapLockRef.current = false;
-      }, 700);
+        return {
+          scrollTop,
+          width: container.clientWidth,
+          height: container.clientHeight,
+          offsets
+        };
+      });
     }
 
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    return () => container.removeEventListener("wheel", handleWheel);
-  }, [isAuthModalOpen]);
-
-  useEffect(() => {
-    const container = scrollRef.current;
-    const heroSection = heroSectionRef.current;
-    if (!container || !heroSection || typeof window === "undefined") {
-      return undefined;
-    }
-
-    let animationFrame = 0;
-
-    function updateGiftMotion() {
-      animationFrame = 0;
-      const giftCard = giftCardRef.current;
-      if (!giftCard) {
-        return;
-      }
-
-      const heroHeight = Math.max(heroSection.offsetHeight, 1);
-      const rawProgress = Math.min(Math.max(container.scrollTop / heroHeight, 0), 3);
-      const phaseOneProgress = Math.min(rawProgress, 1);
-      const phaseTwoProgress = Math.min(Math.max(rawProgress - 1, 0), 1);
-      const phaseThreeProgress = Math.min(Math.max(rawProgress - 2, 0), 1);
-      const easedPhaseOne = phaseOneProgress * phaseOneProgress * (3 - 2 * phaseOneProgress);
-      const easedPhaseTwo = phaseTwoProgress * phaseTwoProgress * (3 - 2 * phaseTwoProgress);
-      const easedPhaseThree = phaseThreeProgress * phaseThreeProgress * (3 - 2 * phaseThreeProgress);
-      const shiftX =
-        container.clientWidth *
-        (0.11 * easedPhaseOne - 0.54 * easedPhaseTwo + 0.5 * easedPhaseThree);
-      const requestedShiftY =
-        -container.clientHeight * (0.015 * easedPhaseOne + 0.06 * easedPhaseOne * easedPhaseOne) +
-        container.clientHeight * (0.035 * easedPhaseTwo + 0.16 * easedPhaseTwo * easedPhaseTwo) -
-        container.clientHeight * 0.03 * easedPhaseThree;
-      const rotation = 10 * easedPhaseOne - 8 * easedPhaseTwo + 6 * easedPhaseThree;
-      const scale = 1 + 0.05 * easedPhaseOne + 0.08 * easedPhaseTwo - 0.03 * easedPhaseThree;
-      const computedStyles = window.getComputedStyle(giftCard);
-      const fixedTop = Number.parseFloat(computedStyles.top) || 0;
-      const translatePercent = Number.parseFloat(
-        computedStyles.getPropertyValue("--gift-base-translate-y")
-      ) || 0;
-      const baseTranslatePx = (translatePercent / 100) * giftCard.offsetHeight;
-      const headerElement = document.querySelector(".snap-fixed-header");
-      const safeTop = (headerElement?.getBoundingClientRect().bottom || 0) + 20;
-      const minShiftY = safeTop - (fixedTop + baseTranslatePx);
-      const shiftY = requestedShiftY < 0 ? Math.max(requestedShiftY, minShiftY) : requestedShiftY;
-
-      container.style.setProperty("--gift-shift-x", `${shiftX.toFixed(1)}px`);
-      container.style.setProperty("--gift-shift-y", `${shiftY.toFixed(1)}px`);
-      container.style.setProperty("--gift-rotate", `${rotation.toFixed(2)}deg`);
-      container.style.setProperty("--gift-scale", scale.toFixed(3));
-    }
-
-    function handleScroll() {
-      if (animationFrame) {
-        return;
-      }
-
-      animationFrame = window.requestAnimationFrame(updateGiftMotion);
-    }
-
-    updateGiftMotion();
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll);
+    updateGiftScene();
+    container.addEventListener("scroll", updateGiftScene, { passive: true });
+    window.addEventListener("resize", updateGiftScene);
 
     return () => {
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
-      }
-      container.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
+      container.removeEventListener("scroll", updateGiftScene);
+      window.removeEventListener("resize", updateGiftScene);
     };
   }, []);
+
+  const giftMotion = getGiftMotion(giftScene.scrollTop, giftScene.width, giftScene.height, giftScene.offsets);
 
   function openYandexAuth() {
     const apiBase = getApiBase();
@@ -595,7 +663,7 @@ export function AuthPage({
                 ) : null}
 
                 {googleClientId ? (
-                  <button
+                    <button
                     type="button"
                     className="button-secondary auth-oauth-button auth-google-custom-button"
                     onClick={openGoogleAuth}
@@ -695,7 +763,7 @@ export function AuthPage({
   }
 
   return (
-      <div className="page-shell auth-shell snap-landing-shell">
+    <div className="page-shell auth-shell snap-landing-shell">
       <div className="snap-landing-bg snap-landing-bg-left" />
       <div className="snap-landing-bg snap-landing-bg-right" />
 
@@ -733,8 +801,25 @@ export function AuthPage({
         </div>
       </header>
 
+      <div
+        className="snap-hero-image-card"
+        aria-hidden="true"
+        style={{
+          "--gift-shift-x": `${giftMotion.shiftX.toFixed(1)}px`,
+          "--gift-shift-y": `${giftMotion.shiftY.toFixed(1)}px`,
+          "--gift-rotate": `${giftMotion.rotate.toFixed(2)}deg`,
+          "--gift-scale": `${giftMotion.scale.toFixed(3)}`
+        }}
+      >
+        <img
+          className="snap-hero-gift-image"
+          src="/branding/gift-box.png"
+          alt=""
+        />
+      </div>
+
       <div className="snap-landing-scroll" ref={scrollRef}>
-        <section className="snap-panel snap-panel-hero" id="landing-hero" data-snap-section ref={heroSectionRef}>
+        <section className="snap-panel snap-panel-hero" id="landing-hero" data-snap-section>
           <div className="snap-panel-inner snap-hero-simple">
             <div className="snap-copy">
               <h1 className="snap-title">Если ты сюда зашел, значит у тебя скоро праздник!</h1>
@@ -751,13 +836,6 @@ export function AuthPage({
               </div>
             </div>
 
-            <div className="snap-hero-image-card" aria-hidden="true" ref={giftCardRef}>
-              <img
-                className="snap-hero-gift-image"
-                src="/branding/gift-box.png"
-                alt=""
-              />
-            </div>
             <p className="snap-hero-side-note">А мы поможем тебе ответить на вопрос "Что подарить?"</p>
           </div>
         </section>
@@ -804,10 +882,11 @@ export function AuthPage({
         <section className="snap-panel snap-panel-auth" id="landing-auth" data-snap-section>
           <div className="snap-panel-inner snap-auth-panel">
             <div className="snap-auth-stage">
-              <div className="snap-heading snap-auth-copy">
-                <h2>{seoPage.authTitle}</h2>
+              <div className="snap-auth-layout">
+                <div className="snap-heading snap-auth-copy">
+                  <h2>{seoPage.authTitle}</h2>
 
-                <div className="snap-actions">
+                  <div className="snap-actions">
                   <button
                     type="button"
                     className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
@@ -816,7 +895,9 @@ export function AuthPage({
                   >
                     {seoPage.authText || "Создать вишлист"}
                   </button>
+                  </div>
                 </div>
+                <div className="snap-auth-gift-slot" aria-hidden="true" />
               </div>
             </div>
 
