@@ -884,17 +884,25 @@ export function AuthPage({
             <div className="snap-auth-stage">
               <div className="snap-auth-layout">
                 <div className="snap-heading snap-auth-copy">
-                  <h2>{seoPage.authTitle}</h2>
+                  <h2>
+                    {seoPage.authTitle === "Желания сбываются чаще, когда ими делятся" ? (
+                      <>
+                        Желания <span className="snap-accent-word">сбываются</span> чаще, когда ими делятся
+                      </>
+                    ) : (
+                      seoPage.authTitle
+                    )}
+                  </h2>
 
                   <div className="snap-actions">
-                  <button
+                    <button
                     type="button"
                     className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
                     onClick={() => handlePrimaryCta("register")}
                     disabled={isPrimaryCtaLoading}
                   >
                     {seoPage.authText || "Создать вишлист"}
-                  </button>
+                    </button>
                   </div>
                 </div>
                 <div className="snap-auth-gift-slot" aria-hidden="true" />

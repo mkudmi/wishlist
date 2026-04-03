@@ -978,18 +978,35 @@ span.snap-accent-word {
 }
 
 @media (max-width: 720px) {
+  .snap-landing-shell {
+    min-height: 100svh;
+  }
+
+  .snap-landing-scroll {
+    height: 100svh;
+    min-height: 100svh;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    overscroll-behavior-y: contain;
+  }
+
   .snap-fixed-header {
     top: 0;
   }
 
   .snap-fixed-header-inner {
     width: calc(100% - 20px);
-    padding: 12px 14px;
+    padding: 10px 12px;
+    min-height: 64px;
     align-items: center;
   }
 
   .snap-panel {
-    padding: 118px 14px 14px;
+    min-height: 100svh;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    padding: 104px 14px 28px;
+    align-items: center;
   }
 
   .snap-copy,
@@ -1003,17 +1020,21 @@ span.snap-accent-word {
   }
 
   .snap-title {
-    font-size: clamp(2.7rem, 13vw, 4.2rem);
+    max-width: 9ch;
+    font-size: clamp(2.8rem, 11.8vw, 4rem);
+    line-height: 0.92;
   }
 
   .snap-heading h2,
   .snap-auth-title {
-    font-size: clamp(2rem, 9vw, 2.8rem);
+    font-size: clamp(2.15rem, 9.4vw, 3rem);
   }
 
   .snap-actions {
     flex-direction: column;
     width: 100%;
+    gap: 10px;
+    margin-top: 24px;
   }
 
   .snap-actions .button-primary,
@@ -1022,8 +1043,18 @@ span.snap-accent-word {
     width: 100%;
   }
 
+  .snap-actions .button-primary,
+  .snap-actions .button-secondary {
+    min-height: 54px;
+    padding: 0 20px;
+  }
+
   .snap-nav {
     margin-left: auto;
+  }
+
+  .snap-brand strong {
+    font-size: 1.1rem;
   }
 
   .snap-legal-main {
@@ -1063,36 +1094,199 @@ span.snap-accent-word {
     display: block;
   }
 
-  .snap-step-card {
-    grid-template-columns: minmax(0, 1fr) 36px;
-    gap: 10px;
-  }
-
-  .snap-step-card > span {
-    width: 36px;
-    height: auto;
-    border-radius: 0;
+  .snap-panel-inner {
+    width: 100%;
   }
 
   .snap-hero-simple {
-    min-height: auto;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 28px;
+    min-height: calc(100dvh - 104px);
+    justify-content: center;
+    gap: 18px;
+    padding: 0;
   }
 
-  .snap-hero-image-card {
-    position: static;
-    width: min(84vw, 420px);
-    transform: none;
+  .snap-copy {
+    width: 100%;
+    max-width: 22rem;
     padding: 0;
-    border-radius: 0;
+    transform: translateY(-6svh);
   }
 
   .snap-hero-side-note {
-    position: static;
-    max-width: 11ch;
+    max-width: 14ch;
+    margin: 0;
+    color: rgba(32, 49, 69, 0.78);
+    font-size: 1.35rem;
+    line-height: 0.98;
+  }
+
+  .snap-hero-image-card {
+    display: none;
+  }
+
+  .snap-panel-grid,
+  .snap-panel-grid-gift-safe,
+  .snap-panel-grid-gift-safe-mirror {
+    display: block;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .snap-panel-flow .snap-panel-inner {
+    display: grid;
+    gap: 22px;
+    align-content: start;
+  }
+
+  .snap-panel-benefits,
+  .snap-panel-flow,
+  .snap-panel-auth {
+    align-items: center;
+  }
+
+  .snap-panel-benefits .snap-panel-inner {
+    transform: translateY(-3svh);
+  }
+
+  .snap-panel-flow .snap-panel-inner {
+    transform: translateY(-3svh);
+  }
+
+  .snap-panel-benefits .snap-heading,
+  .snap-flow-side,
+  .snap-panel-auth .snap-auth-copy {
+    max-width: 22rem;
+    width: 100%;
+  }
+
+  .snap-panel-benefits .snap-heading h2,
+  .snap-panel-flow .snap-flow-gift-title,
+  .snap-panel-auth .snap-auth-copy h2 {
+    font-size: clamp(2.15rem, 9.2vw, 3rem);
+    line-height: 0.94;
+  }
+
+  .snap-panel-benefits .snap-heading {
+    margin-bottom: 22px;
+  }
+
+  .snap-feature-list,
+  .snap-step-list {
+    gap: 18px;
+  }
+
+  .snap-panel-benefits .snap-feature-card,
+  .snap-step-card {
+    padding: 0;
+  }
+
+  .snap-panel-benefits .snap-feature-card {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .snap-step-card {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+
+  .snap-step-card > span {
+    width: 40px;
+    height: auto;
+    border-radius: 0;
+    justify-content: flex-start;
+    order: 0;
+  }
+
+  .snap-panel-flow .snap-step-list {
+    width: 100%;
+    justify-self: stretch;
+    margin: 0;
+  }
+
+  .snap-step-card > div {
+    justify-content: flex-start;
+  }
+
+  .snap-panel-flow .snap-step-card p {
     text-align: left;
+    max-width: none;
+    font-size: 1.08rem;
+    line-height: 1.14;
+  }
+
+  .snap-panel-flow .snap-step-list,
+  .snap-panel-benefits .snap-feature-list {
+    width: 100%;
+  }
+
+  .snap-panel-flow .snap-step-card,
+  .snap-panel-benefits .snap-feature-card {
+    width: 100%;
+  }
+
+  .snap-panel-flow .snap-step-card > span,
+  .snap-panel-benefits .snap-feature-card strong {
+    font-size: clamp(1.6rem, 7vw, 2.1rem);
+    line-height: 0.92;
+  }
+
+  .snap-panel-flow .snap-step-card p,
+  .snap-panel-benefits .snap-feature-card p {
+    font-size: 1.08rem;
+    line-height: 1.14;
+    max-width: none;
+  }
+
+  .snap-flow-side {
+    order: -1;
+    margin: 0;
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .snap-flow-gift-title {
+    width: 100%;
+    margin: 0;
+    text-align: left;
+  }
+
+  .snap-auth-stage {
+    align-items: center;
+  }
+
+  .snap-auth-panel {
+    min-height: calc(100svh - 132px);
+    justify-content: center;
+  }
+
+  .snap-auth-copy {
+    padding: 0;
+  }
+
+  .snap-panel-auth .snap-actions .button-primary {
+    min-width: 0;
+    width: 100%;
+    font-size: 1.08rem;
+  }
+
+  .snap-legal-footer {
+    margin-top: 8px;
+    padding-top: 0;
+    gap: 10px;
+  }
+
+  .snap-legal-footer-brand strong {
+    font-size: 0.92rem;
+  }
+
+  .snap-legal-footer-links {
+    gap: 8px 14px;
+  }
+
+  .snap-legal-footer-links a {
+    font-size: 0.82rem;
   }
 }
 
