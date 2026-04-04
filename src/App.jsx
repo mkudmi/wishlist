@@ -36,6 +36,7 @@ import {
   deleteMyWishReservations,
   fetchCurrentUser,
   getOrCreateGuestSessionId,
+  resetGuestSessionId,
   setAuthToken,
   loginUser,
   loginWithGoogleCredential,
@@ -103,7 +104,7 @@ export default function App({ initialRouteOverride = null }) {
   const [donationName, setDonationName] = useState("");
   const [donationError, setDonationError] = useState("");
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
-  const [guestSessionId] = useState(() => getOrCreateGuestSessionId());
+  const [guestSessionId, setGuestSessionId] = useState(() => getOrCreateGuestSessionId());
   const toastTimeoutRef = useRef(null);
   const authExpiryHandledRef = useRef(false);
   const siteOrigin = "https://xn--80ajchdgcktejxc.xn--p1ai";
@@ -874,6 +875,7 @@ export default function App({ initialRouteOverride = null }) {
 
   function clearAuthenticatedState() {
     setCurrentUser(null);
+    setGuestSessionId(resetGuestSessionId());
     setWishlists([]);
     setCurrentWishlistId(null);
     setCurrentShareToken(null);
@@ -1488,7 +1490,7 @@ export default function App({ initialRouteOverride = null }) {
       return person.guestSessionId === guestSessionId;
     }
 
-    return Boolean(currentUser) && person.name === currentUserName;
+    return false;
   }
   const openedWishProgressPercent = openedWishTarget
     ? Math.min(100, Math.round((openedWishDonated / openedWishTarget) * 100))

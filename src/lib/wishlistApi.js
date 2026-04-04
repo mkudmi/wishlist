@@ -68,6 +68,16 @@ export function getOrCreateGuestSessionId() {
   return created;
 }
 
+export function resetGuestSessionId() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const next = makeGuestSessionId();
+  localStorage.setItem(GUEST_SESSION_KEY, next);
+  return next;
+}
+
 function toApiError(message, extra = {}) {
   return {
     message: message || "API request failed",
@@ -86,7 +96,7 @@ async function request(path, options = {}) {
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-  if (guestSessionId) {
+  if (!token && guestSessionId) {
     headers["X-Guest-Session-Id"] = guestSessionId;
   }
 
