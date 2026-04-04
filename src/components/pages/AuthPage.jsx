@@ -118,7 +118,9 @@ export function AuthPage({
       const scale = 1;
       const visualGiftWidth = giftWidth * scale;
       const desiredCenterX =
-        section === 1 ? containerLeft + containerWidth - safeWidth / 2 : containerLeft + safeWidth / 2;
+        section === 1
+          ? containerLeft + containerWidth - safeWidth / 2
+          : containerLeft + safeWidth / 2 - clampValue(24, width * 0.035, 56);
 
       return {
         shiftX: desiredCenterX - (width - baseRight - visualGiftWidth / 2),
