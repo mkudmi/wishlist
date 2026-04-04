@@ -47,6 +47,8 @@ export function AuthPage({
   const googleCallbackRef = useRef(onGoogleAuth);
   const googleInitializedClientIdRef = useRef("");
   const scrollRef = useRef(null);
+  const snapScrollLockRef = useRef(false);
+  const snapScrollTimeoutRef = useRef(null);
 
   useEffect(() => {
     googleCallbackRef.current = onGoogleAuth;
@@ -60,7 +62,7 @@ export function AuthPage({
     const section = document.getElementById(sectionId);
     const container = scrollRef.current;
     if (section && container) {
-      container.scrollTo({ top: section.offsetTop, behavior: "auto" });
+      container.scrollTo({ top: section.offsetTop, behavior: "smooth" });
     }
   }
 
@@ -358,6 +360,71 @@ export function AuthPage({
     return () => {
       container.removeEventListener("scroll", updateGiftScene);
       window.removeEventListener("resize", updateGiftScene);
+    };
+  }, []);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 720px)");
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    function clearSnapScrollLock() {
+      if (snapScrollTimeoutRef.current) {
+        window.clearTimeout(snapScrollTimeoutRef.current);
+      }
+
+      snapScrollLockRef.current = false;
+      snapScrollTimeoutRef.current = null;
+    }
+
+    function getSectionOffsets() {
+      return Array.from(container.querySelectorAll("[data-snap-section]")).map((section) => section.offsetTop);
+    }
+
+    function handleWheel(event) {
+      if (mediaQuery.matches || reducedMotionQuery.matches) {
+        return;
+      }
+
+      if (Math.abs(event.deltaY) < 24 || snapScrollLockRef.current) {
+        return;
+      }
+
+      const offsets = getSectionOffsets();
+      if (offsets.length < 2) {
+        return;
+      }
+
+      const currentTop = container.scrollTop;
+      const direction = Math.sign(event.deltaY);
+      const threshold = container.clientHeight * 0.18;
+      const currentIndex = offsets.findIndex((offset, index) => {
+        const nextOffset = offsets[index + 1] ?? Number.POSITIVE_INFINITY;
+        return currentTop >= offset - threshold && currentTop < nextOffset - threshold;
+      });
+      const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+      const targetIndex = Math.max(0, Math.min(offsets.length - 1, safeIndex + direction));
+      const targetTop = offsets[targetIndex];
+
+      if (targetTop === undefined || Math.abs(targetTop - currentTop) < 8) {
+        return;
+      }
+
+      event.preventDefault();
+      snapScrollLockRef.current = true;
+      container.scrollTo({ top: targetTop, behavior: "smooth" });
+      snapScrollTimeoutRef.current = window.setTimeout(clearSnapScrollLock, 820);
+    }
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      clearSnapScrollLock();
+      container.removeEventListener("wheel", handleWheel);
     };
   }, []);
 
