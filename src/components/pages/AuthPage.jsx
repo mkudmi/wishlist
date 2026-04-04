@@ -49,6 +49,8 @@ export function AuthPage({
   const scrollRef = useRef(null);
   const snapScrollLockRef = useRef(false);
   const snapScrollTimeoutRef = useRef(null);
+  const authModalRef = useRef(null);
+  const authModalReturnFocusRef = useRef(null);
 
   useEffect(() => {
     googleCallbackRef.current = onGoogleAuth;
@@ -320,6 +322,65 @@ export function AuthPage({
 
     return () => script.removeEventListener("load", initializeGoogle);
   }, [googleClientId]);
+
+  useEffect(() => {
+    if (!isAuthModalOpen || typeof window === "undefined") {
+      return undefined;
+    }
+
+    authModalReturnFocusRef.current = document.activeElement;
+
+    const focusTarget =
+      authModalRef.current?.querySelector('input, button:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])') || null;
+
+    if (focusTarget instanceof HTMLElement) {
+      window.setTimeout(() => focusTarget.focus(), 0);
+    }
+
+    function handleKeydown(event) {
+      if (event.key === "Tab" && authModalRef.current) {
+        const focusable = Array.from(
+          authModalRef.current.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+
+        if (focusable.length === 0) {
+          return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const activeElement = document.activeElement;
+
+        if (event.shiftKey && activeElement === first) {
+          event.preventDefault();
+          last.focus();
+          return;
+        }
+
+        if (!event.shiftKey && activeElement === last) {
+          event.preventDefault();
+          first.focus();
+          return;
+        }
+      }
+
+      if (event.key === "Escape" && !submitting) {
+        closeAuthModal();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeydown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeydown);
+
+      if (authModalReturnFocusRef.current instanceof HTMLElement) {
+        authModalReturnFocusRef.current.focus();
+      }
+    };
+  }, [isAuthModalOpen, submitting]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -631,7 +692,7 @@ export function AuthPage({
 
   function renderAuthCard(cardMode = mode) {
     const cardIsLogin = cardMode === "login";
-    const showOauthBlock = cardIsLogin && (yandexClientId || googleClientId);
+    const showOauthBlock = yandexClientId || googleClientId;
 
     return (
       <section className="auth-card snap-auth-card">
@@ -767,6 +828,10 @@ export function AuthPage({
               </div>
             </>
           ) : null}
+
+          <button type="button" className="auth-dismiss-button" onClick={closeAuthModal} disabled={submitting}>
+            Не сейчас
+          </button>
         </form>
       </section>
     );
@@ -996,7 +1061,14 @@ export function AuthPage({
 
       {isAuthModalOpen ? (
         <div className="donation-modal-backdrop auth-modal-backdrop snap-auth-backdrop" onClick={closeAuthModal}>
-          <div className="donation-modal snap-auth-modal" onClick={(event) => event.stopPropagation()}>
+          <div
+            ref={authModalRef}
+            className="donation-modal snap-auth-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Вход и регистрация"
+            onClick={(event) => event.stopPropagation()}
+          >
             <button type="button" className="auth-modal-close snap-auth-close" aria-label="Закрыть окно входа" onClick={closeAuthModal} disabled={submitting}>
               x
             </button>
