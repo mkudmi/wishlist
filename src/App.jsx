@@ -634,6 +634,10 @@ export default function App({ initialRouteOverride = null }) {
     setAuthError("");
   }
 
+  function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }
+
   async function submitAuth(event) {
     event.preventDefault();
 
@@ -647,13 +651,20 @@ export default function App({ initialRouteOverride = null }) {
       if (!email || !password) {
         throw new Error("Укажи email и пароль.");
       }
+      if (!isValidEmail(email)) {
+        throw new Error("Укажи корректный email.");
+      }
 
       if (authMode === "register") {
+        if (password.length < 6) {
+          throw new Error("Пароль должен быть не менее 6 символов.");
+        }
+
         const firstName = authForm.firstName.trim();
         const lastName = authForm.lastName.trim();
         const birthday = parseDdMmYyyyToStorageDate(authForm.birthday);
-        if (!firstName || !lastName) {
-          throw new Error("Укажи имя и фамилию.");
+        if (!firstName) {
+          throw new Error("Укажи имя.");
         }
         if (!birthday) {
           throw new Error("Укажи дату рождения в формате ДД-ММ-ГГГГ.");

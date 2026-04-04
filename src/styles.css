@@ -1137,6 +1137,82 @@ span.snap-accent-word {
   margin-top: 10px;
 }
 
+.birthday-picker-backdrop {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.2), transparent 42%),
+    rgba(168, 198, 224, 0.34);
+  backdrop-filter: blur(18px);
+}
+
+.birthday-picker-modal {
+  border: 1px solid rgba(112, 145, 181, 0.16);
+  background:
+    linear-gradient(180deg, rgba(248, 252, 255, 0.97), rgba(233, 243, 252, 0.94)),
+    rgba(244, 249, 255, 0.96);
+  box-shadow:
+    0 28px 72px rgba(77, 105, 137, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.birthday-picker-head h3 {
+  color: #203145;
+}
+
+.birthday-picker-kicker {
+  color: #5f92cf;
+}
+
+.birthday-picker-label,
+.birthday-picker-mobile-label {
+  color: #4a6687;
+}
+
+.birthday-picker-select {
+  border-color: rgba(112, 145, 181, 0.14);
+  background: rgba(255, 255, 255, 0.44);
+  color: #203145;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.birthday-picker-select::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.birthday-picker-select:focus {
+  border-color: rgba(95, 146, 207, 0.34);
+  box-shadow:
+    0 0 0 4px rgba(132, 173, 219, 0.14),
+    0 12px 28px rgba(122, 147, 172, 0.12);
+}
+
+.birthday-picker-option {
+  color: #36526f;
+}
+
+.birthday-picker-option:hover {
+  background: rgba(210, 227, 244, 0.72);
+}
+
+.birthday-picker-option.is-active {
+  background: linear-gradient(135deg, rgba(95, 146, 207, 0.16), rgba(136, 182, 229, 0.26));
+  color: #2f5377;
+}
+
+.birthday-picker-preview {
+  color: #36526f;
+}
+
+.birthday-picker-mobile-progress span {
+  background: rgba(132, 173, 219, 0.2);
+}
+
+.birthday-picker-mobile-progress span.is-active {
+  background: linear-gradient(90deg, #5f92cf, #88b6e5);
+}
+
 @keyframes snap-wheel {
   0%,
   100% {

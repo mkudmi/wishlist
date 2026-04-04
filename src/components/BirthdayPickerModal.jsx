@@ -54,8 +54,8 @@ export function BirthdayPickerModal({
   minYear = 1900,
   maxYear
 }) {
-  const today = new Date();
-  const resolvedMaxYear = maxYear ?? today.getFullYear();
+  const currentYear = new Date().getFullYear();
+  const resolvedMaxYear = maxYear ?? currentYear;
   const defaultYear = resolvedMaxYear - defaultYearOffset;
   const [selectedDay, setSelectedDay] = useState(1);
   const [selectedMonth, setSelectedMonth] = useState(1);
@@ -87,13 +87,14 @@ export function BirthdayPickerModal({
       setSelectedMonth(parsed.month);
       setSelectedYear(parsed.year);
     } else {
+      const today = new Date();
       setSelectedDay(today.getDate());
       setSelectedMonth(today.getMonth() + 1);
       setSelectedYear(defaultYear);
     }
 
     setMobileStep(1);
-  }, [defaultYear, isOpen, today, value]);
+  }, [defaultYear, isOpen, value]);
 
   useEffect(() => {
     const maxDay = getDaysInMonth(selectedYear, selectedMonth);

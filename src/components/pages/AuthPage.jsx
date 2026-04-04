@@ -40,7 +40,8 @@ export function AuthPage({
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [registerStep, setRegisterStep] = useState(1);
   const [isBirthdayPickerOpen, setIsBirthdayPickerOpen] = useState(false);
-  const [hasTriedRegisterSubmit, setHasTriedRegisterSubmit] = useState(false);
+  const [showRegisterErrors, setShowRegisterErrors] = useState(false);
+  const [registerValidationError, setRegisterValidationError] = useState("");
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isPrimaryCtaLoading, setIsPrimaryCtaLoading] = useState(false);
   const [giftScene, setGiftScene] = useState({ scrollTop: 0, width: 0, height: 0, offsets: [] });
@@ -55,6 +56,14 @@ export function AuthPage({
   useEffect(() => {
     googleCallbackRef.current = onGoogleAuth;
   }, [onGoogleAuth]);
+
+  useEffect(() => {
+    if (isLogin || registerStep !== 3 || showRegisterErrors || !error) {
+      return;
+    }
+
+    onErrorReset?.();
+  }, [error, isLogin, onErrorReset, registerStep, showRegisterErrors]);
 
   function scrollToSection(sectionId) {
     if (typeof document === "undefined") {
@@ -518,7 +527,8 @@ export function AuthPage({
   function switchMode(nextMode) {
     onModeChange(nextMode);
     setRegisterStep(1);
-    setHasTriedRegisterSubmit(false);
+    setShowRegisterErrors(false);
+    setRegisterValidationError("");
   }
 
   function openAuthModal(nextMode) {
@@ -553,9 +563,11 @@ export function AuthPage({
   }
 
   function goToNextRegisterStep() {
-    setHasTriedRegisterSubmit(false);
+    setShowRegisterErrors(false);
+    setRegisterValidationError("");
     if (registerStep === 1) {
-      if (!String(form.firstName || "").trim() || !String(form.lastName || "").trim()) {
+      if (!String(form.firstName || "").trim()) {
+        setRegisterValidationError("Укажи имя.");
         return;
       }
       setRegisterStep(2);
@@ -564,6 +576,7 @@ export function AuthPage({
 
     if (registerStep === 2) {
       if (!String(form.birthday || "").trim()) {
+        setRegisterValidationError("Укажи дату рождения.");
         return;
       }
       setRegisterStep(3);
@@ -571,25 +584,61 @@ export function AuthPage({
   }
 
   function goToPreviousRegisterStep() {
-    setHasTriedRegisterSubmit(false);
+    setShowRegisterErrors(false);
+    setRegisterValidationError("");
     setRegisterStep((prev) => Math.max(1, prev - 1));
   }
 
   function handleAuthSubmit(event) {
+    event?.preventDefault?.();
+
     if (!isLogin && registerStep < 3) {
-      event.preventDefault();
       goToNextRegisterStep();
       return;
     }
 
     if (!isLogin) {
-      setHasTriedRegisterSubmit(true);
+      setShowRegisterErrors(true);
+      setRegisterValidationError("");
+
+      const email = String(form.email || "").trim();
+      const password = String(form.password || "");
+      if (!email || !password) {
+        event.preventDefault();
+        setRegisterValidationError("Укажи email и пароль.");
+        return;
+      }
     }
 
     onSubmit(event);
   }
 
+  function handleRegisterFinalSubmit() {
+    setShowRegisterErrors(true);
+    setRegisterValidationError("");
+
+    const email = String(form.email || "").trim();
+    const password = String(form.password || "");
+    if (!email || !password) {
+      setRegisterValidationError("Укажи email и пароль.");
+      return;
+    }
+
+    handleAuthSubmit({ preventDefault() {} });
+  }
+
+  function handleAuthInputChange(event) {
+    if (!isLogin) {
+      setShowRegisterErrors(false);
+      setRegisterValidationError("");
+    }
+
+    onInputChange(event);
+  }
+
   function updateBirthday(nextValue) {
+    setShowRegisterErrors(false);
+    setRegisterValidationError("");
     onInputChange({ target: { name: "birthday", value: nextValue } });
   }
 
@@ -603,7 +652,7 @@ export function AuthPage({
               type="text"
               name="firstName"
               value={form.firstName}
-              onChange={onInputChange}
+              onChange={handleAuthInputChange}
               placeholder="Имя"
               autoComplete="given-name"
             />
@@ -615,7 +664,7 @@ export function AuthPage({
               type="text"
               name="lastName"
               value={form.lastName}
-              onChange={onInputChange}
+              onChange={handleAuthInputChange}
               placeholder="Фамилия"
               autoComplete="family-name"
             />
@@ -654,10 +703,10 @@ export function AuthPage({
         <label>
           Email
           <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={onInputChange}
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleAuthInputChange}
             placeholder="you@example.com"
             autoComplete="email"
           />
@@ -666,10 +715,10 @@ export function AuthPage({
         <label>
           Пароль
           <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={onInputChange}
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleAuthInputChange}
             placeholder="Минимум 6 символов"
             autoComplete="new-password"
           />
@@ -678,10 +727,10 @@ export function AuthPage({
         <label>
           Подтверждение пароля
           <input
-            type="password"
-            name="confirmPassword"
-            value={form.confirmPassword}
-            onChange={onInputChange}
+              type="password"
+              name="confirmPassword"
+              value={form.confirmPassword}
+              onChange={handleAuthInputChange}
             placeholder="Повтори пароль"
             autoComplete="new-password"
           />
@@ -713,7 +762,7 @@ export function AuthPage({
           </button>
         </div>
 
-        <form className="donation-form auth-form" onSubmit={handleAuthSubmit}>
+        <form className="donation-form auth-form" onSubmit={cardIsLogin ? handleAuthSubmit : undefined}>
           {!cardIsLogin ? (
             <>
               <div className="auth-register-progress" aria-label={`Шаг ${registerStep} из 3`}>
@@ -733,7 +782,7 @@ export function AuthPage({
                   type="email"
                   name="email"
                   value={form.email}
-                  onChange={onInputChange}
+                  onChange={handleAuthInputChange}
                   placeholder="you@example.com"
                   autoComplete="email"
                 />
@@ -745,7 +794,7 @@ export function AuthPage({
                   type="password"
                   name="password"
                   value={form.password}
-                  onChange={onInputChange}
+                  onChange={handleAuthInputChange}
                   placeholder="Минимум 6 символов"
                   autoComplete="current-password"
                 />
@@ -753,7 +802,11 @@ export function AuthPage({
             </>
           )}
 
-          {error && (cardIsLogin || hasTriedRegisterSubmit) ? <p className="donation-error">{error}</p> : null}
+          {!cardIsLogin && registerValidationError ? <p className="donation-error">{registerValidationError}</p> : null}
+          {cardIsLogin && error ? <p className="donation-error">{error}</p> : null}
+          {!cardIsLogin && registerStep === 3 && showRegisterErrors && (registerValidationError || error) ? (
+            registerValidationError ? null : <p className="donation-error">{error}</p>
+          ) : null}
 
           <div className={`donation-actions${cardIsLogin ? " auth-login-actions" : " auth-register-actions"}`}>
             {!cardIsLogin && registerStep > 1 ? (
@@ -771,7 +824,7 @@ export function AuthPage({
                 Далее
               </button>
             ) : (
-              <button type="submit" className="button-primary" disabled={submitting}>
+              <button type="button" className="button-primary" onClick={handleRegisterFinalSubmit} disabled={submitting}>
                 {submitting ? "Подождите..." : "Создать аккаунт"}
               </button>
             )}
