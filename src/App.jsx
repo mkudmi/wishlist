@@ -10,6 +10,7 @@ import {
 import {
   createWish,
   createShareToken,
+  formatMoney,
   getRouteFromLocation,
   getUserDisplayName,
   getWishDonated,
@@ -68,10 +69,19 @@ import { seoLandingPageMap } from "./config/seoPages";
 import { useAccountPanel } from "./hooks/useAccountPanel";
 export default function App({ initialRouteOverride = null }) {
   const initialRoute = initialRouteOverride || getRouteFromLocation();
+  const emptyDashboardStats = [
+    { value: "0", label: "Всего списков" },
+    { value: "0", label: "Всего подарков" },
+    { value: "Нет данных", label: "Самый дорогой подарок" },
+    { value: "Нет данных", label: "Средняя цена подарка" },
+    { value: "0 ₽", label: "Сколько забронировано денег" },
+    { value: "0", label: "Сколько забронировано подарков полностью" }
+  ];
   const [wishes, setWishes] = useState([]);
   const [contributions, setContributions] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
   const [wishlists, setWishlists] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState(emptyDashboardStats);
   const [isWishlistsLoading, setIsWishlistsLoading] = useState(false);
   const [wishlistsError, setWishlistsError] = useState("");
   const [isWishlistSubmitting, setIsWishlistSubmitting] = useState(false);
@@ -222,6 +232,7 @@ export default function App({ initialRouteOverride = null }) {
     if (!sessionUser) {
       setCurrentUser(null);
       setWishlists([]);
+      setDashboardStats(emptyDashboardStats);
       setCurrentWishlistId(null);
       setCurrentShareToken(null);
       setWishes([]);
@@ -259,6 +270,61 @@ export default function App({ initialRouteOverride = null }) {
     setWishlistRules(normalizeRulesList(data));
   }
 
+  async function loadDashboardStats(nextWishlists = wishlists) {
+    if (!currentUser || !Array.isArray(nextWishlists) || nextWishlists.length === 0) {
+      setDashboardStats(emptyDashboardStats);
+      return;
+    }
+
+    const dashboardData = await Promise.all(
+      nextWishlists.map(async (wishlist) => {
+        const [{ data: wishlistWishes }, { data: wishlistReservations }] = await Promise.all([
+          fetchWishesByWishlist(wishlist.id),
+          fetchReservationsByWishlist(wishlist.id)
+        ]);
+
+        return {
+          wishes: sanitizeWishes(wishlistWishes),
+          reservations: groupReservationsByWish(wishlistReservations)
+        };
+      })
+    );
+
+    const allWishes = dashboardData.flatMap((item) => item.wishes);
+    const allReservations = dashboardData.reduce((acc, item) => {
+      Object.entries(item.reservations).forEach(([wishId, entries]) => {
+        acc[wishId] = [...(acc[wishId] || []), ...entries];
+      });
+      return acc;
+    }, {});
+
+    const prices = allWishes
+      .map((wish) => parseTargetFromPrice(wish.price))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const totalReservedMoney = Object.values(allReservations)
+      .flat()
+      .reduce((sum, entry) => sum + entry.amount, 0);
+    const fullyReservedCount = allWishes.reduce((count, wish) => {
+      const target = parseTargetFromPrice(wish.price);
+      if (!target) {
+        return count;
+      }
+
+      return getWishDonated(allReservations, wish.id) >= target ? count + 1 : count;
+    }, 0);
+    const averagePrice = prices.length > 0 ? Math.round(prices.reduce((sum, value) => sum + value, 0) / prices.length) : null;
+    const maxPrice = prices.length > 0 ? Math.max(...prices) : null;
+
+    setDashboardStats([
+      { value: String(nextWishlists.length), label: "Всего списков" },
+      { value: String(allWishes.length), label: "Всего подарков" },
+      { value: maxPrice ? `${formatMoney(maxPrice)} ₽` : "Нет данных", label: "Самый дорогой подарок" },
+      { value: averagePrice ? `${formatMoney(averagePrice)} ₽` : "Нет данных", label: "Средняя цена подарка" },
+      { value: `${formatMoney(totalReservedMoney)} ₽`, label: "Сколько забронировано денег" },
+      { value: String(fullyReservedCount), label: "Сколько забронировано подарков полностью" }
+    ]);
+  }
+
   async function loadWishlistsForUser() {
     setIsWishlistsLoading(true);
     setWishlistsError("");
@@ -268,16 +334,19 @@ export default function App({ initialRouteOverride = null }) {
     if (error) {
       if (error.code === "unauthorized" || error.status === 401) {
         setWishlists([]);
+        setDashboardStats(emptyDashboardStats);
         setIsWishlistsLoading(false);
         return [];
       }
       setWishlistsError("Не удалось загрузить вишлисты.");
       setWishlists([]);
+      setDashboardStats(emptyDashboardStats);
       setIsWishlistsLoading(false);
       return [];
     }
 
     setWishlists(data || []);
+    await loadDashboardStats(data || []);
     setIsWishlistsLoading(false);
     return data || [];
   }
@@ -877,6 +946,7 @@ export default function App({ initialRouteOverride = null }) {
     setCurrentUser(null);
     setGuestSessionId(resetGuestSessionId());
     setWishlists([]);
+    setDashboardStats(emptyDashboardStats);
     setCurrentWishlistId(null);
     setCurrentShareToken(null);
     setWishes([]);
@@ -943,6 +1013,7 @@ export default function App({ initialRouteOverride = null }) {
 
     const next = [...wishlists, data];
     setWishlists(next);
+    await loadDashboardStats(next);
     await selectWishlist(data);
     setIsWishlistSubmitting(false);
     navigate("/wishlist");
@@ -1043,6 +1114,7 @@ export default function App({ initialRouteOverride = null }) {
 
     const nextWishlists = wishlists.filter((item) => item.id !== wishlistToDelete.id);
     setWishlists(nextWishlists);
+    await loadDashboardStats(nextWishlists);
 
     if (currentWishlistId === wishlistToDelete.id) {
       if (nextWishlists.length > 0) {
@@ -1104,6 +1176,7 @@ export default function App({ initialRouteOverride = null }) {
         }
 
         setWishes((prev) => prev.map((wish) => (wish.id === editingWishId ? sanitizeWishes([data])[0] : wish)));
+        await loadDashboardStats();
         setEditingWishId(null);
       } else {
         const nextWish = createWish(form);
@@ -1117,6 +1190,7 @@ export default function App({ initialRouteOverride = null }) {
         }
 
         setWishes((prev) => [sanitizeWishes([data])[0], ...prev]);
+        await loadDashboardStats();
       }
 
       setForm(emptyForm);
@@ -1143,6 +1217,7 @@ export default function App({ initialRouteOverride = null }) {
       delete next[id];
       return next;
     });
+    await loadDashboardStats();
 
     if (editingWishId === id) {
       setEditingWishId(null);
@@ -1260,6 +1335,7 @@ export default function App({ initialRouteOverride = null }) {
     }
 
     appendContributionEntry(donationWish.id, data);
+    await loadDashboardStats();
 
     closeDonationModal();
   }
@@ -1309,6 +1385,7 @@ export default function App({ initialRouteOverride = null }) {
     }
 
     appendContributionEntry(donationWish.id, data);
+    await loadDashboardStats();
 
     closeDonationModal();
   }
@@ -1354,6 +1431,7 @@ export default function App({ initialRouteOverride = null }) {
     }
 
     appendContributionEntry(donationWish.id, data);
+    await loadDashboardStats();
 
     closeDonationModal();
   }
@@ -1388,6 +1466,7 @@ export default function App({ initialRouteOverride = null }) {
 
           return next;
         });
+        void loadDashboardStats();
       })
       .catch(() => {});
   }
@@ -1506,7 +1585,7 @@ export default function App({ initialRouteOverride = null }) {
   const canManage = page === "wishlist";
 
   return (
-    <div className="page-shell" style={pageShellStyle}>
+    <div className={`page-shell${page === "dashboard" ? " dashboard-shell" : ""}`} style={pageShellStyle}>
       <div className="glow glow-left" />
       <div className="glow glow-right" />
 
@@ -1517,6 +1596,10 @@ export default function App({ initialRouteOverride = null }) {
             showDashboardLink={page !== "dashboard"}
             currentUserName={currentUserName}
             isHeaderMenuOpen={isHeaderMenuOpen}
+            onOpenLanding={() => {
+              setIsHeaderMenuOpen(false);
+              navigate("/");
+            }}
             onOpenProfile={() => {
               setIsHeaderMenuOpen(false);
               openProfileModal();
@@ -1544,6 +1627,7 @@ export default function App({ initialRouteOverride = null }) {
         {page === "dashboard" ? (
           <DashboardPage
             wishlists={wishlists}
+            dashboardStats={dashboardStats}
             currentWishlistId={currentWishlistId}
             isLoading={isWishlistsLoading}
             isSubmitting={isWishlistSubmitting}

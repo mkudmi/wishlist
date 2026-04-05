@@ -5,6 +5,7 @@ import { formatDateToDdMmYyyy } from "../../lib/helpers";
 
 export function DashboardPage({
   wishlists,
+  dashboardStats,
   currentWishlistId,
   isLoading,
   isSubmitting,
@@ -143,22 +144,27 @@ export function DashboardPage({
   }
 
   return (
-    <section className="admin-section" id="dashboard">
-      <div className="admin-card">
-        <div className="section-head compact">
-          <p className="section-label">Dashboard</p>
-          <h2>Твои вишлисты</h2>
-          <p>
-            Нажми на карточку <strong>+</strong>, чтобы создать новый вишлист.
-          </p>
+    <section className="admin-section dashboard-workspace" id="dashboard">
+      <div className="admin-card dashboard-card">
+        <div className="dashboard-overview">
+          <div className="section-head compact dashboard-overview-copy">
+            <h2>Твои вишлисты</h2>
+          </div>
+
+          <div className="dashboard-stats" aria-label="Статистика по вишлистам">
+            {dashboardStats.map((stat) => (
+              <article className="dashboard-stat" key={stat.label}>
+                <strong>{stat.value}</strong>
+                <span>{stat.label}</span>
+              </article>
+            ))}
+          </div>
         </div>
 
         {isLoading ? <p className="status-banner">Загружаем вишлисты...</p> : null}
         {error ? <p className="status-banner status-banner-error">{error}</p> : null}
 
-        <div className="admin-list">
-          <p className="section-label">Мои вишлисты</p>
-
+        <div className="admin-list dashboard-list">
           <div className="wishlist-matrix">
             <button type="button" className="wishlist-tile wishlist-tile-create" onClick={openCreateModal}>
               <span className="wishlist-create-plus">+</span>
@@ -174,6 +180,11 @@ export function DashboardPage({
                   <strong>{wishlist.title}</strong>
                   <p>{getCelebrationLabel(wishlist)}</p>
                 </div>
+
+                <div className="wishlist-tile-meta">
+                  <span>{wishlist.share_token ? "Ссылка готова для гостей" : "Ссылка создастся при копировании"}</span>
+                </div>
+
                 <div className="wishlist-tile-actions">
                   <button
                     type="button"
@@ -189,7 +200,7 @@ export function DashboardPage({
                     onClick={() => onCopyShareLink(wishlist)}
                     disabled={isSubmitting}
                   >
-                    Ссылка
+                    Скопировать ссылку
                   </button>
                   <button
                     type="button"
