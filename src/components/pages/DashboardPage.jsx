@@ -22,8 +22,10 @@ export function DashboardPage({
   const [eventDate, setEventDate] = useState("");
   const [isCelebrationMenuOpen, setIsCelebrationMenuOpen] = useState(false);
   const [isEventDatePickerOpen, setIsEventDatePickerOpen] = useState(false);
+  const [openWishlistMenuId, setOpenWishlistMenuId] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const celebrationMenuRef = useRef(null);
+  const wishlistMenuRef = useRef(null);
 
   const needsCustomTitle = celebrationType === "custom";
   const needsEventDate = celebrationType !== "birthday";
@@ -63,6 +65,28 @@ export function DashboardPage({
       document.removeEventListener("focusin", closeOnOutsideClick, true);
     };
   }, [isCelebrationMenuOpen]);
+
+  useEffect(() => {
+    if (!openWishlistMenuId) {
+      return undefined;
+    }
+
+    function closeWishlistMenuOnOutsideClick(event) {
+      const menuNode = wishlistMenuRef.current;
+      if (!menuNode || menuNode.contains(event.target)) {
+        return;
+      }
+      setOpenWishlistMenuId(null);
+    }
+
+    document.addEventListener("pointerdown", closeWishlistMenuOnOutsideClick, true);
+    document.addEventListener("focusin", closeWishlistMenuOnOutsideClick, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeWishlistMenuOnOutsideClick, true);
+      document.removeEventListener("focusin", closeWishlistMenuOnOutsideClick, true);
+    };
+  }, [openWishlistMenuId]);
 
   function getCelebrationLabel(wishlist) {
     if (!wishlist) {
@@ -176,6 +200,37 @@ export function DashboardPage({
                 className={`wishlist-tile ${wishlist.id === currentWishlistId ? "wishlist-tile-active" : ""}`}
                 key={wishlist.id}
               >
+                <div className="wishlist-tile-menu" ref={openWishlistMenuId === wishlist.id ? wishlistMenuRef : null}>
+                  <button
+                    type="button"
+                    className="wishlist-tile-menu-trigger"
+                    aria-label="Открыть меню вишлиста"
+                    aria-expanded={openWishlistMenuId === wishlist.id}
+                    onClick={() => setOpenWishlistMenuId((prev) => (prev === wishlist.id ? null : wishlist.id))}
+                    disabled={isSubmitting}
+                  >
+                    <span />
+                    <span />
+                    <span />
+                  </button>
+
+                  {openWishlistMenuId === wishlist.id ? (
+                    <div className="wishlist-tile-menu-dropdown">
+                      <button
+                        type="button"
+                        className="wishlist-tile-menu-item wishlist-tile-menu-item-danger"
+                        onClick={() => {
+                          setOpenWishlistMenuId(null);
+                          onDeleteWishlist(wishlist);
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+
                 <div className="wishlist-tile-head">
                   <strong>{wishlist.title}</strong>
                   <p>{getCelebrationLabel(wishlist)}</p>
@@ -197,14 +252,6 @@ export function DashboardPage({
                     disabled={isSubmitting}
                   >
                     Поделиться
-                  </button>
-                  <button
-                    type="button"
-                    className="delete-button"
-                    onClick={() => onDeleteWishlist(wishlist)}
-                    disabled={isSubmitting}
-                  >
-                    Удалить
                   </button>
                 </div>
               </article>
