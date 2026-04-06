@@ -64,6 +64,7 @@ import { DeleteWishlistModal } from "./components/modals/DeleteWishlistModal";
 import { DonationModal } from "./components/modals/DonationModal";
 import { IdentityModal } from "./components/modals/IdentityModal";
 import { ProfileModal } from "./components/modals/ProfileModal";
+import { ShareSheetModal } from "./components/modals/ShareSheetModal";
 import { WishDetailsModal } from "./components/modals/WishDetailsModal";
 import { seoLandingPageMap } from "./config/seoPages";
 import { useAccountPanel } from "./hooks/useAccountPanel";
@@ -94,6 +95,9 @@ export default function App({ initialRouteOverride = null }) {
   const [sharedWishlistMeta, setSharedWishlistMeta] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [shareSheetWishlist, setShareSheetWishlist] = useState(null);
+  const [shareSheetUrl, setShareSheetUrl] = useState("");
+  const [isShareSheetQrVisible, setIsShareSheetQrVisible] = useState(false);
   const [isWishSubmitting, setIsWishSubmitting] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [authForm, setAuthForm] = useState(emptyAuthForm);
@@ -490,6 +494,82 @@ export default function App({ initialRouteOverride = null }) {
     }
   }
 
+  async function openWishlistShareSheet(wishlist) {
+    if (!wishlist) {
+      return;
+    }
+
+    const shareToken = await ensureWishlistShareToken(wishlist);
+    if (!shareToken) {
+      showToast("Не удалось подготовить ссылку", "error");
+      return;
+    }
+
+    setShareSheetWishlist(wishlist);
+    setShareSheetUrl(buildSharedWishlistUrl(shareToken));
+    setIsShareSheetQrVisible(false);
+  }
+
+  function closeShareSheet() {
+    setShareSheetWishlist(null);
+    setShareSheetUrl("");
+    setIsShareSheetQrVisible(false);
+  }
+
+  async function copyShareSheetLink() {
+    if (!shareSheetUrl) {
+      return;
+    }
+
+    try {
+      const copied = await copyTextToClipboard(shareSheetUrl);
+      if (!copied) {
+        throw new Error("copy_failed");
+      }
+      showToast("Ссылка скопирована");
+    } catch {
+      showToast("Не удалось скопировать ссылку", "error");
+    }
+  }
+
+  function openShareRedirect(url) {
+    if (!url || typeof window === "undefined") {
+      return;
+    }
+
+    const popup = window.open(url, "_blank", "noopener,noreferrer");
+    if (!popup) {
+      window.location.assign(url);
+    }
+  }
+
+  function shareViaTelegram() {
+    if (!shareSheetUrl) {
+      return;
+    }
+
+    const text = shareSheetWishlist?.title ? `Посмотри мой вишлист: ${shareSheetWishlist.title}` : "Посмотри мой вишлист";
+    openShareRedirect(`https://t.me/share/url?url=${encodeURIComponent(shareSheetUrl)}&text=${encodeURIComponent(text)}`);
+  }
+
+  function shareViaVk() {
+    if (!shareSheetUrl) {
+      return;
+    }
+
+    const title = shareSheetWishlist?.title ? `Вишлист: ${shareSheetWishlist.title}` : "Вишлист";
+    openShareRedirect(`https://vk.com/share.php?url=${encodeURIComponent(shareSheetUrl)}&title=${encodeURIComponent(title)}`);
+  }
+
+  function shareViaWhatsapp() {
+    if (!shareSheetUrl) {
+      return;
+    }
+
+    const text = shareSheetWishlist?.title ? `${shareSheetWishlist.title} ${shareSheetUrl}` : shareSheetUrl;
+    openShareRedirect(`https://wa.me/?text=${encodeURIComponent(text)}`);
+  }
+
   async function ensureWishlistShareToken(wishlist) {
     if (!wishlist?.id) {
       return null;
@@ -623,6 +703,7 @@ export default function App({ initialRouteOverride = null }) {
 
   useEffect(() => {
     setIsHeaderMenuOpen(false);
+    closeShareSheet();
   }, [page]);
 
   const activeSeoPage = seoLandingPageMap[seoPageKey] || seoLandingPageMap.home;
@@ -1115,6 +1196,10 @@ export default function App({ initialRouteOverride = null }) {
     const nextWishlists = wishlists.filter((item) => item.id !== wishlistToDelete.id);
     setWishlists(nextWishlists);
     await loadDashboardStats(nextWishlists);
+
+    if (shareSheetWishlist?.id === wishlistToDelete.id) {
+      closeShareSheet();
+    }
 
     if (currentWishlistId === wishlistToDelete.id) {
       if (nextWishlists.length > 0) {
@@ -1634,7 +1719,7 @@ export default function App({ initialRouteOverride = null }) {
             error={wishlistsError}
             onCreateWishlist={createWishlist}
             onOpenWishlist={openWishlistFromDashboard}
-            onCopyShareLink={copyWishlistShareLink}
+            onCopyShareLink={openWishlistShareSheet}
             onDeleteWishlist={requestDeleteWishlist}
           />
         ) : (
@@ -1767,6 +1852,19 @@ export default function App({ initialRouteOverride = null }) {
         isSubmitting={isWishlistSubmitting}
         onClose={cancelDeleteWishlist}
         onConfirm={confirmDeleteWishlist}
+      />
+
+      <ShareSheetModal
+        isOpen={Boolean(shareSheetWishlist && shareSheetUrl)}
+        title={shareSheetWishlist?.title || ""}
+        shareUrl={shareSheetUrl}
+        isQrVisible={isShareSheetQrVisible}
+        onClose={closeShareSheet}
+        onCopyLink={copyShareSheetLink}
+        onShareTelegram={shareViaTelegram}
+        onShareVk={shareViaVk}
+        onShareWhatsapp={shareViaWhatsapp}
+        onToggleQr={() => setIsShareSheetQrVisible((prev) => !prev)}
       />
 
       {toast ? (

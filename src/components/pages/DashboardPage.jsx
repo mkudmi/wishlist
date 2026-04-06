@@ -181,10 +181,6 @@ export function DashboardPage({
                   <p>{getCelebrationLabel(wishlist)}</p>
                 </div>
 
-                <div className="wishlist-tile-meta">
-                  <span>{wishlist.share_token ? "Ссылка готова для гостей" : "Ссылка создастся при копировании"}</span>
-                </div>
-
                 <div className="wishlist-tile-actions">
                   <button
                     type="button"
@@ -192,7 +188,7 @@ export function DashboardPage({
                     onClick={() => onOpenWishlist(wishlist)}
                     disabled={isSubmitting}
                   >
-                    Открыть и редактировать
+                    Редактировать
                   </button>
                   <button
                     type="button"
@@ -200,7 +196,7 @@ export function DashboardPage({
                     onClick={() => onCopyShareLink(wishlist)}
                     disabled={isSubmitting}
                   >
-                    Скопировать ссылку
+                    Поделиться
                   </button>
                   <button
                     type="button"

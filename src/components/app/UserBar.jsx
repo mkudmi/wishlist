@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+
 export function UserBar({
   canManage,
   showDashboardLink,
@@ -11,6 +13,27 @@ export function UserBar({
   onOpenWishCreate,
   onLogout
 }) {
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isHeaderMenuOpen) {
+      return undefined;
+    }
+
+    function handleOutsideClick(event) {
+      const menuNode = menuRef.current;
+      if (!menuNode || menuNode.contains(event.target)) {
+        return;
+      }
+      onToggleHeaderMenu();
+    }
+
+    document.addEventListener("pointerdown", handleOutsideClick, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsideClick, true);
+    };
+  }, [isHeaderMenuOpen, onToggleHeaderMenu]);
+
   return (
     <div className="auth-userbar">
       <div className="auth-userbar-left">
@@ -38,11 +61,7 @@ export function UserBar({
       </div>
 
       <div className="auth-userbar-right">
-        <button type="button" className="auth-userbar-name auth-userbar-name-button" onClick={onOpenProfile}>
-          {currentUserName}
-        </button>
-
-        <div className="header-menu">
+        <div className="header-menu" ref={menuRef}>
           <button type="button" className="burger-button" aria-label="Открыть меню" onClick={onToggleHeaderMenu}>
             <span className="burger-icon" aria-hidden="true">
               <span />
@@ -53,6 +72,12 @@ export function UserBar({
 
           {isHeaderMenuOpen ? (
             <div className="header-menu-dropdown">
+              <button type="button" className="header-menu-item header-menu-item-mobile-home" onClick={onOpenLanding}>
+                На главную
+              </button>
+              <button type="button" className="header-menu-item" onClick={onOpenProfile}>
+                Профиль
+              </button>
               {canManage ? (
                 <button type="button" className="header-menu-item" onClick={onCopyShareLink}>
                   Поделиться ссылкой
