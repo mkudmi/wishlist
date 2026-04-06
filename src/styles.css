@@ -1979,6 +1979,19 @@ span.snap-accent-word {
   text-align: center;
 }
 
+.auth-userbar {
+  position: relative;
+  z-index: 80;
+}
+
+.header-menu {
+  z-index: 81;
+}
+
+.header-menu-dropdown {
+  z-index: 82;
+}
+
 @media (max-width: 960px) {
   .dashboard-overview {
     grid-template-columns: 1fr;
