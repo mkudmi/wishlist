@@ -731,6 +731,29 @@ export default function App({ initialRouteOverride = null }) {
     closeShareSheet();
   }, [page]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+
+    const { documentElement, body } = document;
+    const prevHtmlBg = documentElement.style.backgroundColor;
+    const prevBodyBg = body.style.backgroundColor;
+
+    if (page === "dashboard") {
+      documentElement.style.backgroundColor = "#eef5fc";
+      body.style.backgroundColor = "#eef5fc";
+    } else {
+      documentElement.style.backgroundColor = "";
+      body.style.backgroundColor = "";
+    }
+
+    return () => {
+      documentElement.style.backgroundColor = prevHtmlBg;
+      body.style.backgroundColor = prevBodyBg;
+    };
+  }, [page]);
+
   const activeSeoPage = seoLandingPageMap[seoPageKey] || seoLandingPageMap.home;
 
   useEffect(() => {

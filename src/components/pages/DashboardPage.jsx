@@ -178,7 +178,13 @@ export function DashboardPage({
       <div className="admin-card dashboard-card">
         <div className="dashboard-overview">
           <div className="section-head compact dashboard-overview-copy">
-            <h2>Твои вишлисты</h2>
+            <div className="dashboard-overview-title-row">
+              <h2>Твои вишлисты</h2>
+              <span className="dashboard-overview-title-box" aria-hidden="true">
+                <img src="/branding/gift-box.png" alt="" className="dashboard-overview-title-gift" />
+              </span>
+            </div>
+            <p>Создай, добавь подарки, отправь друзьям!</p>
           </div>
 
           <div className="dashboard-stats" aria-label="Статистика по вишлистам">
