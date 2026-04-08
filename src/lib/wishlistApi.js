@@ -266,6 +266,19 @@ export function fetchSharedWishesByToken(token) {
   return request(`/api/shared/${token}/wishes`);
 }
 
+export async function fetchWishPreviewImage(url) {
+  const encodedUrl = encodeURIComponent(String(url || "").trim());
+  if (!encodedUrl) {
+    return { data: "", error: null };
+  }
+
+  const result = await request(`/api/link-preview-image?url=${encodedUrl}`);
+  return {
+    data: result.data?.image_url || "",
+    error: result.error
+  };
+}
+
 export async function fetchSharedWishlistMetaByToken(token) {
   const result = await request(`/api/shared/${token}/meta`);
   return result;

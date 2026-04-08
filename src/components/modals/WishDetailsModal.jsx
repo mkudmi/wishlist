@@ -26,6 +26,16 @@ export function WishDetailsModal({
           <span className="wish-price">{wish.price || "Цена не указана"}</span>
         </div>
 
+        <div className="wish-modal-image-wrap">
+          {wish.imageUrl ? (
+            <img className="wish-modal-image" src={wish.imageUrl} alt={wish.title} loading="lazy" />
+          ) : (
+            <div className="wish-image-placeholder-visual" aria-hidden="true">
+              <img className="wish-image-placeholder-gift" src="/branding/gift-box.png" alt="" loading="lazy" />
+            </div>
+          )}
+        </div>
+
         <h3>{wish.title}</h3>
         <p className="wish-modal-note">{wish.note}</p>
 

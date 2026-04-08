@@ -39,6 +39,7 @@ import {
   deleteWishlistRecord,
   deleteMyWishReservations,
   fetchCurrentUser,
+  fetchWishPreviewImage,
   getOrCreateGuestSessionId,
   resetGuestSessionId,
   setAuthToken,
@@ -114,6 +115,7 @@ export default function App({ initialRouteOverride = null }) {
   const [shareToken, setShareToken] = useState(initialRoute.shareToken);
   const [wishlistRouteId, setWishlistRouteId] = useState(initialRoute.wishlistId || null);
   const [seoPageKey, setSeoPageKey] = useState(initialRoute.seoPageKey || "home");
+  const [wishPreviewImages, setWishPreviewImages] = useState({});
 
   const [openedWishId, setOpenedWishId] = useState(null);
   const [donationWish, setDonationWish] = useState(null);
@@ -125,6 +127,7 @@ export default function App({ initialRouteOverride = null }) {
   const [guestSessionId, setGuestSessionId] = useState(() => getOrCreateGuestSessionId());
   const toastTimeoutRef = useRef(null);
   const authExpiryHandledRef = useRef(false);
+  const wishPreviewRequestsRef = useRef(new Set());
   const siteOrigin = "https://xn--80ajchdgcktejxc.xn--p1ai";
   const {
     isProfileOpen,
@@ -1107,6 +1110,34 @@ export default function App({ initialRouteOverride = null }) {
     return () => window.removeEventListener("message", handleAuthMessage);
   }, [currentUser]);
 
+  useEffect(() => {
+    const activeWishesSource = page === "shared" ? sharedWishes : wishes;
+    const wishesToPreview = activeWishesSource.filter(
+      (wish) =>
+        wish?.id &&
+        wish?.url &&
+        !wish.imageUrl &&
+        !Object.prototype.hasOwnProperty.call(wishPreviewImages, wish.id) &&
+        !wishPreviewRequestsRef.current.has(wish.id)
+    );
+
+    if (wishesToPreview.length === 0) {
+      return;
+    }
+
+    wishesToPreview.forEach((wish) => {
+      wishPreviewRequestsRef.current.add(wish.id);
+
+      void fetchWishPreviewImage(wish.url)
+        .then(({ data }) => {
+          setWishPreviewImages((prev) => ({ ...prev, [wish.id]: data || null }));
+        })
+        .finally(() => {
+          wishPreviewRequestsRef.current.delete(wish.id);
+        });
+    });
+  }, [page, sharedWishes, wishes, wishPreviewImages]);
+
   async function logout() {
     await logoutUser();
     clearAuthenticatedState();
@@ -1126,6 +1157,8 @@ export default function App({ initialRouteOverride = null }) {
     setSharedWishes([]);
     setSharedWishlistMeta(null);
     setSharedRules(defaultRules.slice(0, 5));
+    setWishPreviewImages({});
+    wishPreviewRequestsRef.current.clear();
     if (toastTimeoutRef.current) {
       window.clearTimeout(toastTimeoutRef.current);
       toastTimeoutRef.current = null;
@@ -1327,7 +1360,7 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
-    if (!form.title.trim() || !form.note.trim()) {
+    if (!form.title.trim()) {
       return;
     }
 
@@ -1705,7 +1738,11 @@ export default function App({ initialRouteOverride = null }) {
     );
   }
 
-  const activeWishes = page === "shared" ? sharedWishes : wishes;
+  const activeWishesSource = page === "shared" ? sharedWishes : wishes;
+  const activeWishes = activeWishesSource.map((wish) => ({
+    ...wish,
+    imageUrl: wish.imageUrl || (typeof wishPreviewImages[wish.id] === "string" ? wishPreviewImages[wish.id] : "")
+  }));
   const currentWishlist = wishlists.find((wishlist) => wishlist.id === currentWishlistId) || null;
   const openedWish = activeWishes.find((wish) => wish.id === openedWishId) || null;
   const openedWishTarget = openedWish ? parseTargetFromPrice(openedWish.price) : null;
@@ -1761,10 +1798,12 @@ export default function App({ initialRouteOverride = null }) {
   const showUserBar = Boolean(currentUser) && page !== "shared";
   const canManage = page === "wishlist";
 
+  const isPlainAppShell = page === "dashboard" || page === "wishlist" || page === "shared";
+
   return (
-    <div className={`page-shell${page === "dashboard" ? " dashboard-shell" : ""}`} style={pageShellStyle}>
-      <div className="glow glow-left" />
-      <div className="glow glow-right" />
+    <div className={`page-shell${page === "dashboard" ? " dashboard-shell" : ""}${isPlainAppShell ? " app-shell-plain" : ""}`} style={pageShellStyle}>
+      {isPlainAppShell ? null : <div className="glow glow-left" />}
+      {isPlainAppShell ? null : <div className="glow glow-right" />}
 
       <main className="layout">
         {showUserBar ? (

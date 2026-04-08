@@ -72,6 +72,33 @@ export function WishlistPage({
   const lastSubmittedSettingsRef = useRef("");
   const [priceSortDirection, setPriceSortDirection] = useState("desc");
 
+  function renderWishImageBlock(title, imageUrl, options = {}) {
+    const { className = "", showEditorOverlay = false } = options;
+    const wrapClassName = ["wish-image-wrap", imageUrl ? "" : "wish-image-wrap-placeholder", className]
+      .filter(Boolean)
+      .join(" ");
+
+    return (
+      <div className={wrapClassName}>
+        {imageUrl ? (
+          <img className="wish-image" src={imageUrl} alt={title} loading="lazy" />
+        ) : (
+          <>
+            <div className="wish-image-placeholder-visual" aria-hidden="true">
+              <img className="wish-image-placeholder-gift" src="/branding/gift-box.png" alt="" loading="lazy" />
+            </div>
+            {showEditorOverlay ? (
+              <div className="wish-image-placeholder-cta" aria-hidden="true">
+                <span className="wish-image-placeholder-plus">+</span>
+                <span className="wish-image-placeholder-label">Добавить картинку</span>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (!isRulesEditorOpen) {
       setRulesDraft(rules.slice(0, 5));
@@ -120,6 +147,38 @@ export function WishlistPage({
       document.removeEventListener("focusin", closeOnOutsideClick, true);
     };
   }, [isCelebrationMenuOpen]);
+
+  useEffect(() => {
+    if (!isWishEditorOpen || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const { body, documentElement } = document;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const previousOverflow = body.style.overflow;
+    const previousPosition = body.style.position;
+    const previousTop = body.style.top;
+    const previousWidth = body.style.width;
+    const previousTouchAction = body.style.touchAction;
+    const previousHtmlOverflow = documentElement.style.overflow;
+
+    documentElement.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.touchAction = "none";
+
+    return () => {
+      documentElement.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousOverflow;
+      body.style.position = previousPosition;
+      body.style.top = previousTop;
+      body.style.width = previousWidth;
+      body.style.touchAction = previousTouchAction;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isWishEditorOpen]);
 
   useEffect(() => () => {
     if (settingsSaveTimeoutRef.current) {
@@ -440,6 +499,7 @@ export function WishlistPage({
             return (
               <article className="wish-card" key={wish.id}>
                 <button type="button" className="wish-card-open-area" onClick={() => onOpenWish(wish.id)}>
+                  {renderWishImageBlock(wish.title, wish.imageUrl)}
                   <div className="wish-topline">
                     <span className="wish-tag">{wish.tag}</span>
                     <span className="wish-price">{wish.price || "Цена не указана"}</span>
@@ -564,13 +624,32 @@ export function WishlistPage({
             }
           }}
         >
-          <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>{editingWishId ? "Редактирование подарка" : "Новый подарок"}</h3>
+          <div className="donation-modal wish-editor-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="wish-editor-modal-head">
+              <h3>{editingWishId ? "Редактирование подарка" : "Новый подарок"}</h3>
+              <button
+                type="button"
+                className="wish-editor-close"
+                onClick={onCloseWishEditor}
+                disabled={isWishSubmitting}
+                aria-label="Закрыть"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="wish-editor-close-icon">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
             <p className="donation-modal-title">Заполни поля и сохрани изменения</p>
 
             <form className="donation-form" onSubmit={onWishFormSubmit}>
+              {renderWishImageBlock(wishForm.title || "Подарок", "", {
+                className: "wish-editor-image-wrap",
+                showEditorOverlay: true
+              })}
+
               <label>
-                Название*
+                Название
                 <input
                   type="text"
                   name="title"
@@ -582,14 +661,13 @@ export function WishlistPage({
               </label>
 
               <label>
-                Описание*
+                Описание
                 <textarea
                   name="note"
                   value={wishForm.note}
                   onChange={onWishFormChange}
                   placeholder="Коротко: что это и почему хочется"
                   rows={4}
-                  required
                 />
               </label>
 
@@ -627,9 +705,6 @@ export function WishlistPage({
               </label>
 
               <div className="donation-actions">
-                <button type="button" className="button-secondary" onClick={onCloseWishEditor} disabled={isWishSubmitting}>
-                  Отмена
-                </button>
                 <button type="submit" className="button-primary" disabled={isWishSubmitting}>
                   {isWishSubmitting ? "Сохраняем..." : editingWishId ? "Сохранить" : "Добавить"}
                 </button>

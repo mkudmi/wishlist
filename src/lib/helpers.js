@@ -21,7 +21,8 @@ export function sanitizeWishes(items) {
           : typeof item.accent === "string"
             ? item.accent
             : "",
-      url: typeof item.url === "string" ? item.url : ""
+      url: typeof item.url === "string" ? item.url : "",
+      imageUrl: typeof item.image_url === "string" ? item.image_url : typeof item.imageUrl === "string" ? item.imageUrl : ""
     }));
 }
 
