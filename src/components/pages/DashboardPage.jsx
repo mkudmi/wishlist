@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BirthdayPickerModal } from "../BirthdayPickerModal";
 import { celebrationOptions } from "../../config/constants";
-import { formatDateToDdMmYyyy } from "../../lib/helpers";
+import { formatDateToDdMmYyyy, normalizeStorageDate } from "../../lib/helpers";
 
 export function DashboardPage({
   wishlists,
   dashboardStats,
+  userBirthday,
   currentWishlistId,
   isLoading,
   isSubmitting,
@@ -103,6 +104,56 @@ export function DashboardPage({
     }
     const match = celebrationOptions.find((item) => item.value === wishlist.celebration_type);
     return match?.label || "Мой день рождения";
+  }
+
+  function getDaysWord(value) {
+    const abs = Math.abs(value);
+    const mod10 = abs % 10;
+    const mod100 = abs % 100;
+
+    if (mod10 === 1 && mod100 !== 11) {
+      return "день";
+    }
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return "дня";
+    }
+    return "дней";
+  }
+
+  function getTimeLeftLabel(wishlist) {
+    const eventSourceDate = wishlist?.celebration_type === "birthday" ? userBirthday : wishlist?.event_date;
+    const normalizedDate = normalizeStorageDate(eventSourceDate);
+    if (!normalizedDate) {
+      return "Без даты";
+    }
+
+    const [year, month, day] = normalizedDate.split("-").map(Number);
+    const now = new Date();
+    const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    if (wishlist?.celebration_type === "birthday") {
+      const thisYearTargetUtc = Date.UTC(now.getFullYear(), month - 1, day);
+      const nextTargetUtc = thisYearTargetUtc >= todayUtc ? thisYearTargetUtc : Date.UTC(now.getFullYear() + 1, month - 1, day);
+      const diffDays = Math.round((nextTargetUtc - todayUtc) / dayMs);
+
+      if (diffDays === 0) {
+        return "Сегодня";
+      }
+      return `${diffDays} ${getDaysWord(diffDays)}`;
+    }
+
+    const targetUtc = Date.UTC(year, month - 1, day);
+    const diffDays = Math.round((targetUtc - todayUtc) / dayMs);
+
+    if (diffDays === 0) {
+      return "Сегодня";
+    }
+    if (diffDays > 0) {
+      return `${diffDays} ${getDaysWord(diffDays)}`;
+    }
+    const elapsedDays = Math.abs(diffDays);
+    return `${elapsedDays} ${getDaysWord(elapsedDays)} назад`;
   }
 
   function openCreateModal() {
@@ -244,7 +295,10 @@ export function DashboardPage({
                 </div>
 
                 <div className="wishlist-tile-head">
-                  <strong>{wishlist.title}</strong>
+                  <div className="wishlist-tile-headline">
+                    <strong>{wishlist.title}</strong>
+                    <span className="wishlist-tile-date wishlist-tile-countdown">{getTimeLeftLabel(wishlist)}</span>
+                  </div>
                   <p>{getCelebrationLabel(wishlist)}</p>
                 </div>
 

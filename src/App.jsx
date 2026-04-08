@@ -1761,6 +1761,7 @@ export default function App({ initialRouteOverride = null }) {
           <DashboardPage
             wishlists={wishlists}
             dashboardStats={dashboardStats}
+            userBirthday={currentUser?.birthday || ""}
             currentWishlistId={currentWishlistId}
             isLoading={isWishlistsLoading}
             isSubmitting={isWishlistSubmitting}

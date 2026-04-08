@@ -2036,12 +2036,28 @@ span.snap-accent-word {
 .dashboard-shell .wishlist-tile-head strong {
   color: #203145;
   font-size: 1.12rem;
-  padding-right: 44px;
+  padding-right: 0;
 }
 
 .dashboard-shell .wishlist-tile-head p {
   color: rgba(56, 80, 106, 0.78);
   font-size: 0.92rem;
+}
+
+.wishlist-tile-headline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-right: 42px;
+}
+
+.wishlist-tile-countdown {
+  min-height: 26px;
+  padding: 0 10px;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .wishlist-tile-meta {
@@ -2644,4 +2660,52 @@ span.snap-accent-word {
     height: 44px;
     border-radius: 14px;
   }
+}
+
+.delete-wishlist-modal {
+  background:
+    linear-gradient(180deg, rgba(248, 252, 255, 0.96), rgba(236, 246, 255, 0.9)),
+    rgba(248, 252, 255, 0.92);
+  border-color: rgba(112, 145, 181, 0.2);
+  box-shadow:
+    0 24px 56px rgba(45, 78, 117, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.delete-wishlist-modal h3 {
+  color: #203145;
+}
+
+.delete-wishlist-modal-title {
+  color: rgba(56, 80, 106, 0.84);
+}
+
+.delete-wishlist-modal .button-secondary {
+  border-color: rgba(112, 145, 181, 0.26);
+  background: rgba(255, 255, 255, 0.8);
+  color: #36526f;
+}
+
+.delete-wishlist-modal .button-secondary:hover {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.delete-wishlist-cancel {
+  background: linear-gradient(135deg, #5f92cf, #88b6e5);
+  color: #f7fbff;
+  box-shadow: 0 12px 30px rgba(95, 146, 207, 0.3);
+}
+
+.delete-wishlist-cancel:hover {
+  box-shadow: 0 16px 34px rgba(95, 146, 207, 0.34);
+}
+
+.delete-wishlist-confirm {
+  border-color: rgba(112, 145, 181, 0.26);
+  background: rgba(255, 255, 255, 0.8);
+  color: #36526f;
+}
+
+.delete-wishlist-confirm:hover {
+  background: rgba(255, 255, 255, 0.94);
 }
