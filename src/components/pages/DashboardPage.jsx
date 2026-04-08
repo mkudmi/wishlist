@@ -12,6 +12,7 @@ export function DashboardPage({
   error,
   onCreateWishlist,
   onOpenWishlist,
+  onOpenWishlistLink,
   onCopyShareLink,
   onDeleteWishlist
 }) {
@@ -237,6 +238,14 @@ export function DashboardPage({
                 </div>
 
                 <div className="wishlist-tile-actions">
+                  <button
+                    type="button"
+                    className="tiny-admin-button"
+                    onClick={(event) => onOpenWishlistLink(event, wishlist)}
+                    disabled={isSubmitting}
+                  >
+                    Открыть
+                  </button>
                   <button
                     type="button"
                     className="tiny-admin-button"

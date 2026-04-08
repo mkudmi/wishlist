@@ -510,6 +510,31 @@ export default function App({ initialRouteOverride = null }) {
     setIsShareSheetQrVisible(false);
   }
 
+  async function openWishlistByShareLink(event, wishlist) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+
+    if (!wishlist || typeof window === "undefined") {
+      return;
+    }
+
+    const newTab = window.open("about:blank", "_blank");
+    if (!newTab) {
+      showToast("Браузер заблокировал новую вкладку", "error");
+      return;
+    }
+
+    const shareToken = await ensureWishlistShareToken(wishlist);
+    if (!shareToken) {
+      newTab.close();
+      showToast("Не удалось подготовить ссылку", "error");
+      return;
+    }
+
+    const url = buildSharedWishlistUrl(shareToken);
+    newTab.location.replace(url);
+  }
+
   function closeShareSheet() {
     setShareSheetWishlist(null);
     setShareSheetUrl("");
@@ -1719,6 +1744,7 @@ export default function App({ initialRouteOverride = null }) {
             error={wishlistsError}
             onCreateWishlist={createWishlist}
             onOpenWishlist={openWishlistFromDashboard}
+            onOpenWishlistLink={openWishlistByShareLink}
             onCopyShareLink={openWishlistShareSheet}
             onDeleteWishlist={requestDeleteWishlist}
           />

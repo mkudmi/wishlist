@@ -34,14 +34,20 @@ export function UserBar({
     };
   }, [isHeaderMenuOpen, onToggleHeaderMenu]);
 
+  const backLabel = canManage ? "Вернуться к списку вишлистов" : "Вернуться на главную страницу";
+  const handleBack = canManage ? onOpenDashboard : onOpenLanding;
+
+  const isDashboardView = !canManage && !showDashboardLink;
+  const userBarClassName = `auth-userbar${canManage ? " auth-userbar-manage" : ""}${isDashboardView ? " auth-userbar-dashboard" : ""}`;
+
   return (
-    <div className="auth-userbar">
+    <div className={userBarClassName}>
       <div className="auth-userbar-left">
         <button
           type="button"
           className="header-back-button"
-          aria-label="Вернуться на главную страницу"
-          onClick={onOpenLanding}
+          aria-label={backLabel}
+          onClick={handleBack}
         >
           <svg
             className="header-back-icon"
