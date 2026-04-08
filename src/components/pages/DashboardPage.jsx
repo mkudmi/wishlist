@@ -340,7 +340,7 @@ export function DashboardPage({
         <div className="donation-modal-backdrop" onClick={closeCreateModal}>
           <div className="donation-modal wishlist-create-modal" onClick={(event) => event.stopPropagation()}>
             <h3>Новый вишлист</h3>
-            <p className="donation-modal-title">Заполни параметры события, а оформление выберем уже внутри страницы</p>
+            <p className="donation-modal-title">Собери список того, что действительно хочется</p>
 
             <form className="donation-form" onSubmit={submitWishlist}>
               <label>
@@ -419,11 +419,11 @@ export function DashboardPage({
               ) : null}
 
               <div className="donation-actions">
-                <button type="button" className="button-secondary" onClick={closeCreateModal}>
-                  Отмена
-                </button>
                 <button type="submit" className="button-primary" disabled={isCreateDisabled}>
                   {isSubmitting ? "Создаем..." : "Создать"}
+                </button>
+                <button type="button" className="button-secondary" onClick={closeCreateModal}>
+                  Отмена
                 </button>
               </div>
             </form>

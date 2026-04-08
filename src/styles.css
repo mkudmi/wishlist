@@ -2002,6 +2002,58 @@ span.snap-accent-word {
   background: rgba(95, 146, 207, 0.08);
 }
 
+.profile-modal-head {
+  display: grid;
+  gap: 1px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(112, 145, 181, 0.14);
+}
+
+.profile-modal-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.profile-modal-head .donation-modal-title {
+  margin-top: -4px;
+}
+
+.profile-modal-head h3 {
+  font-size: 1.5rem;
+  line-height: 1.05;
+}
+
+.profile-modal-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.profile-modal-menu .wishlist-tile-menu-trigger {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.profile-modal-menu-dropdown {
+  min-width: 188px;
+  z-index: 4;
+}
+
+.profile-form-label-text {
+  display: inline-block;
+  padding-left: 4px;
+}
+
+.profile-modal .donation-actions {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(112, 145, 181, 0.14);
+}
+
 .wishlist-tile-topline {
   display: flex;
   justify-content: space-between;
@@ -2708,4 +2760,26 @@ span.snap-accent-word {
 
 .delete-wishlist-confirm:hover {
   background: rgba(255, 255, 255, 0.94);
+}
+
+@media (max-width: 720px) {
+  .profile-modal-head-row {
+    gap: 10px;
+  }
+
+  .profile-modal-menu-dropdown {
+    right: 0;
+    min-width: 176px;
+    max-width: min(220px, calc(100vw - 56px));
+  }
+}
+
+@media (max-width: 520px) {
+  .profile-modal-head-row {
+    align-items: flex-start;
+  }
+
+  .profile-modal-head .donation-modal-title {
+    margin-top: -4px;
+  }
 }
