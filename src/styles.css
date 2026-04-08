@@ -2054,6 +2054,10 @@ span.snap-accent-word {
   border-top: 1px solid rgba(112, 145, 181, 0.14);
 }
 
+.wishlist-hero-primary-button {
+  box-shadow: none;
+}
+
 .wishlist-tile-topline {
   display: flex;
   justify-content: space-between;

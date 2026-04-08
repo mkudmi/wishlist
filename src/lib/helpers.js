@@ -1,6 +1,8 @@
 ﻿import { emptyProfileForm, rules as defaultRules } from "../config/constants";
 import { seoLandingPathMap } from "../config/seoPages";
 
+export const LAST_ACTIVE_WISHLIST_ID_STORAGE_KEY = "wishlist:last-active-id";
+
 export function sanitizeWishes(items) {
   if (!Array.isArray(items)) {
     return [];
@@ -268,29 +270,76 @@ export function getEventCountdownInfo(dateValue, options = {}) {
 
 export function getRouteFromLocation() {
   if (typeof window === "undefined") {
-    return { page: "landing", shareToken: null, seoPageKey: "home" };
+    return { page: "landing", shareToken: null, seoPageKey: "home", wishlistId: null };
   }
 
   const pathname = window.location.pathname || "/";
   const raw = pathname !== "/" && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
   const seoPage = seoLandingPathMap[raw];
   if (seoPage) {
-    return { page: "landing", shareToken: null, seoPageKey: seoPage.key };
+    return { page: "landing", shareToken: null, seoPageKey: seoPage.key, wishlistId: null };
   }
   if (raw === "/dashboard") {
-    return { page: "dashboard", shareToken: null, seoPageKey: null };
+    return { page: "dashboard", shareToken: null, seoPageKey: null, wishlistId: null };
   }
   if (raw === "/auth/yandex/callback") {
-    return { page: "yandex-callback", shareToken: null, seoPageKey: null };
+    return { page: "yandex-callback", shareToken: null, seoPageKey: null, wishlistId: null };
   }
   if (raw === "/wishlist") {
-    return { page: "wishlist", shareToken: null, seoPageKey: null };
+    return { page: "wishlist", shareToken: null, seoPageKey: null, wishlistId: getLastActiveWishlistId() };
+  }
+  const wishlistEditMatch = raw.match(/^\/wishlists\/([^/]+)\/edit$/);
+  if (wishlistEditMatch) {
+    try {
+      return { page: "wishlist", shareToken: null, seoPageKey: null, wishlistId: decodeURIComponent(wishlistEditMatch[1]) };
+    } catch {
+      return { page: "wishlist", shareToken: null, seoPageKey: null, wishlistId: wishlistEditMatch[1] };
+    }
   }
   const sharedMatch = raw.match(/^\/shared\/([a-zA-Z0-9_-]+)$/);
   if (sharedMatch) {
-    return { page: "shared", shareToken: sharedMatch[1], seoPageKey: null };
+    return { page: "shared", shareToken: sharedMatch[1], seoPageKey: null, wishlistId: null };
   }
-  return { page: "landing", shareToken: null, seoPageKey: "home" };
+  return { page: "landing", shareToken: null, seoPageKey: "home", wishlistId: null };
+}
+
+export function getWishlistEditPath(wishlistId) {
+  const normalizedId = String(wishlistId || "").trim();
+  if (!normalizedId) {
+    return "/wishlist";
+  }
+
+  return `/wishlists/${encodeURIComponent(normalizedId)}/edit`;
+}
+
+export function getLastActiveWishlistId() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const storedId = window.localStorage.getItem(LAST_ACTIVE_WISHLIST_ID_STORAGE_KEY);
+    return storedId ? storedId.trim() || null : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setLastActiveWishlistId(wishlistId) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (!wishlistId) {
+      window.localStorage.removeItem(LAST_ACTIVE_WISHLIST_ID_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(LAST_ACTIVE_WISHLIST_ID_STORAGE_KEY, String(wishlistId));
+  } catch {
+    // Ignore storage access errors in private mode or restricted environments.
+  }
 }
 
 export function groupReservationsByWish(items) {

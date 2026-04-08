@@ -119,8 +119,21 @@
     <script>
       (function () {
         var origin = "https://xn--80ajchdgcktejxc.xn--p1ai";
+        var lastActiveWishlistStorageKey = "wishlist:last-active-id";
         var pathname = window.location.pathname || "/";
         var path = pathname !== "/" && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+        if (path === "/wishlist") {
+          try {
+            var lastActiveWishlistId = window.localStorage.getItem(lastActiveWishlistStorageKey);
+            if (lastActiveWishlistId) {
+              var redirectedPath = "/wishlists/" + encodeURIComponent(lastActiveWishlistId) + "/edit";
+              window.history.replaceState(null, "", redirectedPath);
+              path = redirectedPath;
+            }
+          } catch (error) {
+            // Ignore storage access issues and let the app resolve the fallback route.
+          }
+        }
         var seoPages = {
           "/": {
             title: "Список желаний - Онлайн-вишлист для подарков",
@@ -164,11 +177,11 @@
           description = "Личный кабинет сервиса Список желаний.";
           robots = "noindex,nofollow";
           canonicalPath = "/dashboard";
-        } else if (path === "/wishlist") {
+        } else if (path === "/wishlist" || /^\/wishlists\/[^/]+\/edit$/.test(path)) {
           title = "Редактирование вишлиста - Список желаний";
           description = "Управление вашим списком подарков в сервисе Список желаний.";
           robots = "noindex,nofollow";
-          canonicalPath = "/wishlist";
+          canonicalPath = path;
         } else if (path === "/auth/yandex/callback") {
           title = "Вход через Яндекс - Список желаний";
           description = "Служебная страница авторизации Список желаний.";

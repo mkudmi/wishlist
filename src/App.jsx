@@ -12,6 +12,8 @@ import {
   createShareToken,
   formatMoney,
   getRouteFromLocation,
+  getLastActiveWishlistId,
+  getWishlistEditPath,
   getUserDisplayName,
   getWishDonated,
   getWishParticipants,
@@ -23,6 +25,7 @@ import {
   parseDdMmYyyyToStorageDate,
   parseDonationAmount,
   parseTargetFromPrice,
+  setLastActiveWishlistId,
   sanitizeWishes
 } from "./lib/helpers";
 import { buildAppUser } from "./lib/authUser";
@@ -109,6 +112,7 @@ export default function App({ initialRouteOverride = null }) {
   const [wishlistRules, setWishlistRules] = useState(defaultRules);
   const [page, setPage] = useState(initialRoute.page);
   const [shareToken, setShareToken] = useState(initialRoute.shareToken);
+  const [wishlistRouteId, setWishlistRouteId] = useState(initialRoute.wishlistId || null);
   const [seoPageKey, setSeoPageKey] = useState(initialRoute.seoPageKey || "home");
 
   const [openedWishId, setOpenedWishId] = useState(null);
@@ -175,6 +179,7 @@ export default function App({ initialRouteOverride = null }) {
     const route = getRouteFromLocation();
     setPage(route.page);
     setShareToken(route.shareToken);
+    setWishlistRouteId(route.wishlistId || null);
     setSeoPageKey(route.seoPageKey || "home");
   }
 
@@ -249,7 +254,14 @@ export default function App({ initialRouteOverride = null }) {
 
     const lists = await loadWishlistsForUser();
 
-    if (withWishlistSelection && lists.length > 0) {
+    if (page === "wishlist") {
+      if (lists.length === 0) {
+        setCurrentWishlistId(null);
+        setCurrentShareToken(null);
+        setWishes([]);
+        setWishlistRules(defaultRules.slice(0, 5));
+      }
+    } else if (withWishlistSelection && lists.length > 0) {
       await selectWishlist(lists[0]);
     } else if (lists.length === 0) {
       setCurrentWishlistId(null);
@@ -652,6 +664,7 @@ export default function App({ initialRouteOverride = null }) {
       const route = getRouteFromLocation();
       setPage(route.page);
       setShareToken(route.shareToken);
+      setWishlistRouteId(route.wishlistId || null);
       setSeoPageKey(route.seoPageKey || "home");
     }
 
@@ -703,13 +716,42 @@ export default function App({ initialRouteOverride = null }) {
 
   useEffect(() => {
     if (!currentUser) {
+      setLastActiveWishlistId(null);
       return;
     }
 
-    if (page === "wishlist" && !currentWishlistId) {
-      navigate("/dashboard", { replace: true });
+    setLastActiveWishlistId(currentWishlistId);
+  }, [currentUser, currentWishlistId]);
+
+  useEffect(() => {
+    if (!currentUser || isAuthLoading) {
+      return;
     }
-  }, [page, currentWishlistId, currentUser]);
+
+    if (page !== "wishlist" || isWishlistsLoading) {
+      return;
+    }
+
+    if (wishlists.length === 0) {
+      if (!currentWishlistId) {
+        navigate("/dashboard", { replace: true });
+      }
+      return;
+    }
+
+    const resolvedRouteId = wishlistRouteId || getLastActiveWishlistId();
+    const matchedWishlist = resolvedRouteId ? wishlists.find((wishlist) => String(wishlist.id) === String(resolvedRouteId)) || null : null;
+    const fallbackWishlist = matchedWishlist || wishlists[0];
+    const canonicalPath = getWishlistEditPath(fallbackWishlist.id);
+
+    if (wishlistRouteId !== String(fallbackWishlist.id)) {
+      navigate(canonicalPath, { replace: true });
+    }
+
+    if (currentWishlistId !== fallbackWishlist.id) {
+      void selectWishlist(fallbackWishlist);
+    }
+  }, [currentUser, currentWishlistId, isAuthLoading, isWishlistsLoading, page, wishlistRouteId, wishlists]);
 
   useEffect(() => {
     if (isAuthLoading || currentUser || page === "shared" || page === "landing") {
@@ -777,7 +819,7 @@ export default function App({ initialRouteOverride = null }) {
       seo.title = "Редактирование вишлиста - Список желаний";
       seo.description = "Управление вашим списком подарков в сервисе Список желаний.";
       seo.robots = "noindex,nofollow";
-      seo.canonical = `${siteOrigin}/wishlist`;
+      seo.canonical = `${siteOrigin}${getWishlistEditPath(wishlistRouteId || currentWishlistId)}`;
     } else if (page === "shared") {
       seo.title = sharedWishlistMeta?.title
         ? `${sharedWishlistMeta.title} - Список желаний`
@@ -813,7 +855,7 @@ export default function App({ initialRouteOverride = null }) {
         node.setAttribute(attribute, value);
       }
     });
-  }, [activeSeoPage.description, activeSeoPage.path, activeSeoPage.title, page, shareToken, sharedWishlistMeta, siteOrigin]);
+  }, [activeSeoPage.description, activeSeoPage.path, activeSeoPage.title, currentWishlistId, page, shareToken, sharedWishlistMeta, siteOrigin, wishlistRouteId]);
 
   function onAuthInputChange(event) {
     const { name, value } = event.target;
@@ -1097,6 +1139,7 @@ export default function App({ initialRouteOverride = null }) {
     setDeleteAccountConfirmation("");
     setPage("landing");
     setShareToken(null);
+    setWishlistRouteId(null);
     setSeoPageKey("home");
   }
 
@@ -1145,7 +1188,7 @@ export default function App({ initialRouteOverride = null }) {
     await loadDashboardStats(next);
     await selectWishlist(data);
     setIsWishlistSubmitting(false);
-    navigate("/wishlist");
+    navigate(getWishlistEditPath(data.id));
     return true;
   }
 
@@ -1209,7 +1252,7 @@ export default function App({ initialRouteOverride = null }) {
 
   async function openWishlistFromDashboard(wishlist) {
     await selectWishlist(wishlist);
-    navigate("/wishlist");
+    navigate(getWishlistEditPath(wishlist?.id));
   }
 
   function requestDeleteWishlist(wishlist) {
@@ -1252,13 +1295,14 @@ export default function App({ initialRouteOverride = null }) {
     if (currentWishlistId === wishlistToDelete.id) {
       if (nextWishlists.length > 0) {
         await selectWishlist(nextWishlists[0]);
+        navigate(getWishlistEditPath(nextWishlists[0].id), { replace: true });
       } else {
         setCurrentWishlistId(null);
         setCurrentShareToken(null);
         setWishes([]);
         setWishlistRules(defaultRules.slice(0, 5));
+        navigate("/dashboard");
       }
-      navigate("/dashboard");
     }
 
     setWishlistToDelete(null);

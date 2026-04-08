@@ -288,8 +288,8 @@ export function WishlistPage({
             </p>
 
             <div className="hero-actions">
-              <button type="button" className="button-primary" onClick={() => scrollToSection("wishlist")}>
-                Смотреть желания
+              <button type="button" className="button-primary wishlist-hero-primary-button" onClick={() => scrollToSection("wishlist")}>
+                К подаркам
               </button>
               <button type="button" className="button-secondary" onClick={() => scrollToSection("gift-guide")}>
                 Как лучше подарить
@@ -308,9 +308,7 @@ export function WishlistPage({
       {canEdit ? (
         <section className="wishlist-settings-card">
           <div className="section-head compact">
-            <p className="section-label">Editor</p>
             <h2>Настройки вишлиста</h2>
-            <p>Открытие из дашборда теперь сразу ведет в режим редактирования. Здесь можно менять событие и оформление страницы.</p>
           </div>
 
           <form className="wishlist-settings-form" onSubmit={submitWishlistSettings}>
@@ -415,7 +413,6 @@ export function WishlistPage({
       <section className="wishlist-section" id="wishlist">
         <div className="section-head section-head-with-action">
           <div>
-            <p className="section-label">Wishlist</p>
             <h2>Что можно подарить</h2>
           </div>
           <button
