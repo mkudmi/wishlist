@@ -24,26 +24,13 @@ export function DashboardPage({
   const [isCelebrationMenuOpen, setIsCelebrationMenuOpen] = useState(false);
   const [isEventDatePickerOpen, setIsEventDatePickerOpen] = useState(false);
   const [openWishlistMenuId, setOpenWishlistMenuId] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
   const celebrationMenuRef = useRef(null);
   const wishlistMenuRef = useRef(null);
 
   const needsCustomTitle = celebrationType === "custom";
   const needsEventDate = celebrationType !== "birthday";
   const currentCelebrationOption = celebrationOptions.find((option) => option.value === celebrationType) || celebrationOptions[0];
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia("(max-width: 768px)");
-    const syncIsMobile = () => setIsMobile(mediaQuery.matches);
-    syncIsMobile();
-
-    mediaQuery.addEventListener("change", syncIsMobile);
-    return () => mediaQuery.removeEventListener("change", syncIsMobile);
-  }, []);
+  const todayStorageDate = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     if (!isCelebrationMenuOpen) {
@@ -88,6 +75,24 @@ export function DashboardPage({
       document.removeEventListener("focusin", closeWishlistMenuOnOutsideClick, true);
     };
   }, [openWishlistMenuId]);
+
+  useEffect(() => {
+    if (typeof document === "undefined" || !isCreateModalOpen) {
+      return undefined;
+    }
+
+    const { documentElement, body } = document;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+
+    documentElement.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+
+    return () => {
+      documentElement.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+    };
+  }, [isCreateModalOpen]);
 
   function getCelebrationLabel(wishlist) {
     if (!wishlist) {
@@ -273,7 +278,7 @@ export function DashboardPage({
 
       {isCreateModalOpen ? (
         <div className="donation-modal-backdrop" onClick={closeCreateModal}>
-          <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="donation-modal wishlist-create-modal" onClick={(event) => event.stopPropagation()}>
             <h3>Новый вишлист</h3>
             <p className="donation-modal-title">Заполни параметры события, а оформление выберем уже внутри страницы</p>
 
@@ -340,20 +345,16 @@ export function DashboardPage({
               {needsEventDate ? (
                 <label>
                   Дата события
-                  {isMobile ? (
-                    <input type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} required />
-                  ) : (
-                    <input
-                      type="text"
-                      value={formatDateToDdMmYyyy(eventDate)}
-                      onClick={() => setIsEventDatePickerOpen(true)}
-                      onFocus={() => setIsEventDatePickerOpen(true)}
-                      placeholder="ДД-ММ-ГГГГ"
-                      readOnly
-                      required
-                      className="birthday-picker-trigger"
-                    />
-                  )}
+                  <input
+                    type="text"
+                    value={formatDateToDdMmYyyy(eventDate)}
+                    onClick={() => setIsEventDatePickerOpen(true)}
+                    onFocus={() => setIsEventDatePickerOpen(true)}
+                    placeholder="ДД-ММ-ГГГГ"
+                    readOnly
+                    required
+                    className="birthday-picker-trigger"
+                  />
                 </label>
               ) : null}
 
@@ -371,8 +372,8 @@ export function DashboardPage({
       ) : null}
 
       <BirthdayPickerModal
-        isOpen={isCreateModalOpen && isEventDatePickerOpen && !isMobile}
-        value={eventDate}
+        isOpen={isCreateModalOpen && isEventDatePickerOpen}
+        value={eventDate || todayStorageDate}
         onClose={() => setIsEventDatePickerOpen(false)}
         onConfirm={(nextValue) => {
           setEventDate(nextValue);
