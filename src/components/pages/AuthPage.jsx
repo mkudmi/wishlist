@@ -48,6 +48,7 @@ export function AuthPage({
   const [giftScene, setGiftScene] = useState({ scrollTop: 0, width: 0, height: 0, offsets: [] });
   const googleCallbackRef = useRef(onGoogleAuth);
   const googleInitializedClientIdRef = useRef("");
+  const googleBtnRef = useRef(null);
   const scrollRef = useRef(null);
   const snapScrollLockRef = useRef(false);
   const snapScrollTimeoutRef = useRef(null);
@@ -308,6 +309,14 @@ export function AuthPage({
         }
       });
 
+      if (googleBtnRef.current) {
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          type: "standard",
+          theme: "outline",
+          size: "large"
+        });
+      }
+
       googleInitializedClientIdRef.current = googleClientId;
     }
 
@@ -515,12 +524,20 @@ export function AuthPage({
     }
 
     setIsGoogleSubmitting(true);
+
+    // Try One Tap prompt first (works on desktop)
     window.google.accounts.id.prompt((notification) => {
       const noPromptShown =
         notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.();
 
       if (noPromptShown) {
-        setIsGoogleSubmitting(false);
+        // Fallback: click the rendered Google button (works on mobile Safari/Chrome)
+        const btn = googleBtnRef.current?.querySelector("div[role='button']");
+        if (btn) {
+          btn.click();
+        } else {
+          setIsGoogleSubmitting(false);
+        }
       }
     });
   }
@@ -844,6 +861,10 @@ export function AuthPage({
                     </span>
                     <span>Яндекс</span>
                   </button>
+                ) : null}
+
+                {googleClientId ? (
+                  <div ref={googleBtnRef} style={{ position: "absolute", width: "1px", height: "1px", overflow: "hidden", opacity: 0, pointerEvents: "none" }} aria-hidden="true" />
                 ) : null}
 
                 {googleClientId ? (
