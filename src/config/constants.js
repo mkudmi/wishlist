@@ -139,6 +139,7 @@ export const emptyForm = {
 
 export const emptyAuthForm = {
   email: "",
+  currentPassword: "",
   password: "",
   confirmPassword: "",
   birthday: "",

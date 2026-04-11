@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { seoLandingPages } from "../../config/seoPages";
 import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
 import { AuthFormCard } from "../auth/AuthFormCard";
@@ -42,13 +42,13 @@ export function AuthPage({
     onYandexError: () => onModeChange("login")
   });
 
-  function closeAuthModal() {
+  const closeAuthModal = useCallback(() => {
     if (submitting) {
       return;
     }
 
     setIsAuthModalOpen(false);
-  }
+  }, [submitting]);
 
   useAuthModalBehavior({
     isOpen: isAuthModalOpen,

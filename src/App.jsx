@@ -47,6 +47,8 @@ import {
   loginWithGoogleCredential,
   logoutUser,
   registerUser,
+  changeUserPassword,
+  verifyUserPassword,
   fetchReservationsByWishlist,
   fetchSharedReservationsByToken,
   fetchSharedRulesByToken,
@@ -889,6 +891,90 @@ export default function App({ initialRouteOverride = null }) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
 
+  async function completeAuthSuccess(user) {
+    setCurrentUser(user);
+
+    const current = await fetchCurrentUser();
+    const normalizedUser = current.data ? buildAppUser(current.data) : null;
+    if (!normalizedUser) {
+      throw new Error("Не удалось получить пользователя.");
+    }
+    setCurrentUser(normalizedUser);
+
+    const lists = await loadWishlistsForUser();
+    if (lists.length > 0) {
+      await selectWishlist(lists[0]);
+    } else {
+      setCurrentWishlistId(null);
+      setCurrentShareToken(null);
+      setWishes([]);
+    }
+
+    navigate("/dashboard");
+    setAuthForm(emptyAuthForm);
+  }
+
+  async function submitPasswordChange(email) {
+    const currentPassword = authForm.currentPassword;
+    const nextPassword = authForm.password;
+    const confirmPassword = authForm.confirmPassword;
+
+    if (!currentPassword || !nextPassword || !confirmPassword) {
+      throw new Error("Заполни все поля для смены пароля.");
+    }
+
+    const { error: verifyError } = await verifyUserPassword({
+      email,
+      currentPassword
+    });
+
+    if (verifyError) {
+      if (verifyError.code === "user not found") {
+        throw new Error("Пользователь с таким email не найден.");
+      }
+      if (verifyError.code === "password_auth_not_available") {
+        throw new Error("Для этого аккаунта вход по паролю не настроен.");
+      }
+      if (verifyError.code === "invalid current password") {
+        throw new Error("Старый пароль указан неверно.");
+      }
+      throw new Error("Не удалось проверить старый пароль.");
+    }
+
+    if (nextPassword.length < 6) {
+      throw new Error("Новый пароль должен быть не менее 6 символов.");
+    }
+    if (currentPassword === nextPassword) {
+      throw new Error("Новый пароль должен отличаться от старого.");
+    }
+    if (nextPassword !== confirmPassword) {
+      throw new Error("Новые пароли не совпадают.");
+    }
+
+    const { error } = await changeUserPassword({
+      email,
+      currentPassword,
+      newPassword: nextPassword
+    });
+
+    if (error) {
+      if (error.code === "new password must be at least 6 characters") {
+        throw new Error("Новый пароль должен быть не менее 6 символов.");
+      }
+      if (error.code === "new password must differ from current password") {
+        throw new Error("Новый пароль должен отличаться от старого.");
+      }
+      throw new Error("Не удалось изменить пароль.");
+    }
+
+    setAuthMode("login");
+    setAuthForm({
+      ...emptyAuthForm,
+      email
+    });
+    showToast("Пароль обновлён. Теперь войдите с новым паролем.");
+  }
+
   async function submitAuth(event) {
     event.preventDefault();
 
@@ -899,11 +985,14 @@ export default function App({ initialRouteOverride = null }) {
       const email = authForm.email.trim().toLowerCase();
       const password = authForm.password;
 
-      if (!email || !password) {
-        throw new Error("Укажи email и пароль.");
+      if (!email) {
+        throw new Error("Укажи email.");
       }
       if (!isValidEmail(email)) {
         throw new Error("Укажи корректный email.");
+      }
+      if (authMode !== "password-change" && !password) {
+        throw new Error("Укажи email и пароль.");
       }
 
       if (authMode === "register") {
@@ -935,7 +1024,9 @@ export default function App({ initialRouteOverride = null }) {
         if (error) {
           throw new Error(error.message);
         }
-        setCurrentUser(buildAppUser(data));
+        await completeAuthSuccess(buildAppUser(data));
+      } else if (authMode === "password-change") {
+        await submitPasswordChange(email);
       } else {
         const { data, error } = await loginUser({
           email,
@@ -944,27 +1035,8 @@ export default function App({ initialRouteOverride = null }) {
         if (error) {
           throw new Error("Неверный email или пароль.");
         }
-        setCurrentUser(buildAppUser(data));
+        await completeAuthSuccess(buildAppUser(data));
       }
-
-      const current = await fetchCurrentUser();
-      const user = current.data ? buildAppUser(current.data) : null;
-      if (!user) {
-        throw new Error("Не удалось получить пользователя.");
-      }
-      setCurrentUser(user);
-
-      const lists = await loadWishlistsForUser();
-      if (lists.length > 0) {
-        await selectWishlist(lists[0]);
-      } else {
-        setCurrentWishlistId(null);
-        setCurrentShareToken(null);
-        setWishes([]);
-      }
-
-      navigate("/dashboard");
-      setAuthForm(emptyAuthForm);
     } catch (error) {
       setAuthError(error.message || "Ошибка авторизации.");
     } finally {

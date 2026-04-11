@@ -176,6 +176,30 @@ export async function loginUser(payload) {
   };
 }
 
+export async function changeUserPassword(payload) {
+  const result = await request("/api/auth/change-password", {
+    method: "POST",
+    body: payload
+  });
+
+  return {
+    data: result.data || null,
+    error: result.error
+  };
+}
+
+export async function verifyUserPassword(payload) {
+  const result = await request("/api/auth/verify-password", {
+    method: "POST",
+    body: payload
+  });
+
+  return {
+    data: result.data || null,
+    error: result.error
+  };
+}
+
 export async function loginWithGoogleCredential(credential) {
   const result = await request("/api/auth/google", {
     method: "POST",

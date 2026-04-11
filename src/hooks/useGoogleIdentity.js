@@ -106,14 +106,15 @@ export function useGoogleIdentity({ googleClientId, onGoogleAuth, isAuthModalOpe
         return;
       }
 
+      const isMobile = window.matchMedia("(max-width: 720px)").matches;
       googleButtonRef.current.replaceChildren();
       window.google.accounts.id.renderButton(googleButtonRef.current, {
-        type: "standard",
+        type: isMobile ? "icon" : "standard",
         theme: "outline",
         size: "large",
-        text: "signin_with",
-        shape: "pill",
-        width: Math.max(220, Math.round(googleButtonRef.current.clientWidth || 240)),
+        text: isMobile ? undefined : "signin_with",
+        shape: isMobile ? "circle" : "pill",
+        width: isMobile ? 48 : Math.round(googleButtonRef.current.clientWidth || 240),
         locale: "ru"
       });
     }

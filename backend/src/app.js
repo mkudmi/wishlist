@@ -757,6 +757,96 @@ app.post("/api/auth/login", async (req, res, next) => {
   }
 });
 
+app.post("/api/auth/change-password", async (req, res, next) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const currentPassword = String(req.body?.currentPassword || "");
+    const newPassword = String(req.body?.newPassword || "");
+
+    if (!email || !currentPassword || !newPassword) {
+      return res.status(400).json({ error: "email, currentPassword and newPassword are required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "new password must be at least 6 characters" });
+    }
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ error: "new password must differ from current password" });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, email, password_hash
+       FROM users
+       WHERE email = $1
+       LIMIT 1;`,
+      [email]
+    );
+
+    const user = rows[0];
+    if (!user) {
+      return res.status(404).json({ error: "user not found" });
+    }
+    if (!user.password_hash) {
+      return res.status(409).json({ error: "password_auth_not_available" });
+    }
+
+    const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password_hash);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({ error: "invalid current password" });
+    }
+
+    const newPasswordHash = await hashPassword(newPassword);
+    await pool.query(
+      `UPDATE users
+       SET password_hash = $2
+       WHERE id = $1;`,
+      [user.id, newPasswordHash]
+    );
+    await pool.query("DELETE FROM user_sessions WHERE user_id = $1", [user.id]);
+
+    await ensurePasswordIdentity(pool, user.id, email);
+
+    return res.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post("/api/auth/verify-password", async (req, res, next) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const currentPassword = String(req.body?.currentPassword || "");
+
+    if (!email || !currentPassword) {
+      return res.status(400).json({ error: "email and currentPassword are required" });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, password_hash
+       FROM users
+       WHERE email = $1
+       LIMIT 1;`,
+      [email]
+    );
+
+    const user = rows[0];
+    if (!user) {
+      return res.status(404).json({ error: "user not found" });
+    }
+    if (!user.password_hash) {
+      return res.status(409).json({ error: "password_auth_not_available" });
+    }
+
+    const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password_hash);
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({ error: "invalid current password" });
+    }
+
+    return res.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.post("/api/auth/logout", requireAuth, async (req, res, next) => {
   try {
     const token = getBearerToken(req);
