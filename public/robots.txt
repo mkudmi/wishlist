@@ -1,5 +1,10 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /dashboard
+Disallow: /wishlist
+Disallow: /wishlists/
+Disallow: /shared/
+Disallow: /auth/yandex/callback
 
 Sitemap: https://xn--80ajchdgcktejxc.xn--p1ai/sitemap.xml

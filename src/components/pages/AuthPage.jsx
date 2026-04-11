@@ -16,6 +16,7 @@ const flowSteps = [
 ];
 
 const legalLinks = [
+  { href: "/faq", label: "FAQ" },
   { href: "/privacy-policy", label: "Политика конфиденциальности" },
   { href: "/terms", label: "Пользовательское соглашение" }
 ];
@@ -939,6 +940,19 @@ export function AuthPage({
                 </section>
               ))}
             </div>
+
+            <footer className="snap-legal-footer" aria-label="Навигация по служебным страницам">
+              <div className="snap-legal-footer-brand">
+                <strong>Список желаний</strong>
+              </div>
+              <nav className="snap-legal-footer-links">
+                {legalLinks.map((item) => (
+                  <a key={item.href} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+            </footer>
           </section>
         </main>
       </div>

@@ -70,7 +70,7 @@ import { IdentityModal } from "./components/modals/IdentityModal";
 import { ProfileModal } from "./components/modals/ProfileModal";
 import { ShareSheetModal } from "./components/modals/ShareSheetModal";
 import { WishDetailsModal } from "./components/modals/WishDetailsModal";
-import { seoLandingPageMap } from "./config/seoPages";
+import { seoLandingPageMap, seoSite } from "./config/seoPages";
 import { useAccountPanel } from "./hooks/useAccountPanel";
 export default function App({ initialRouteOverride = null }) {
   const initialRoute = initialRouteOverride || getRouteFromLocation();
@@ -128,7 +128,7 @@ export default function App({ initialRouteOverride = null }) {
   const toastTimeoutRef = useRef(null);
   const authExpiryHandledRef = useRef(false);
   const wishPreviewRequestsRef = useRef(new Set());
-  const siteOrigin = "https://xn--80ajchdgcktejxc.xn--p1ai";
+  const siteOrigin = seoSite.origin;
   const {
     isProfileOpen,
     profileForm,
@@ -1702,7 +1702,7 @@ export default function App({ initialRouteOverride = null }) {
 
   if (page === "yandex-callback") {
     return (
-      <div className="page-shell auth-shell landing-shell">
+      <div className="page-shell auth-shell">
         <main className="layout auth-layout">
           <section className="auth-card">
             <h2 className="auth-title">Вход через Яндекс</h2>
