@@ -1491,6 +1491,38 @@ export default function App({ initialRouteOverride = null }) {
     setOpenedWishId(null);
   }
 
+  useEffect(() => {
+    if (!openedWishId || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const { body, documentElement } = document;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const previousOverflow = body.style.overflow;
+    const previousPosition = body.style.position;
+    const previousTop = body.style.top;
+    const previousWidth = body.style.width;
+    const previousTouchAction = body.style.touchAction;
+    const previousHtmlOverflow = documentElement.style.overflow;
+
+    documentElement.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.touchAction = "none";
+
+    return () => {
+      documentElement.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousOverflow;
+      body.style.position = previousPosition;
+      body.style.top = previousTop;
+      body.style.width = previousWidth;
+      body.style.touchAction = previousTouchAction;
+      window.scrollTo(0, scrollY);
+    };
+  }, [openedWishId]);
+
   function openDonationModal(wish, mode = "contribute") {
     setDonationWish(wish);
     setDonationMode(mode);
