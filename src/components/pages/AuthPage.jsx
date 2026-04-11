@@ -1,25 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { seoLandingPages } from "../../config/seoPages";
 import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
-import { BirthdayPickerModal } from "../BirthdayPickerModal";
-
-const featureList = [
-  "Не стесняйся добавлять в вишлист дорогой подарок.",
-  "Друзья могут участвовать не поровну, а на комфортную для себя сумму.",
-  "Избавь друзей от нервотрепки и бесконечных чатов."
-];
-
-const flowSteps = [
-  { number: "01", text: "Создай вишлист с самыми желанными подарками" },
-  { number: "02", text: "Отправь ссылку своим самым близким людям" },
-  { number: "03", text: "Получи то, что действительно хочешь" }
-];
-
-const legalLinks = [
-  { href: "/faq", label: "FAQ" },
-  { href: "/privacy-policy", label: "Политика конфиденциальности" },
-  { href: "/terms", label: "Пользовательское соглашение" }
-];
+import { AuthFormCard } from "../auth/AuthFormCard";
+import { AuthModal } from "../auth/AuthModal";
+import { featureList, flowSteps, legalLinks } from "../auth/authContent";
+import { useAuthModalBehavior } from "../../hooks/useAuthModalBehavior";
+import { useGoogleIdentity } from "../../hooks/useGoogleIdentity";
+import { useYandexAuth } from "../../hooks/useYandexAuth";
 
 export function AuthPage({
   mode,
@@ -36,37 +23,39 @@ export function AuthPage({
   onContinueAuthenticated,
   seoPage = seoLandingPages[0]
 }) {
-  const isLogin = mode === "login";
   const googleClientId = import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
   const yandexClientId = import.meta.env?.VITE_YANDEX_CLIENT_ID || "";
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [registerStep, setRegisterStep] = useState(1);
-  const [isBirthdayPickerOpen, setIsBirthdayPickerOpen] = useState(false);
-  const [showRegisterErrors, setShowRegisterErrors] = useState(false);
-  const [registerValidationError, setRegisterValidationError] = useState("");
   const [isPrimaryCtaLoading, setIsPrimaryCtaLoading] = useState(false);
   const [giftScene, setGiftScene] = useState({ scrollTop: 0, width: 0, height: 0, offsets: [] });
-  const googleCallbackRef = useRef(onGoogleAuth);
-  const googleInitializedClientIdRef = useRef("");
-  const googleButtonRef = useRef(null);
   const scrollRef = useRef(null);
   const snapScrollLockRef = useRef(false);
   const snapScrollTimeoutRef = useRef(null);
   const authModalRef = useRef(null);
-  const authModalReturnFocusRef = useRef(null);
-  const googleSdkPromiseRef = useRef(null);
+  const { googleButtonRef } = useGoogleIdentity({
+    googleClientId,
+    onGoogleAuth,
+    isAuthModalOpen
+  });
+  const { openYandexAuth } = useYandexAuth({
+    onYandexAuth,
+    onYandexError: () => onModeChange("login")
+  });
 
-  useEffect(() => {
-    googleCallbackRef.current = onGoogleAuth;
-  }, [onGoogleAuth]);
-
-  useEffect(() => {
-    if (isLogin || registerStep !== 3 || showRegisterErrors || !error) {
+  function closeAuthModal() {
+    if (submitting) {
       return;
     }
 
-    onErrorReset?.();
-  }, [error, isLogin, onErrorReset, registerStep, showRegisterErrors]);
+    setIsAuthModalOpen(false);
+  }
+
+  useAuthModalBehavior({
+    isOpen: isAuthModalOpen,
+    submitting,
+    modalRef: authModalRef,
+    onClose: closeAuthModal
+  });
 
   function scrollToSection(sectionId) {
     if (typeof document === "undefined") {
@@ -165,33 +154,13 @@ export function AuthPage({
 
     switch (section) {
       case 1:
-        return {
-          shiftX: width * 0.11,
-          shiftY: -height * 0.075,
-          rotate: 0,
-          scale: 1
-        };
+        return { shiftX: width * 0.11, shiftY: -height * 0.075, rotate: 0, scale: 1 };
       case 2:
-        return {
-          shiftX: width * -0.43,
-          shiftY: height * 0.12,
-          rotate: 0,
-          scale: 1
-        };
+        return { shiftX: width * -0.43, shiftY: height * 0.12, rotate: 0, scale: 1 };
       case 3:
-        return {
-          shiftX: width * 0.07,
-          shiftY: height * 0.09,
-          rotate: 0,
-          scale: 1.5
-        };
+        return { shiftX: width * 0.07, shiftY: height * 0.09, rotate: 0, scale: 1.5 };
       default:
-        return {
-          shiftX: 0,
-          shiftY: 0,
-          rotate: 0,
-          scale: 1
-        };
+        return { shiftX: 0, shiftY: 0, rotate: 0, scale: 1 };
     }
   }
 
@@ -228,240 +197,6 @@ export function AuthPage({
       scale: lerp(from.scale, to.scale, progress)
     };
   }
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    async function handleMessage(event) {
-      if (event.origin !== window.location.origin) {
-        return;
-      }
-
-      const payload = event.data;
-      if (payload?.type !== "wishlist:yandex-auth-result") {
-        return;
-      }
-
-      if (payload.token) {
-        setAuthToken(payload.token);
-        await onYandexAuth(payload.token);
-        return;
-      }
-
-      if (payload.error) {
-        onModeChange("login");
-      }
-    }
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [onModeChange, onYandexAuth]);
-
-  useEffect(() => {
-    if (mode === "login") {
-      setRegisterStep(1);
-    }
-  }, [mode, isAuthModalOpen]);
-
-  useEffect(() => {
-    if (typeof document === "undefined" || !isAuthModalOpen) {
-      return undefined;
-    }
-
-    const { documentElement, body } = document;
-    const previousHtmlOverflow = documentElement.style.overflow;
-    const previousBodyOverflow = body.style.overflow;
-
-    documentElement.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-
-    return () => {
-      documentElement.style.overflow = previousHtmlOverflow;
-      body.style.overflow = previousBodyOverflow;
-    };
-  }, [isAuthModalOpen]);
-
-  function ensureGoogleSdkLoaded() {
-    if (typeof window === "undefined") {
-      return Promise.reject(new Error("Google SDK недоступен."));
-    }
-
-    if (window.google?.accounts?.id) {
-      return Promise.resolve();
-    }
-
-    if (googleSdkPromiseRef.current) {
-      return googleSdkPromiseRef.current;
-    }
-
-    googleSdkPromiseRef.current = new Promise((resolve, reject) => {
-      const existingScript = document.querySelector('script[data-google-gsi="true"]');
-
-      function cleanup(script) {
-        script?.removeEventListener("load", handleLoad);
-        script?.removeEventListener("error", handleError);
-      }
-
-      function handleLoad() {
-        cleanup(existingScript || script);
-        if (window.google?.accounts?.id) {
-          resolve();
-          return;
-        }
-        reject(new Error("Google SDK недоступен."));
-      }
-
-      function handleError() {
-        cleanup(existingScript || script);
-        reject(new Error("Не удалось загрузить Google SDK."));
-      }
-
-      const script = existingScript || document.createElement("script");
-      script.addEventListener("load", handleLoad, { once: true });
-      script.addEventListener("error", handleError, { once: true });
-
-      if (!existingScript) {
-        script.src = "https://accounts.google.com/gsi/client";
-        script.async = true;
-        script.defer = true;
-        script.dataset.googleGsi = "true";
-        document.head.appendChild(script);
-      }
-    }).catch((error) => {
-      googleSdkPromiseRef.current = null;
-      throw error;
-    });
-
-    return googleSdkPromiseRef.current;
-  }
-
-  useEffect(() => {
-    if (!googleClientId || typeof window === "undefined") {
-      return undefined;
-    }
-
-    function initializeGoogle() {
-      if (!window.google?.accounts?.id) {
-        return;
-      }
-
-      if (googleInitializedClientIdRef.current === googleClientId) {
-        return;
-      }
-
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: async (response) => {
-          try {
-            if (response?.credential) {
-              await googleCallbackRef.current(response.credential);
-            }
-          } finally {
-            setIsGoogleSubmitting(false);
-          }
-        }
-      });
-
-      googleInitializedClientIdRef.current = googleClientId;
-    }
-
-    ensureGoogleSdkLoaded().then(initializeGoogle).catch(() => {});
-    return undefined;
-  }, [googleClientId]);
-
-  useEffect(() => {
-    if (!googleClientId || !isAuthModalOpen || !googleButtonRef.current || typeof window === "undefined") {
-      return undefined;
-    }
-
-    let isCancelled = false;
-
-    function renderGoogleButton() {
-      if (isCancelled || !googleButtonRef.current || !window.google?.accounts?.id) {
-        return;
-      }
-
-      googleButtonRef.current.replaceChildren();
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        type: "standard",
-        theme: "outline",
-        size: "large",
-        text: "signin_with",
-        shape: "pill",
-        width: Math.max(220, Math.round(googleButtonRef.current.clientWidth || 240)),
-        locale: "ru"
-      });
-    }
-
-    ensureGoogleSdkLoaded().then(renderGoogleButton).catch(() => {});
-    window.addEventListener("resize", renderGoogleButton);
-
-    return () => {
-      isCancelled = true;
-      window.removeEventListener("resize", renderGoogleButton);
-    };
-  }, [googleClientId, isAuthModalOpen]);
-
-  useEffect(() => {
-    if (!isAuthModalOpen || typeof window === "undefined") {
-      return undefined;
-    }
-
-    authModalReturnFocusRef.current = document.activeElement;
-
-    const focusTarget =
-      authModalRef.current?.querySelector('input, button:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])') || null;
-
-    if (focusTarget instanceof HTMLElement) {
-      window.setTimeout(() => focusTarget.focus(), 0);
-    }
-
-    function handleKeydown(event) {
-      if (event.key === "Tab" && authModalRef.current) {
-        const focusable = Array.from(
-          authModalRef.current.querySelectorAll(
-            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-          )
-        );
-
-        if (focusable.length === 0) {
-          return;
-        }
-
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        const activeElement = document.activeElement;
-
-        if (event.shiftKey && activeElement === first) {
-          event.preventDefault();
-          last.focus();
-          return;
-        }
-
-        if (!event.shiftKey && activeElement === last) {
-          event.preventDefault();
-          first.focus();
-          return;
-        }
-      }
-
-      if (event.key === "Escape" && !submitting) {
-        closeAuthModal();
-      }
-    }
-
-    window.addEventListener("keydown", handleKeydown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeydown);
-
-      if (authModalReturnFocusRef.current instanceof HTMLElement) {
-        authModalReturnFocusRef.current.focus();
-      }
-    };
-  }, [isAuthModalOpen, submitting]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -572,31 +307,9 @@ export function AuthPage({
     };
   }, []);
 
-  const giftMotion = getGiftMotion(giftScene.scrollTop, giftScene.width, giftScene.height, giftScene.offsets);
-
-  function openYandexAuth() {
-    const apiBase = getApiBase();
-    const popupUrl = `${apiBase}/api/auth/yandex/start?origin=${encodeURIComponent(window.location.origin)}`;
-    window.open(popupUrl, "wishlist-yandex-auth", "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes");
-  }
-
-  function switchMode(nextMode) {
-    onModeChange(nextMode);
-    setRegisterStep(1);
-    setShowRegisterErrors(false);
-    setRegisterValidationError("");
-  }
-
   function openAuthModal(nextMode) {
-    switchMode(nextMode);
+    onModeChange(nextMode);
     setIsAuthModalOpen(true);
-  }
-
-  function closeAuthModal() {
-    if (submitting) {
-      return;
-    }
-    setIsAuthModalOpen(false);
   }
 
   async function handlePrimaryCta(nextMode = "login") {
@@ -623,303 +336,7 @@ export function AuthPage({
     }
   }
 
-  function goToNextRegisterStep() {
-    setShowRegisterErrors(false);
-    setRegisterValidationError("");
-    if (registerStep === 1) {
-      if (!String(form.firstName || "").trim()) {
-        setRegisterValidationError("Укажи имя.");
-        return;
-      }
-      setRegisterStep(2);
-      return;
-    }
-
-    if (registerStep === 2) {
-      if (!String(form.birthday || "").trim()) {
-        setRegisterValidationError("Укажи дату рождения.");
-        return;
-      }
-      setRegisterStep(3);
-    }
-  }
-
-  function goToPreviousRegisterStep() {
-    setShowRegisterErrors(false);
-    setRegisterValidationError("");
-    setRegisterStep((prev) => Math.max(1, prev - 1));
-  }
-
-  function handleAuthSubmit(event) {
-    event?.preventDefault?.();
-
-    if (!isLogin && registerStep < 3) {
-      goToNextRegisterStep();
-      return;
-    }
-
-    if (!isLogin) {
-      setShowRegisterErrors(true);
-      setRegisterValidationError("");
-
-      const email = String(form.email || "").trim();
-      const password = String(form.password || "");
-      if (!email || !password) {
-        event.preventDefault();
-        setRegisterValidationError("Укажи email и пароль.");
-        return;
-      }
-    }
-
-    onSubmit(event);
-  }
-
-  function handleRegisterFinalSubmit() {
-    setShowRegisterErrors(true);
-    setRegisterValidationError("");
-
-    const email = String(form.email || "").trim();
-    const password = String(form.password || "");
-    if (!email || !password) {
-      setRegisterValidationError("Укажи email и пароль.");
-      return;
-    }
-
-    handleAuthSubmit({ preventDefault() {} });
-  }
-
-  function handleAuthInputChange(event) {
-    if (!isLogin) {
-      setShowRegisterErrors(false);
-      setRegisterValidationError("");
-    }
-
-    onInputChange(event);
-  }
-
-  function updateBirthday(nextValue) {
-    setShowRegisterErrors(false);
-    setRegisterValidationError("");
-    onInputChange({ target: { name: "birthday", value: nextValue } });
-  }
-
-  function renderRegisterFields() {
-    if (registerStep === 1) {
-      return (
-        <>
-          <label>
-            Имя
-            <input
-              type="text"
-              name="firstName"
-              value={form.firstName}
-              onChange={handleAuthInputChange}
-              placeholder="Имя"
-              autoComplete="given-name"
-            />
-          </label>
-
-          <label>
-            Фамилия
-            <input
-              type="text"
-              name="lastName"
-              value={form.lastName}
-              onChange={handleAuthInputChange}
-              placeholder="Фамилия"
-              autoComplete="family-name"
-            />
-          </label>
-        </>
-      );
-    }
-
-    if (registerStep === 2) {
-      return (
-        <label>
-          Дата рождения
-          <input
-            type="text"
-            name="birthday"
-            value={form.birthday}
-            onClick={() => {
-              onErrorReset?.();
-              setIsBirthdayPickerOpen(true);
-            }}
-            onFocus={() => {
-              onErrorReset?.();
-              setIsBirthdayPickerOpen(true);
-            }}
-            placeholder="ДД-ММ-ГГГГ"
-            autoComplete="bday"
-            readOnly
-            className="birthday-picker-trigger"
-          />
-        </label>
-      );
-    }
-
-    return (
-      <>
-        <label>
-          Email
-          <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleAuthInputChange}
-            placeholder="you@example.com"
-            autoComplete="email"
-          />
-        </label>
-
-        <label>
-          Пароль
-          <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleAuthInputChange}
-            placeholder="Минимум 6 символов"
-            autoComplete="new-password"
-          />
-        </label>
-
-        <label>
-          Подтверждение пароля
-          <input
-              type="password"
-              name="confirmPassword"
-              value={form.confirmPassword}
-              onChange={handleAuthInputChange}
-            placeholder="Повтори пароль"
-            autoComplete="new-password"
-          />
-        </label>
-      </>
-    );
-  }
-
-  function renderAuthCard(cardMode = mode) {
-    const cardIsLogin = cardMode === "login";
-    const showOauthBlock = yandexClientId || googleClientId;
-
-    return (
-      <section className="auth-card snap-auth-card">
-        <p className="snap-auth-kicker">{cardIsLogin ? "Вход" : "Регистрация"}</p>
-        <h3 className="snap-auth-title">{cardIsLogin ? "Вернуться к своим спискам" : "Создать аккаунт"}</h3>
-        <p className="auth-subtitle snap-auth-subtitle">
-          {cardIsLogin
-            ? "Открой свои вишлисты и продолжай делиться ими с друзьями."
-            : "Создай аккаунт, чтобы собирать желания и получать отдельные ссылки на события."}
-        </p>
-
-        <div className="auth-switch snap-auth-switch">
-          <button type="button" className={cardIsLogin ? "button-primary" : "button-secondary"} onClick={() => switchMode("login")}>
-            Вход
-          </button>
-          <button type="button" className={!cardIsLogin ? "button-primary" : "button-secondary"} onClick={() => switchMode("register")}>
-            Регистрация
-          </button>
-        </div>
-
-        <form className="donation-form auth-form" onSubmit={cardIsLogin ? handleAuthSubmit : undefined}>
-          {!cardIsLogin ? (
-            <>
-              <div className="auth-register-progress" aria-label={`Шаг ${registerStep} из 3`}>
-                <span className={registerStep >= 1 ? "is-active" : ""} />
-                <span className={registerStep >= 2 ? "is-active" : ""} />
-                <span className={registerStep >= 3 ? "is-active" : ""} />
-              </div>
-
-              <p className="auth-register-step-label">Шаг {registerStep} из 3</p>
-              {renderRegisterFields()}
-            </>
-          ) : (
-            <>
-              <label>
-                Email
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleAuthInputChange}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                />
-              </label>
-
-              <label>
-                Пароль
-                <input
-                  type="password"
-                  name="password"
-                  value={form.password}
-                  onChange={handleAuthInputChange}
-                  placeholder="Минимум 6 символов"
-                  autoComplete="current-password"
-                />
-              </label>
-            </>
-          )}
-
-          {!cardIsLogin && registerValidationError ? <p className="donation-error">{registerValidationError}</p> : null}
-          {cardIsLogin && error ? <p className="donation-error">{error}</p> : null}
-          {!cardIsLogin && registerStep === 3 && showRegisterErrors && (registerValidationError || error) ? (
-            registerValidationError ? null : <p className="donation-error">{error}</p>
-          ) : null}
-
-          <div className={`donation-actions${cardIsLogin ? " auth-login-actions" : " auth-register-actions"}`}>
-            {!cardIsLogin && registerStep > 1 ? (
-              <button type="button" className="button-secondary auth-register-nav-button" onClick={goToPreviousRegisterStep} disabled={submitting}>
-                Назад
-              </button>
-            ) : null}
-
-            {cardIsLogin ? (
-              <button type="submit" className="button-primary" disabled={submitting}>
-                {submitting ? "Подождите..." : "Войти"}
-              </button>
-            ) : registerStep < 3 ? (
-              <button type="button" className="button-primary" onClick={goToNextRegisterStep} disabled={submitting}>
-                Далее
-              </button>
-            ) : (
-              <button type="button" className="button-primary" onClick={handleRegisterFinalSubmit} disabled={submitting}>
-                {submitting ? "Подождите..." : "Создать аккаунт"}
-              </button>
-            )}
-          </div>
-
-          {showOauthBlock ? (
-            <>
-              <div className="auth-divider auth-divider-after-submit" aria-hidden="true" />
-
-              <p className="auth-oauth-label">Быстрый вход</p>
-              <div className="auth-oauth-row">
-                {yandexClientId ? (
-                  <button type="button" className="button-secondary auth-oauth-button auth-yandex-button" onClick={openYandexAuth}>
-                    <span className="auth-yandex-logo" aria-hidden="true">
-                      Я
-                    </span>
-                    <span>Яндекс</span>
-                  </button>
-                ) : null}
-
-                {googleClientId ? (
-                  <div className="auth-google-button-host" ref={googleButtonRef} aria-label="Войти через Google" />
-                ) : null}
-              </div>
-            </>
-          ) : null}
-
-          <button type="button" className="auth-dismiss-button" onClick={closeAuthModal} disabled={submitting}>
-            Не сейчас
-          </button>
-        </form>
-      </section>
-    );
-  }
+  const giftMotion = getGiftMotion(giftScene.scrollTop, giftScene.width, giftScene.height, giftScene.offsets);
 
   function renderLegalPage() {
     return (
@@ -1042,11 +459,7 @@ export function AuthPage({
           "--gift-scale": `${giftMotion.scale.toFixed(3)}`
         }}
       >
-        <img
-          className="snap-hero-gift-image"
-          src="/branding/gift-box.png"
-          alt=""
-        />
+        <img className="snap-hero-gift-image" src="/branding/gift-box.png" alt="" />
       </div>
 
       <div className="snap-landing-scroll" ref={scrollRef}>
@@ -1127,12 +540,12 @@ export function AuthPage({
 
                   <div className="snap-actions">
                     <button
-                    type="button"
-                    className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
-                    onClick={() => handlePrimaryCta("register")}
-                    disabled={isPrimaryCtaLoading}
-                  >
-                    {seoPage.authText || "Создать вишлист"}
+                      type="button"
+                      className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
+                      onClick={() => handlePrimaryCta("register")}
+                      disabled={isPrimaryCtaLoading}
+                    >
+                      {seoPage.authText || "Создать вишлист"}
                     </button>
                   </div>
                 </div>
@@ -1156,34 +569,24 @@ export function AuthPage({
         </section>
       </div>
 
-      {isAuthModalOpen ? (
-        <div className="donation-modal-backdrop auth-modal-backdrop snap-auth-backdrop" onClick={closeAuthModal}>
-          <div
-            ref={authModalRef}
-            className="donation-modal snap-auth-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Вход и регистрация"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button type="button" className="auth-modal-close snap-auth-close" aria-label="Закрыть окно входа" onClick={closeAuthModal} disabled={submitting}>
-              x
-            </button>
-            {renderAuthCard(mode)}
-          </div>
-        </div>
-      ) : null}
-
-      <BirthdayPickerModal
-        isOpen={isBirthdayPickerOpen}
-        value={form.birthday}
-        onClose={() => setIsBirthdayPickerOpen(false)}
-        onConfirm={(nextValue) => {
-          onErrorReset?.();
-          updateBirthday(nextValue);
-          setIsBirthdayPickerOpen(false);
-        }}
-      />
+      <AuthModal isOpen={isAuthModalOpen} submitting={submitting} modalRef={authModalRef} onClose={closeAuthModal}>
+        <AuthFormCard
+          mode={mode}
+          form={form}
+          error={error}
+          submitting={submitting}
+          isOpen={isAuthModalOpen}
+          googleClientId={googleClientId}
+          yandexClientId={yandexClientId}
+          googleButtonRef={googleButtonRef}
+          onModeChange={onModeChange}
+          onErrorReset={onErrorReset}
+          onInputChange={onInputChange}
+          onSubmit={onSubmit}
+          onOpenYandexAuth={openYandexAuth}
+          onClose={closeAuthModal}
+        />
+      </AuthModal>
     </div>
   );
 }

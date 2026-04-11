@@ -983,29 +983,55 @@ span.snap-accent-word {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: stretch;
+}
+
+.snap-auth-modal .auth-oauth-row > * {
+  min-width: 0;
 }
 
 .snap-auth-modal .auth-oauth-button {
-  min-height: 52px;
+  min-height: 40px;
   justify-content: center;
   align-items: center;
-  gap: 10px;
-  padding: 0 16px;
-  border-radius: 18px;
-  border: 1px solid rgba(112, 145, 181, 0.16);
-  background: rgba(255, 255, 255, 0.5);
-  color: #203145;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  gap: 12px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #dadce0;
+  background: #ffffff;
+  color: #1f1f1f;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.08);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.01em;
+}
+
+.snap-auth-modal button {
+  cursor: pointer;
+}
+
+.snap-auth-modal button:disabled {
+  cursor: not-allowed;
 }
 
 .snap-auth-modal .auth-oauth-button:hover {
-  background: rgba(255, 255, 255, 0.86);
+  background: #ffffff;
+  border-color: #c7c9cc;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.16);
+}
+
+.snap-auth-modal .auth-yandex-button {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .snap-auth-modal .auth-yandex-logo {
   display: inline-flex;
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -1013,10 +1039,23 @@ span.snap-accent-word {
   color: #fff;
   font-weight: 800;
   line-height: 1;
+  flex: 0 0 auto;
 }
 
 .snap-auth-modal .auth-google-logo {
   flex: 0 0 auto;
+}
+
+.snap-auth-modal .auth-google-button-host {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: stretch;
+}
+
+.snap-auth-modal .auth-google-button-host > div {
+  width: 100%;
 }
 
 .snap-auth-modal .auth-oauth-button > span:last-child {
