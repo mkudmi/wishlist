@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { emptyProfileForm } from "../config/constants";
 import { getProfileFormFromUser, normalizeName, parseDdMmYyyyToStorageDate } from "../lib/helpers";
 import {
@@ -49,6 +49,19 @@ export function useAccountPanel({ currentUser, setCurrentUser, clearAuthenticate
   const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
   const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState("");
   const [isAccountDeleting, setIsAccountDeleting] = useState(false);
+
+  useEffect(() => {
+    setIsProfileOpen(false);
+    setProfileForm(emptyProfileForm);
+    setProfileError("");
+    setIsProfileSubmitting(false);
+    setIsIdentitySubmitting(false);
+    setIsIdentityModalOpen(false);
+    setIsProfileBirthdayPickerOpen(false);
+    setIsDeleteAccountConfirmOpen(false);
+    setDeleteAccountConfirmation("");
+    setIsAccountDeleting(false);
+  }, [currentUser?.id]);
 
   async function refreshCurrentUserIdentities() {
     if (!currentUser) {

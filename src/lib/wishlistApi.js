@@ -68,6 +68,16 @@ export function getOrCreateGuestSessionId() {
   return created;
 }
 
+export function resetGuestSessionId() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const next = makeGuestSessionId();
+  localStorage.setItem(GUEST_SESSION_KEY, next);
+  return next;
+}
+
 function toApiError(message, extra = {}) {
   return {
     message: message || "API request failed",
@@ -86,7 +96,7 @@ async function request(path, options = {}) {
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-  if (guestSessionId) {
+  if (!token && guestSessionId) {
     headers["X-Guest-Session-Id"] = guestSessionId;
   }
 
@@ -254,6 +264,19 @@ export function fetchWishesByWishlist(wishlistId) {
 
 export function fetchSharedWishesByToken(token) {
   return request(`/api/shared/${token}/wishes`);
+}
+
+export async function fetchWishPreviewImage(url) {
+  const encodedUrl = encodeURIComponent(String(url || "").trim());
+  if (!encodedUrl) {
+    return { data: "", error: null };
+  }
+
+  const result = await request(`/api/link-preview-image?url=${encodedUrl}`);
+  return {
+    data: result.data?.image_url || "",
+    error: result.error
+  };
 }
 
 export async function fetchSharedWishlistMetaByToken(token) {

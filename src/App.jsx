@@ -10,7 +10,10 @@ import {
 import {
   createWish,
   createShareToken,
+  formatMoney,
   getRouteFromLocation,
+  getLastActiveWishlistId,
+  getWishlistEditPath,
   getUserDisplayName,
   getWishDonated,
   getWishParticipants,
@@ -22,6 +25,7 @@ import {
   parseDdMmYyyyToStorageDate,
   parseDonationAmount,
   parseTargetFromPrice,
+  setLastActiveWishlistId,
   sanitizeWishes
 } from "./lib/helpers";
 import { buildAppUser } from "./lib/authUser";
@@ -35,7 +39,9 @@ import {
   deleteWishlistRecord,
   deleteMyWishReservations,
   fetchCurrentUser,
+  fetchWishPreviewImage,
   getOrCreateGuestSessionId,
+  resetGuestSessionId,
   setAuthToken,
   loginUser,
   loginWithGoogleCredential,
@@ -62,15 +68,25 @@ import { DeleteWishlistModal } from "./components/modals/DeleteWishlistModal";
 import { DonationModal } from "./components/modals/DonationModal";
 import { IdentityModal } from "./components/modals/IdentityModal";
 import { ProfileModal } from "./components/modals/ProfileModal";
+import { ShareSheetModal } from "./components/modals/ShareSheetModal";
 import { WishDetailsModal } from "./components/modals/WishDetailsModal";
-import { seoLandingPageMap } from "./config/seoPages";
+import { seoLandingPageMap, seoSite } from "./config/seoPages";
 import { useAccountPanel } from "./hooks/useAccountPanel";
 export default function App({ initialRouteOverride = null }) {
   const initialRoute = initialRouteOverride || getRouteFromLocation();
+  const emptyDashboardStats = [
+    { value: "0", label: "Всего списков" },
+    { value: "0", label: "Всего подарков" },
+    { value: "Нет данных", label: "Самый дорогой подарок" },
+    { value: "Нет данных", label: "Средняя цена подарка" },
+    { value: "0 ₽", label: "Сколько забронировано денег" },
+    { value: "0", label: "Сколько забронировано подарков полностью" }
+  ];
   const [wishes, setWishes] = useState([]);
   const [contributions, setContributions] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
   const [wishlists, setWishlists] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState(emptyDashboardStats);
   const [isWishlistsLoading, setIsWishlistsLoading] = useState(false);
   const [wishlistsError, setWishlistsError] = useState("");
   const [isWishlistSubmitting, setIsWishlistSubmitting] = useState(false);
@@ -83,6 +99,9 @@ export default function App({ initialRouteOverride = null }) {
   const [sharedWishlistMeta, setSharedWishlistMeta] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [shareSheetWishlist, setShareSheetWishlist] = useState(null);
+  const [shareSheetUrl, setShareSheetUrl] = useState("");
+  const [isShareSheetQrVisible, setIsShareSheetQrVisible] = useState(false);
   const [isWishSubmitting, setIsWishSubmitting] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [authForm, setAuthForm] = useState(emptyAuthForm);
@@ -94,7 +113,9 @@ export default function App({ initialRouteOverride = null }) {
   const [wishlistRules, setWishlistRules] = useState(defaultRules);
   const [page, setPage] = useState(initialRoute.page);
   const [shareToken, setShareToken] = useState(initialRoute.shareToken);
+  const [wishlistRouteId, setWishlistRouteId] = useState(initialRoute.wishlistId || null);
   const [seoPageKey, setSeoPageKey] = useState(initialRoute.seoPageKey || "home");
+  const [wishPreviewImages, setWishPreviewImages] = useState({});
 
   const [openedWishId, setOpenedWishId] = useState(null);
   const [donationWish, setDonationWish] = useState(null);
@@ -103,10 +124,11 @@ export default function App({ initialRouteOverride = null }) {
   const [donationName, setDonationName] = useState("");
   const [donationError, setDonationError] = useState("");
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
-  const [guestSessionId] = useState(() => getOrCreateGuestSessionId());
+  const [guestSessionId, setGuestSessionId] = useState(() => getOrCreateGuestSessionId());
   const toastTimeoutRef = useRef(null);
   const authExpiryHandledRef = useRef(false);
-  const siteOrigin = "https://xn--80ajchdgcktejxc.xn--p1ai";
+  const wishPreviewRequestsRef = useRef(new Set());
+  const siteOrigin = seoSite.origin;
   const {
     isProfileOpen,
     profileForm,
@@ -160,6 +182,7 @@ export default function App({ initialRouteOverride = null }) {
     const route = getRouteFromLocation();
     setPage(route.page);
     setShareToken(route.shareToken);
+    setWishlistRouteId(route.wishlistId || null);
     setSeoPageKey(route.seoPageKey || "home");
   }
 
@@ -221,6 +244,7 @@ export default function App({ initialRouteOverride = null }) {
     if (!sessionUser) {
       setCurrentUser(null);
       setWishlists([]);
+      setDashboardStats(emptyDashboardStats);
       setCurrentWishlistId(null);
       setCurrentShareToken(null);
       setWishes([]);
@@ -233,7 +257,14 @@ export default function App({ initialRouteOverride = null }) {
 
     const lists = await loadWishlistsForUser();
 
-    if (withWishlistSelection && lists.length > 0) {
+    if (page === "wishlist") {
+      if (lists.length === 0) {
+        setCurrentWishlistId(null);
+        setCurrentShareToken(null);
+        setWishes([]);
+        setWishlistRules(defaultRules.slice(0, 5));
+      }
+    } else if (withWishlistSelection && lists.length > 0) {
       await selectWishlist(lists[0]);
     } else if (lists.length === 0) {
       setCurrentWishlistId(null);
@@ -258,6 +289,61 @@ export default function App({ initialRouteOverride = null }) {
     setWishlistRules(normalizeRulesList(data));
   }
 
+  async function loadDashboardStats(nextWishlists = wishlists) {
+    if (!currentUser || !Array.isArray(nextWishlists) || nextWishlists.length === 0) {
+      setDashboardStats(emptyDashboardStats);
+      return;
+    }
+
+    const dashboardData = await Promise.all(
+      nextWishlists.map(async (wishlist) => {
+        const [{ data: wishlistWishes }, { data: wishlistReservations }] = await Promise.all([
+          fetchWishesByWishlist(wishlist.id),
+          fetchReservationsByWishlist(wishlist.id)
+        ]);
+
+        return {
+          wishes: sanitizeWishes(wishlistWishes),
+          reservations: groupReservationsByWish(wishlistReservations)
+        };
+      })
+    );
+
+    const allWishes = dashboardData.flatMap((item) => item.wishes);
+    const allReservations = dashboardData.reduce((acc, item) => {
+      Object.entries(item.reservations).forEach(([wishId, entries]) => {
+        acc[wishId] = [...(acc[wishId] || []), ...entries];
+      });
+      return acc;
+    }, {});
+
+    const prices = allWishes
+      .map((wish) => parseTargetFromPrice(wish.price))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const totalReservedMoney = Object.values(allReservations)
+      .flat()
+      .reduce((sum, entry) => sum + entry.amount, 0);
+    const fullyReservedCount = allWishes.reduce((count, wish) => {
+      const target = parseTargetFromPrice(wish.price);
+      if (!target) {
+        return count;
+      }
+
+      return getWishDonated(allReservations, wish.id) >= target ? count + 1 : count;
+    }, 0);
+    const averagePrice = prices.length > 0 ? Math.round(prices.reduce((sum, value) => sum + value, 0) / prices.length) : null;
+    const maxPrice = prices.length > 0 ? Math.max(...prices) : null;
+
+    setDashboardStats([
+      { value: String(nextWishlists.length), label: "Всего списков" },
+      { value: String(allWishes.length), label: "Всего подарков" },
+      { value: maxPrice ? `${formatMoney(maxPrice)} ₽` : "Нет данных", label: "Самый дорогой подарок" },
+      { value: averagePrice ? `${formatMoney(averagePrice)} ₽` : "Нет данных", label: "Средняя цена подарка" },
+      { value: `${formatMoney(totalReservedMoney)} ₽`, label: "Сколько забронировано денег" },
+      { value: String(fullyReservedCount), label: "Сколько забронировано подарков полностью" }
+    ]);
+  }
+
   async function loadWishlistsForUser() {
     setIsWishlistsLoading(true);
     setWishlistsError("");
@@ -267,16 +353,19 @@ export default function App({ initialRouteOverride = null }) {
     if (error) {
       if (error.code === "unauthorized" || error.status === 401) {
         setWishlists([]);
+        setDashboardStats(emptyDashboardStats);
         setIsWishlistsLoading(false);
         return [];
       }
       setWishlistsError("Не удалось загрузить вишлисты.");
       setWishlists([]);
+      setDashboardStats(emptyDashboardStats);
       setIsWishlistsLoading(false);
       return [];
     }
 
     setWishlists(data || []);
+    await loadDashboardStats(data || []);
     setIsWishlistsLoading(false);
     return data || [];
   }
@@ -420,6 +509,107 @@ export default function App({ initialRouteOverride = null }) {
     }
   }
 
+  async function openWishlistShareSheet(wishlist) {
+    if (!wishlist) {
+      return;
+    }
+
+    const shareToken = await ensureWishlistShareToken(wishlist);
+    if (!shareToken) {
+      showToast("Не удалось подготовить ссылку", "error");
+      return;
+    }
+
+    setShareSheetWishlist(wishlist);
+    setShareSheetUrl(buildSharedWishlistUrl(shareToken));
+    setIsShareSheetQrVisible(false);
+  }
+
+  async function openWishlistByShareLink(event, wishlist) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+
+    if (!wishlist || typeof window === "undefined") {
+      return;
+    }
+
+    const newTab = window.open("about:blank", "_blank");
+    if (!newTab) {
+      showToast("Браузер заблокировал новую вкладку", "error");
+      return;
+    }
+
+    const shareToken = await ensureWishlistShareToken(wishlist);
+    if (!shareToken) {
+      newTab.close();
+      showToast("Не удалось подготовить ссылку", "error");
+      return;
+    }
+
+    const url = buildSharedWishlistUrl(shareToken);
+    newTab.location.replace(url);
+  }
+
+  function closeShareSheet() {
+    setShareSheetWishlist(null);
+    setShareSheetUrl("");
+    setIsShareSheetQrVisible(false);
+  }
+
+  async function copyShareSheetLink() {
+    if (!shareSheetUrl) {
+      return;
+    }
+
+    try {
+      const copied = await copyTextToClipboard(shareSheetUrl);
+      if (!copied) {
+        throw new Error("copy_failed");
+      }
+      showToast("Ссылка скопирована");
+    } catch {
+      showToast("Не удалось скопировать ссылку", "error");
+    }
+  }
+
+  function openShareRedirect(url) {
+    if (!url || typeof window === "undefined") {
+      return;
+    }
+
+    const popup = window.open(url, "_blank", "noopener,noreferrer");
+    if (!popup) {
+      window.location.assign(url);
+    }
+  }
+
+  function shareViaTelegram() {
+    if (!shareSheetUrl) {
+      return;
+    }
+
+    const text = shareSheetWishlist?.title ? `Посмотри мой вишлист: ${shareSheetWishlist.title}` : "Посмотри мой вишлист";
+    openShareRedirect(`https://t.me/share/url?url=${encodeURIComponent(shareSheetUrl)}&text=${encodeURIComponent(text)}`);
+  }
+
+  function shareViaVk() {
+    if (!shareSheetUrl) {
+      return;
+    }
+
+    const title = shareSheetWishlist?.title ? `Вишлист: ${shareSheetWishlist.title}` : "Вишлист";
+    openShareRedirect(`https://vk.com/share.php?url=${encodeURIComponent(shareSheetUrl)}&title=${encodeURIComponent(title)}`);
+  }
+
+  function shareViaWhatsapp() {
+    if (!shareSheetUrl) {
+      return;
+    }
+
+    const text = shareSheetWishlist?.title ? `${shareSheetWishlist.title} ${shareSheetUrl}` : shareSheetUrl;
+    openShareRedirect(`https://wa.me/?text=${encodeURIComponent(text)}`);
+  }
+
   async function ensureWishlistShareToken(wishlist) {
     if (!wishlist?.id) {
       return null;
@@ -477,6 +667,7 @@ export default function App({ initialRouteOverride = null }) {
       const route = getRouteFromLocation();
       setPage(route.page);
       setShareToken(route.shareToken);
+      setWishlistRouteId(route.wishlistId || null);
       setSeoPageKey(route.seoPageKey || "home");
     }
 
@@ -528,13 +719,42 @@ export default function App({ initialRouteOverride = null }) {
 
   useEffect(() => {
     if (!currentUser) {
+      setLastActiveWishlistId(null);
       return;
     }
 
-    if (page === "wishlist" && !currentWishlistId) {
-      navigate("/dashboard", { replace: true });
+    setLastActiveWishlistId(currentWishlistId);
+  }, [currentUser, currentWishlistId]);
+
+  useEffect(() => {
+    if (!currentUser || isAuthLoading) {
+      return;
     }
-  }, [page, currentWishlistId, currentUser]);
+
+    if (page !== "wishlist" || isWishlistsLoading) {
+      return;
+    }
+
+    if (wishlists.length === 0) {
+      if (!currentWishlistId) {
+        navigate("/dashboard", { replace: true });
+      }
+      return;
+    }
+
+    const resolvedRouteId = wishlistRouteId || getLastActiveWishlistId();
+    const matchedWishlist = resolvedRouteId ? wishlists.find((wishlist) => String(wishlist.id) === String(resolvedRouteId)) || null : null;
+    const fallbackWishlist = matchedWishlist || wishlists[0];
+    const canonicalPath = getWishlistEditPath(fallbackWishlist.id);
+
+    if (wishlistRouteId !== String(fallbackWishlist.id)) {
+      navigate(canonicalPath, { replace: true });
+    }
+
+    if (currentWishlistId !== fallbackWishlist.id) {
+      void selectWishlist(fallbackWishlist);
+    }
+  }, [currentUser, currentWishlistId, isAuthLoading, isWishlistsLoading, page, wishlistRouteId, wishlists]);
 
   useEffect(() => {
     if (isAuthLoading || currentUser || page === "shared" || page === "landing") {
@@ -553,6 +773,30 @@ export default function App({ initialRouteOverride = null }) {
 
   useEffect(() => {
     setIsHeaderMenuOpen(false);
+    closeShareSheet();
+  }, [page]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+
+    const { documentElement, body } = document;
+    const prevHtmlBg = documentElement.style.backgroundColor;
+    const prevBodyBg = body.style.backgroundColor;
+
+    if (page === "dashboard") {
+      documentElement.style.backgroundColor = "#eef5fc";
+      body.style.backgroundColor = "#eef5fc";
+    } else {
+      documentElement.style.backgroundColor = "";
+      body.style.backgroundColor = "";
+    }
+
+    return () => {
+      documentElement.style.backgroundColor = prevHtmlBg;
+      body.style.backgroundColor = prevBodyBg;
+    };
   }, [page]);
 
   const activeSeoPage = seoLandingPageMap[seoPageKey] || seoLandingPageMap.home;
@@ -578,7 +822,7 @@ export default function App({ initialRouteOverride = null }) {
       seo.title = "Редактирование вишлиста - Список желаний";
       seo.description = "Управление вашим списком подарков в сервисе Список желаний.";
       seo.robots = "noindex,nofollow";
-      seo.canonical = `${siteOrigin}/wishlist`;
+      seo.canonical = `${siteOrigin}${getWishlistEditPath(wishlistRouteId || currentWishlistId)}`;
     } else if (page === "shared") {
       seo.title = sharedWishlistMeta?.title
         ? `${sharedWishlistMeta.title} - Список желаний`
@@ -614,7 +858,7 @@ export default function App({ initialRouteOverride = null }) {
         node.setAttribute(attribute, value);
       }
     });
-  }, [activeSeoPage.description, activeSeoPage.path, activeSeoPage.title, page, shareToken, sharedWishlistMeta, siteOrigin]);
+  }, [activeSeoPage.description, activeSeoPage.path, activeSeoPage.title, currentWishlistId, page, shareToken, sharedWishlistMeta, siteOrigin, wishlistRouteId]);
 
   function onAuthInputChange(event) {
     const { name, value } = event.target;
@@ -630,8 +874,19 @@ export default function App({ initialRouteOverride = null }) {
     setAuthForm(emptyAuthForm);
   }
 
+  function openLandingRegister() {
+    setAuthMode("register");
+    setAuthError("");
+    setAuthForm(emptyAuthForm);
+    navigate("/");
+  }
+
   function resetAuthError() {
     setAuthError("");
+  }
+
+  function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
 
   async function submitAuth(event) {
@@ -647,13 +902,20 @@ export default function App({ initialRouteOverride = null }) {
       if (!email || !password) {
         throw new Error("Укажи email и пароль.");
       }
+      if (!isValidEmail(email)) {
+        throw new Error("Укажи корректный email.");
+      }
 
       if (authMode === "register") {
+        if (password.length < 6) {
+          throw new Error("Пароль должен быть не менее 6 символов.");
+        }
+
         const firstName = authForm.firstName.trim();
         const lastName = authForm.lastName.trim();
         const birthday = parseDdMmYyyyToStorageDate(authForm.birthday);
-        if (!firstName || !lastName) {
-          throw new Error("Укажи имя и фамилию.");
+        if (!firstName) {
+          throw new Error("Укажи имя.");
         }
         if (!birthday) {
           throw new Error("Укажи дату рождения в формате ДД-ММ-ГГГГ.");
@@ -855,6 +1117,34 @@ export default function App({ initialRouteOverride = null }) {
     return () => window.removeEventListener("message", handleAuthMessage);
   }, [currentUser]);
 
+  useEffect(() => {
+    const activeWishesSource = page === "shared" ? sharedWishes : wishes;
+    const wishesToPreview = activeWishesSource.filter(
+      (wish) =>
+        wish?.id &&
+        wish?.url &&
+        !wish.imageUrl &&
+        !Object.prototype.hasOwnProperty.call(wishPreviewImages, wish.id) &&
+        !wishPreviewRequestsRef.current.has(wish.id)
+    );
+
+    if (wishesToPreview.length === 0) {
+      return;
+    }
+
+    wishesToPreview.forEach((wish) => {
+      wishPreviewRequestsRef.current.add(wish.id);
+
+      void fetchWishPreviewImage(wish.url)
+        .then(({ data }) => {
+          setWishPreviewImages((prev) => ({ ...prev, [wish.id]: data || null }));
+        })
+        .finally(() => {
+          wishPreviewRequestsRef.current.delete(wish.id);
+        });
+    });
+  }, [page, sharedWishes, wishes, wishPreviewImages]);
+
   async function logout() {
     await logoutUser();
     clearAuthenticatedState();
@@ -863,7 +1153,9 @@ export default function App({ initialRouteOverride = null }) {
 
   function clearAuthenticatedState() {
     setCurrentUser(null);
+    setGuestSessionId(resetGuestSessionId());
     setWishlists([]);
+    setDashboardStats(emptyDashboardStats);
     setCurrentWishlistId(null);
     setCurrentShareToken(null);
     setWishes([]);
@@ -872,6 +1164,8 @@ export default function App({ initialRouteOverride = null }) {
     setSharedWishes([]);
     setSharedWishlistMeta(null);
     setSharedRules(defaultRules.slice(0, 5));
+    setWishPreviewImages({});
+    wishPreviewRequestsRef.current.clear();
     if (toastTimeoutRef.current) {
       window.clearTimeout(toastTimeoutRef.current);
       toastTimeoutRef.current = null;
@@ -885,6 +1179,7 @@ export default function App({ initialRouteOverride = null }) {
     setDeleteAccountConfirmation("");
     setPage("landing");
     setShareToken(null);
+    setWishlistRouteId(null);
     setSeoPageKey("home");
   }
 
@@ -930,9 +1225,10 @@ export default function App({ initialRouteOverride = null }) {
 
     const next = [...wishlists, data];
     setWishlists(next);
+    await loadDashboardStats(next);
     await selectWishlist(data);
     setIsWishlistSubmitting(false);
-    navigate("/wishlist");
+    navigate(getWishlistEditPath(data.id));
     return true;
   }
 
@@ -996,7 +1292,7 @@ export default function App({ initialRouteOverride = null }) {
 
   async function openWishlistFromDashboard(wishlist) {
     await selectWishlist(wishlist);
-    navigate("/wishlist");
+    navigate(getWishlistEditPath(wishlist?.id));
   }
 
   function requestDeleteWishlist(wishlist) {
@@ -1018,29 +1314,43 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
+    const deletedWishlistId = wishlistToDelete.id;
+
     setIsWishlistSubmitting(true);
     setWishlistsError("");
 
-    const { error } = await deleteWishlistRecord(wishlistToDelete.id);
+    const { error } = await deleteWishlistRecord(deletedWishlistId);
     if (error) {
       setWishlistsError("Не удалось удалить вишлист.");
       setIsWishlistSubmitting(false);
       return;
     }
 
-    const nextWishlists = wishlists.filter((item) => item.id !== wishlistToDelete.id);
+    const nextWishlists = wishlists.filter((item) => item.id !== deletedWishlistId);
     setWishlists(nextWishlists);
+    await loadDashboardStats(nextWishlists);
 
-    if (currentWishlistId === wishlistToDelete.id) {
+    if (shareSheetWishlist?.id === deletedWishlistId) {
+      closeShareSheet();
+    }
+
+    if (currentWishlistId === deletedWishlistId) {
+      setOpenedWishId(null);
+      closeDonationModal();
+      setEditingWishId(null);
+      setForm(emptyForm);
+      setIsWishEditorOpen(false);
+
       if (nextWishlists.length > 0) {
         await selectWishlist(nextWishlists[0]);
+        navigate(getWishlistEditPath(nextWishlists[0].id), { replace: true });
       } else {
         setCurrentWishlistId(null);
         setCurrentShareToken(null);
         setWishes([]);
         setWishlistRules(defaultRules.slice(0, 5));
+        navigate("/dashboard");
       }
-      navigate("/dashboard");
     }
 
     setWishlistToDelete(null);
@@ -1065,7 +1375,7 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
-    if (!form.title.trim() || !form.note.trim()) {
+    if (!form.title.trim()) {
       return;
     }
 
@@ -1091,6 +1401,7 @@ export default function App({ initialRouteOverride = null }) {
         }
 
         setWishes((prev) => prev.map((wish) => (wish.id === editingWishId ? sanitizeWishes([data])[0] : wish)));
+        await loadDashboardStats();
         setEditingWishId(null);
       } else {
         const nextWish = createWish(form);
@@ -1104,6 +1415,7 @@ export default function App({ initialRouteOverride = null }) {
         }
 
         setWishes((prev) => [sanitizeWishes([data])[0], ...prev]);
+        await loadDashboardStats();
       }
 
       setForm(emptyForm);
@@ -1130,6 +1442,7 @@ export default function App({ initialRouteOverride = null }) {
       delete next[id];
       return next;
     });
+    await loadDashboardStats();
 
     if (editingWishId === id) {
       setEditingWishId(null);
@@ -1247,6 +1560,7 @@ export default function App({ initialRouteOverride = null }) {
     }
 
     appendContributionEntry(donationWish.id, data);
+    await loadDashboardStats();
 
     closeDonationModal();
   }
@@ -1296,6 +1610,7 @@ export default function App({ initialRouteOverride = null }) {
     }
 
     appendContributionEntry(donationWish.id, data);
+    await loadDashboardStats();
 
     closeDonationModal();
   }
@@ -1341,6 +1656,7 @@ export default function App({ initialRouteOverride = null }) {
     }
 
     appendContributionEntry(donationWish.id, data);
+    await loadDashboardStats();
 
     closeDonationModal();
   }
@@ -1375,6 +1691,7 @@ export default function App({ initialRouteOverride = null }) {
 
           return next;
         });
+        void loadDashboardStats();
       })
       .catch(() => {});
   }
@@ -1385,7 +1702,7 @@ export default function App({ initialRouteOverride = null }) {
 
   if (page === "yandex-callback") {
     return (
-      <div className="page-shell auth-shell landing-shell">
+      <div className="page-shell auth-shell">
         <main className="layout auth-layout">
           <section className="auth-card">
             <h2 className="auth-title">Вход через Яндекс</h2>
@@ -1436,7 +1753,11 @@ export default function App({ initialRouteOverride = null }) {
     );
   }
 
-  const activeWishes = page === "shared" ? sharedWishes : wishes;
+  const activeWishesSource = page === "shared" ? sharedWishes : wishes;
+  const activeWishes = activeWishesSource.map((wish) => ({
+    ...wish,
+    imageUrl: wish.imageUrl || (typeof wishPreviewImages[wish.id] === "string" ? wishPreviewImages[wish.id] : "")
+  }));
   const currentWishlist = wishlists.find((wishlist) => wishlist.id === currentWishlistId) || null;
   const openedWish = activeWishes.find((wish) => wish.id === openedWishId) || null;
   const openedWishTarget = openedWish ? parseTargetFromPrice(openedWish.price) : null;
@@ -1477,7 +1798,7 @@ export default function App({ initialRouteOverride = null }) {
       return person.guestSessionId === guestSessionId;
     }
 
-    return Boolean(currentUser) && person.name === currentUserName;
+    return false;
   }
   const openedWishProgressPercent = openedWishTarget
     ? Math.min(100, Math.round((openedWishDonated / openedWishTarget) * 100))
@@ -1492,10 +1813,12 @@ export default function App({ initialRouteOverride = null }) {
   const showUserBar = Boolean(currentUser) && page !== "shared";
   const canManage = page === "wishlist";
 
+  const isPlainAppShell = page === "dashboard" || page === "wishlist" || page === "shared";
+
   return (
-    <div className="page-shell" style={pageShellStyle}>
-      <div className="glow glow-left" />
-      <div className="glow glow-right" />
+    <div className={`page-shell${page === "dashboard" ? " dashboard-shell" : ""}${isPlainAppShell ? " app-shell-plain" : ""}`} style={pageShellStyle}>
+      {isPlainAppShell ? null : <div className="glow glow-left" />}
+      {isPlainAppShell ? null : <div className="glow glow-right" />}
 
       <main className="layout">
         {showUserBar ? (
@@ -1504,6 +1827,10 @@ export default function App({ initialRouteOverride = null }) {
             showDashboardLink={page !== "dashboard"}
             currentUserName={currentUserName}
             isHeaderMenuOpen={isHeaderMenuOpen}
+            onOpenLanding={() => {
+              setIsHeaderMenuOpen(false);
+              navigate("/");
+            }}
             onOpenProfile={() => {
               setIsHeaderMenuOpen(false);
               openProfileModal();
@@ -1528,16 +1855,32 @@ export default function App({ initialRouteOverride = null }) {
           />
         ) : null}
 
+        {page === "shared" ? (
+          <div className="shared-landing-header">
+            <button
+              type="button"
+              className="shared-landing-brand"
+              onClick={() => navigate("/")}
+              aria-label="Перейти на главный лендинг"
+            >
+              <strong>Список желаний</strong>
+            </button>
+          </div>
+        ) : null}
+
         {page === "dashboard" ? (
           <DashboardPage
             wishlists={wishlists}
+            dashboardStats={dashboardStats}
+            userBirthday={currentUser?.birthday || ""}
             currentWishlistId={currentWishlistId}
             isLoading={isWishlistsLoading}
             isSubmitting={isWishlistSubmitting}
             error={wishlistsError}
             onCreateWishlist={createWishlist}
             onOpenWishlist={openWishlistFromDashboard}
-            onCopyShareLink={copyWishlistShareLink}
+            onOpenWishlistLink={openWishlistByShareLink}
+            onCopyShareLink={openWishlistShareSheet}
             onDeleteWishlist={requestDeleteWishlist}
           />
         ) : (
@@ -1566,6 +1909,7 @@ export default function App({ initialRouteOverride = null }) {
             onCloseWishEditor={closeWishEditorModal}
             onDeleteWish={deleteWish}
             onSaveRules={saveRulesForWishlist}
+            onOpenLandingRegister={openLandingRegister}
           />
         )}
       </main>
@@ -1670,6 +2014,19 @@ export default function App({ initialRouteOverride = null }) {
         isSubmitting={isWishlistSubmitting}
         onClose={cancelDeleteWishlist}
         onConfirm={confirmDeleteWishlist}
+      />
+
+      <ShareSheetModal
+        isOpen={Boolean(shareSheetWishlist && shareSheetUrl)}
+        title={shareSheetWishlist?.title || ""}
+        shareUrl={shareSheetUrl}
+        isQrVisible={isShareSheetQrVisible}
+        onClose={closeShareSheet}
+        onCopyLink={copyShareSheetLink}
+        onShareTelegram={shareViaTelegram}
+        onShareVk={shareViaVk}
+        onShareWhatsapp={shareViaWhatsapp}
+        onToggleQr={() => setIsShareSheetQrVisible((prev) => !prev)}
       />
 
       {toast ? (

@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 export function ProfileModal({
   isOpen,
   profileForm,
@@ -15,6 +17,36 @@ export function ProfileModal({
   onDeleteAccountConfirmationChange,
   onDeleteAccount
 }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsMenuOpen(false);
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      if (!menuRef.current?.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
   if (!isOpen) {
     return null;
   }
@@ -22,12 +54,59 @@ export function ProfileModal({
   return (
     <div className="donation-modal-backdrop" onClick={onClose}>
       <div className="donation-modal profile-modal" onClick={(event) => event.stopPropagation()}>
-        <h3>Профиль</h3>
-        <p className="donation-modal-title">Редактирование данных аккаунта</p>
+        <div className="profile-modal-head">
+          <div className="profile-modal-head-row">
+            <h3>Профиль</h3>
+
+            <div className="wishlist-tile-menu profile-modal-menu" ref={menuRef}>
+              <button
+                type="button"
+                className="wishlist-tile-menu-trigger"
+                aria-label="Открыть меню профиля"
+                aria-expanded={isMenuOpen}
+                onClick={() => setIsMenuOpen((prev) => !prev)}
+                disabled={isProfileSubmitting || isAccountDeleting}
+              >
+                <span />
+                <span />
+                <span />
+              </button>
+
+              {isMenuOpen ? (
+                <div className="wishlist-tile-menu-dropdown profile-modal-menu-dropdown">
+                  <button
+                    type="button"
+                    className="wishlist-tile-menu-item"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onOpenIdentityModal();
+                    }}
+                    disabled={isProfileSubmitting || isAccountDeleting}
+                  >
+                    Способы входа
+                  </button>
+                  <button
+                    type="button"
+                    className="wishlist-tile-menu-item wishlist-tile-menu-item-danger"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onToggleDeleteConfirm();
+                    }}
+                    disabled={isProfileSubmitting || isAccountDeleting}
+                  >
+                    Удалить аккаунт
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <p className="donation-modal-title">Редактирование данных аккаунта</p>
+        </div>
 
         <form className="donation-form profile-form" onSubmit={onSubmit}>
           <label>
-            Имя
+            <span className="profile-form-label-text">Имя</span>
             <input
               type="text"
               name="firstName"
@@ -38,7 +117,7 @@ export function ProfileModal({
           </label>
 
           <label>
-            Фамилия
+            <span className="profile-form-label-text">Фамилия</span>
             <input
               type="text"
               name="lastName"
@@ -49,7 +128,7 @@ export function ProfileModal({
           </label>
 
           <label>
-            Дата рождения
+            <span className="profile-form-label-text">Дата рождения</span>
             <input
               type="text"
               name="birthday"
@@ -62,26 +141,8 @@ export function ProfileModal({
             />
           </label>
 
-          <button
-            type="button"
-            className="button-secondary profile-identities-button"
-            onClick={onOpenIdentityModal}
-            disabled={isProfileSubmitting || isAccountDeleting}
-          >
-            Способы входа
-          </button>
-
-          <div className="account-danger-zone">
-            <button
-              type="button"
-              className="delete-button"
-              onClick={onToggleDeleteConfirm}
-              disabled={isProfileSubmitting || isAccountDeleting}
-            >
-              Удалить аккаунт
-            </button>
-
-            {isDeleteAccountConfirmOpen ? (
+          {isDeleteAccountConfirmOpen ? (
+            <div className="account-danger-zone">
               <div className="account-danger-confirm">
                 <p className="account-danger-text">
                   Аккаунт будет удален полностью вместе с вишлистами, подарками и связанными данными. Для подтверждения введи{" "}
@@ -103,17 +164,17 @@ export function ProfileModal({
                   {isAccountDeleting ? "Удаляем..." : "Подтвердить удаление"}
                 </button>
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
           {profileError ? <p className="donation-error">{profileError}</p> : null}
 
           <div className="donation-actions">
-            <button type="button" className="button-secondary" onClick={onClose} disabled={isProfileSubmitting || isAccountDeleting}>
-              Отмена
-            </button>
             <button type="submit" className="button-primary" disabled={isProfileSubmitting || isAccountDeleting}>
               {isProfileSubmitting ? "Сохраняем..." : "Сохранить"}
+            </button>
+            <button type="button" className="button-secondary" onClick={onClose} disabled={isProfileSubmitting || isAccountDeleting}>
+              Отмена
             </button>
           </div>
         </form>

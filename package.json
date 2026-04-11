@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "seo:sync": "node scripts/sync-seo-assets.js",
+    "predev": "npm run seo:sync",
+    "prebuild": "npm run seo:sync",
     "dev": "vite --host 127.0.0.1 --port 5173 --open /",
     "dev:all": "concurrently -k -n frontend,backend \"npm run dev\" \"npm run server:dev\"",
     "build": "vite build && npm run prerender",

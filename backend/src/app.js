@@ -12,6 +12,7 @@ const YANDEX_OAUTH_AUTHORIZE_URL = "https://oauth.yandex.com/authorize";
 const YANDEX_OAUTH_TOKEN_URL = "https://oauth.yandex.com/token";
 const YANDEX_USER_INFO_URL = "https://login.yandex.ru/info?format=json";
 const WISHLIST_THEME_VALUES = new Set(["sand", "sage", "berry", "sky", "midnight"]);
+let wishImageColumnAvailable = null;
 
 app.use(cors({ origin: config.corsOrigin === "*" ? true : config.corsOrigin }));
 app.use(express.json({ limit: "1mb" }));
@@ -114,6 +115,259 @@ function getSafeAppOrigin(value) {
   } catch {
     return null;
   }
+}
+
+function isPrivateHostname(hostname) {
+  const normalized = String(hostname || "").trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  if (
+    normalized === "localhost" ||
+    normalized === "::1" ||
+    normalized.endsWith(".local") ||
+    normalized.endsWith(".internal")
+  ) {
+    return true;
+  }
+
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized)) {
+    const [first, second] = normalized.split(".").map(Number);
+    if (first === 10 || first === 127 || first === 0) {
+      return true;
+    }
+    if (first === 169 && second === 254) {
+      return true;
+    }
+    if (first === 192 && second === 168) {
+      return true;
+    }
+    if (first === 172 && second >= 16 && second <= 31) {
+      return true;
+    }
+  }
+
+  if (
+    normalized.startsWith("fe80:") ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function normalizeExternalPreviewUrl(value, baseUrl = null) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = baseUrl ? new URL(raw, baseUrl) : new URL(raw);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return null;
+    }
+    if (parsed.username || parsed.password || isPrivateHostname(parsed.hostname)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function decodeHtmlEntity(value) {
+  return String(value || "")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function extractJsonLdBlocks(html) {
+  return [...html.matchAll(/<script\b[^>]*type=("|')application\/ld\+json\1[^>]*>([\s\S]*?)<\/script>/gi)].map((match) =>
+    decodeHtmlEntity(match[2] || "").trim()
+  );
+}
+
+function collectProductImageCandidates(node, candidates = []) {
+  if (!node) {
+    return candidates;
+  }
+
+  if (Array.isArray(node)) {
+    node.forEach((item) => collectProductImageCandidates(item, candidates));
+    return candidates;
+  }
+
+  if (typeof node !== "object") {
+    return candidates;
+  }
+
+  const nodeType = node["@type"];
+  const types = Array.isArray(nodeType) ? nodeType : [nodeType];
+  const isProductNode = types.some((item) => String(item || "").toLowerCase() === "product");
+
+  if (isProductNode) {
+    const imageValue = node.image;
+    if (typeof imageValue === "string") {
+      candidates.push(imageValue);
+    } else if (Array.isArray(imageValue)) {
+      imageValue.forEach((item) => {
+        if (typeof item === "string") {
+          candidates.push(item);
+        } else if (item && typeof item === "object" && typeof item.url === "string") {
+          candidates.push(item.url);
+        }
+      });
+    } else if (imageValue && typeof imageValue === "object" && typeof imageValue.url === "string") {
+      candidates.push(imageValue.url);
+    }
+  }
+
+  Object.values(node).forEach((value) => collectProductImageCandidates(value, candidates));
+  return candidates;
+}
+
+function extractJsonLdImageCandidates(html) {
+  const candidates = [];
+
+  for (const block of extractJsonLdBlocks(html)) {
+    if (!block) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(block);
+      collectProductImageCandidates(parsed, candidates);
+    } catch {
+      // Ignore malformed JSON-LD blocks.
+    }
+  }
+
+  return candidates;
+}
+
+function isUnsupportedPreviewHost(pageUrl) {
+  const hostname = String(pageUrl?.hostname || "").toLowerCase();
+  return hostname.includes("market.yandex.");
+}
+
+function pickPreviewImageCandidate(html, pageUrl) {
+  const candidates = [...extractJsonLdImageCandidates(html), extractMetaImageCandidate(html)].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const normalized = normalizeExternalPreviewUrl(candidate, pageUrl);
+    if (!normalized) {
+      continue;
+    }
+
+    return normalized.toString();
+  }
+
+  return "";
+}
+
+function extractMetaImageCandidate(html) {
+  const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
+
+  for (const tag of metaTags) {
+    const attrs = {};
+    for (const match of tag.matchAll(/([a-zA-Z:-]+)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/g)) {
+      const attrName = String(match[1] || "").toLowerCase();
+      const attrValue = decodeHtmlEntity(match[3] || match[4] || match[5] || "");
+      attrs[attrName] = attrValue;
+    }
+
+    const key = String(attrs.property || attrs.name || attrs.itemprop || "").toLowerCase();
+    if (!key || !["og:image", "twitter:image", "twitter:image:src", "image"].includes(key)) {
+      continue;
+    }
+
+    const content = String(attrs.content || "").trim();
+    if (content) {
+      return content;
+    }
+  }
+
+  return "";
+}
+
+async function fetchWishPreviewImageUrl(rawUrl, redirectDepth = 0) {
+  const pageUrl = normalizeExternalPreviewUrl(rawUrl);
+  if (!pageUrl || redirectDepth > 3) {
+    return "";
+  }
+
+  if (isUnsupportedPreviewHost(pageUrl)) {
+    return "";
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(pageUrl, {
+      method: "GET",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "WishlistBot/1.0 (+preview-fetch)",
+        Accept: "text/html,application/xhtml+xml"
+      }
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) {
+        return "";
+      }
+      const redirectUrl = normalizeExternalPreviewUrl(location, pageUrl);
+      return redirectUrl ? fetchWishPreviewImageUrl(redirectUrl.toString(), redirectDepth + 1) : "";
+    }
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.includes("text/html")) {
+      return "";
+    }
+
+    const html = (await response.text()).slice(0, 250000);
+    return pickPreviewImageCandidate(html, pageUrl);
+  } catch {
+    return "";
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function hasWishImageColumn() {
+  if (wishImageColumnAvailable !== null) {
+    return wishImageColumnAvailable;
+  }
+
+  const { rows } = await pool.query(
+    `SELECT 1
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'wishes' AND column_name = 'image_url'
+     LIMIT 1;`
+  );
+
+  wishImageColumnAvailable = Boolean(rows[0]);
+  return wishImageColumnAvailable;
+}
+
+async function getWishSelectFragment(alias = "") {
+  const prefix = alias ? `${alias}.` : "";
+  const imageField = (await hasWishImageColumn()) ? `${prefix}image_url` : "'' AS image_url";
+  return `${prefix}id, ${prefix}wishlist_id, ${prefix}title, ${prefix}note, ${prefix}tag, ${prefix}price, ${prefix}url, ${imageField}, ${prefix}created_at`;
 }
 
 function hashPassword(password) {
@@ -962,8 +1216,9 @@ app.get("/api/wishlists/:wishlistId/wishes", requireAuth, async (req, res, next)
       return res.status(404).json({ error: "wishlist not found" });
     }
 
+    const wishSelect = await getWishSelectFragment();
     const { rows } = await pool.query(
-      `SELECT id, wishlist_id, title, note, tag, price, url, created_at
+      `SELECT ${wishSelect}
        FROM wishes
        WHERE wishlist_id = $1
        ORDER BY created_at DESC;`,
@@ -1023,6 +1278,7 @@ app.post("/api/wishes", requireAuth, async (req, res, next) => {
     const tag = normalizeName(req.body?.tag) || "Без категории";
     const price = String(req.body?.price || "").trim();
     const url = String(req.body?.url || "").trim();
+    const imageUrl = url ? await fetchWishPreviewImageUrl(url) : "";
 
     if (!wishlistId || !title || !note) {
       return res.status(400).json({ error: "wishlist_id, title and note are required" });
@@ -1033,12 +1289,20 @@ app.post("/api/wishes", requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: "forbidden" });
     }
 
-    const { rows } = await pool.query(
-      `INSERT INTO wishes (wishlist_id, title, note, tag, price, url)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, wishlist_id, title, note, tag, price, url, created_at;`,
-      [wishlistId, title, note, tag, price, url]
-    );
+    const wishSelect = await getWishSelectFragment();
+    const { rows } = await (await hasWishImageColumn())
+      ? pool.query(
+          `INSERT INTO wishes (wishlist_id, title, note, tag, price, url, image_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING ${wishSelect};`,
+          [wishlistId, title, note, tag, price, url, imageUrl]
+        )
+      : pool.query(
+          `INSERT INTO wishes (wishlist_id, title, note, tag, price, url)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING ${wishSelect};`,
+          [wishlistId, title, note, tag, price, url]
+        );
 
     res.status(201).json(rows[0]);
   } catch (error) {
@@ -1066,14 +1330,24 @@ app.patch("/api/wishes/:id", requireAuth, async (req, res, next) => {
     const tag = normalizeName(req.body?.tag) || "Без категории";
     const price = String(req.body?.price || "").trim();
     const url = String(req.body?.url || "").trim();
+    const imageUrl = url ? await fetchWishPreviewImageUrl(url) : "";
 
-    const { rows } = await pool.query(
-      `UPDATE wishes
-       SET title = $2, note = $3, tag = $4, price = $5, url = $6
-       WHERE id = $1
-       RETURNING id, wishlist_id, title, note, tag, price, url, created_at;`,
-      [id, title, note, tag, price, url]
-    );
+    const wishSelect = await getWishSelectFragment();
+    const { rows } = await (await hasWishImageColumn())
+      ? pool.query(
+          `UPDATE wishes
+           SET title = $2, note = $3, tag = $4, price = $5, url = $6, image_url = $7
+           WHERE id = $1
+           RETURNING ${wishSelect};`,
+          [id, title, note, tag, price, url, imageUrl]
+        )
+      : pool.query(
+          `UPDATE wishes
+           SET title = $2, note = $3, tag = $4, price = $5, url = $6
+           WHERE id = $1
+           RETURNING ${wishSelect};`,
+          [id, title, note, tag, price, url]
+        );
 
     res.json(rows[0]);
   } catch (error) {
@@ -1204,8 +1478,9 @@ app.post("/api/reservations", async (req, res, next) => {
 
 app.get("/api/shared/:token/wishes", async (req, res, next) => {
   try {
+    const wishSelect = await getWishSelectFragment("w");
     const { rows } = await pool.query(
-      `SELECT w.id, w.wishlist_id, w.title, w.note, w.tag, w.price, w.url, w.created_at
+      `SELECT ${wishSelect}
        FROM wishes w
        JOIN wishlists wl ON wl.id = w.wishlist_id
        WHERE wl.share_token = $1 AND wl.is_public = true
@@ -1216,6 +1491,20 @@ app.get("/api/shared/:token/wishes", async (req, res, next) => {
     res.json(rows);
   } catch (error) {
     next(error);
+  }
+});
+
+app.get("/api/link-preview-image", async (req, res, next) => {
+  try {
+    const url = String(req.query?.url || "").trim();
+    if (!url) {
+      return res.status(400).json({ error: "url is required" });
+    }
+
+    const imageUrl = await fetchWishPreviewImageUrl(url);
+    return res.json({ image_url: imageUrl || "" });
+  } catch (error) {
+    return next(error);
   }
 });
 

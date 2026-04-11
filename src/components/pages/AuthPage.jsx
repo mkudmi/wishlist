@@ -3,12 +3,29 @@ import { seoLandingPages } from "../../config/seoPages";
 import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
 import { BirthdayPickerModal } from "../BirthdayPickerModal";
 
+const featureList = [
+  "Не стесняйся добавлять в вишлист дорогой подарок.",
+  "Друзья могут участвовать не поровну, а на комфортную для себя сумму.",
+  "Избавь друзей от нервотрепки и бесконечных чатов."
+];
+
+const flowSteps = [
+  { number: "01", text: "Создай вишлист с самыми желанными подарками" },
+  { number: "02", text: "Отправь ссылку своим самым близким людям" },
+  { number: "03", text: "Получи то, что действительно хочешь" }
+];
+
+const legalLinks = [
+  { href: "/faq", label: "FAQ" },
+  { href: "/privacy-policy", label: "Политика конфиденциальности" },
+  { href: "/terms", label: "Пользовательское соглашение" }
+];
+
 export function AuthPage({
   mode,
   form,
   error,
   submitting,
-  currentUser = null,
   onModeChange,
   onErrorReset,
   onInputChange,
@@ -24,58 +41,30 @@ export function AuthPage({
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [registerStep, setRegisterStep] = useState(1);
   const [isBirthdayPickerOpen, setIsBirthdayPickerOpen] = useState(false);
-  const [hasTriedRegisterSubmit, setHasTriedRegisterSubmit] = useState(false);
+  const [showRegisterErrors, setShowRegisterErrors] = useState(false);
+  const [registerValidationError, setRegisterValidationError] = useState("");
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isPrimaryCtaLoading, setIsPrimaryCtaLoading] = useState(false);
+  const [giftScene, setGiftScene] = useState({ scrollTop: 0, width: 0, height: 0, offsets: [] });
   const googleCallbackRef = useRef(onGoogleAuth);
   const googleInitializedClientIdRef = useRef("");
+  const scrollRef = useRef(null);
+  const snapScrollLockRef = useRef(false);
+  const snapScrollTimeoutRef = useRef(null);
+  const authModalRef = useRef(null);
+  const authModalReturnFocusRef = useRef(null);
 
   useEffect(() => {
     googleCallbackRef.current = onGoogleAuth;
   }, [onGoogleAuth]);
 
-  const proofItems = [
-    { value: "1 ссылка", label: "чтобы отправить гостям один понятный список" },
-    { value: "0 неловких вопросов", label: "не нужно объяснять каждому, что действительно хочется" },
-    { value: "Совместные подарки", label: "друзья могут собираться на одну крупную цель" }
-  ];
-
-  const featureCards = [
-    {
-      eyebrow: "Ясно",
-      title: "Один аккуратный список вместо хаоса в чате",
-      text: "Желания, ссылки, цены и пояснения собраны в одной странице."
-    },
-    {
-      eyebrow: "Гибко",
-      title: "Можно собираться на один дорогой подарок",
-      text: "Каждый видит прогресс и понимает, сколько уже собрано."
-    },
-    {
-      eyebrow: "Спокойно",
-      title: "Правила и нюансы сразу на виду",
-      text: "Цвета, форматы, ограничения и другие пожелания не теряются."
+  useEffect(() => {
+    if (isLogin || registerStep !== 3 || showRegisterErrors || !error) {
+      return;
     }
-  ];
 
-  const workflowSteps = [
-    { number: "01", title: "Создаешь событие", text: "День рождения, свадьба, новоселье или свой формат." },
-    { number: "02", title: "Добавляешь желания", text: "От конкретных товаров до совместного сбора на одну цель." },
-    { number: "03", title: "Делишься ссылкой", text: "Гости сразу понимают, что дарить и во что можно скинуться." }
-  ];
-
-  const eventCards = [
-    { title: "День рождения", text: "Удобно обновлять список каждый год и не повторяться в чатах." },
-    { title: "Свадьба", text: "Можно собирать подарки, сертификаты и вклады в общую цель." },
-    { title: "Новоселье", text: "Легко разложить желания по комнатам, бюджету и приоритету." }
-  ];
-
-  const authBenefits = [
-    "Сразу после входа можно создать первый вишлист.",
-    "Для каждого события формируется отдельная ссылка.",
-    "Гостям не нужен аккаунт, чтобы открыть публичную страницу."
-  ];
-  const relatedSeoPages = seoLandingPages.filter((page) => page.key !== seoPage.key);
+    onErrorReset?.();
+  }, [error, isLogin, onErrorReset, registerStep, showRegisterErrors]);
 
   function scrollToSection(sectionId) {
     if (typeof document === "undefined") {
@@ -83,9 +72,159 @@ export function AuthPage({
     }
 
     const section = document.getElementById(sectionId);
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    const container = scrollRef.current;
+    if (section && container) {
+      container.scrollTo({ top: section.offsetTop, behavior: "smooth" });
     }
+  }
+
+  function clampValue(min, value, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function lerp(start, end, progress) {
+    return start + (end - start) * progress;
+  }
+
+  function smoothstep(progress) {
+    return progress * progress * (3 - 2 * progress);
+  }
+
+  function getGiftBaseMetrics(width, height) {
+    const containerWidth = Math.min(1180, width - 40);
+    const containerLeft = (width - containerWidth) / 2;
+
+    if (width >= 1440) {
+      return {
+        containerWidth,
+        containerLeft,
+        giftWidth: clampValue(460, width * 0.35, 720),
+        baseRight: Math.max(0, (width - Math.min(1180, width - 40)) / 2 - 10),
+        baseCenterY: height * 0.4
+      };
+    }
+
+    if (width >= 721 && width <= 1024) {
+      return {
+        containerWidth,
+        containerLeft,
+        giftWidth: clampValue(340, width * 0.41, 480),
+        baseRight: clampValue(-4, width * 0.008, 8),
+        baseCenterY: height * 0.42
+      };
+    }
+
+    return {
+      containerWidth,
+      containerLeft,
+      giftWidth: clampValue(400, width * 0.39, 650),
+      baseRight: Math.max(-10, (width - Math.min(1180, width - 40)) / 2 - 10),
+      baseCenterY: height * 0.41
+    };
+  }
+
+  function getGiftTarget(section, width, height) {
+    if (width > 720 && (section === 1 || section === 2)) {
+      const { containerWidth, containerLeft, giftWidth, baseRight, baseCenterY } = getGiftBaseMetrics(width, height);
+      const safeWidth = clampValue(180, width * 0.2, 320);
+      const scale = 1;
+      const visualGiftWidth = giftWidth * scale;
+      const desiredCenterX =
+        section === 1
+          ? containerLeft + containerWidth - safeWidth / 2
+          : containerLeft + safeWidth / 2 - clampValue(24, width * 0.035, 56);
+
+      return {
+        shiftX: desiredCenterX - (width - baseRight - visualGiftWidth / 2),
+        shiftY: height / 2 - baseCenterY,
+        rotate: 0,
+        scale
+      };
+    }
+
+    if (width > 720 && section === 3) {
+      const { containerWidth, containerLeft, giftWidth, baseRight, baseCenterY } = getGiftBaseMetrics(width, height);
+      const scale = 1.38;
+      const visualGiftWidth = giftWidth * scale;
+      const textColumnWidth = Math.min(464, containerWidth * 0.48);
+      const gap = clampValue(20, width * 0.03, 48);
+      const rightColumnWidth = Math.max(containerWidth - textColumnWidth - gap, 280);
+      const opticalOffsetX = Math.min(rightColumnWidth * 0.08, 40);
+      const opticalOffsetY = Math.min(giftWidth * (scale - 1) * 0.08, 22);
+      const desiredCenterX = containerLeft + textColumnWidth + gap + rightColumnWidth / 2 - opticalOffsetX;
+
+      return {
+        shiftX: desiredCenterX - (width - baseRight - visualGiftWidth / 2),
+        shiftY: height / 2 - baseCenterY - opticalOffsetY,
+        rotate: 0,
+        scale
+      };
+    }
+
+    switch (section) {
+      case 1:
+        return {
+          shiftX: width * 0.11,
+          shiftY: -height * 0.075,
+          rotate: 0,
+          scale: 1
+        };
+      case 2:
+        return {
+          shiftX: width * -0.43,
+          shiftY: height * 0.12,
+          rotate: 0,
+          scale: 1
+        };
+      case 3:
+        return {
+          shiftX: width * 0.07,
+          shiftY: height * 0.09,
+          rotate: 0,
+          scale: 1.5
+        };
+      default:
+        return {
+          shiftX: 0,
+          shiftY: 0,
+          rotate: 0,
+          scale: 1
+        };
+    }
+  }
+
+  function getGiftMotion(scrollTop, width, height, offsets) {
+    if (!offsets?.length) {
+      return getGiftTarget(0, width, height);
+    }
+
+    const lastIndex = offsets.length - 1;
+    let currentIndex = lastIndex;
+
+    for (let index = 0; index < lastIndex; index += 1) {
+      if (scrollTop < offsets[index + 1]) {
+        currentIndex = index;
+        break;
+      }
+    }
+
+    if (currentIndex === lastIndex) {
+      return getGiftTarget(lastIndex, width, height);
+    }
+
+    const startOffset = offsets[currentIndex];
+    const endOffset = offsets[currentIndex + 1];
+    const rawProgress = (scrollTop - startOffset) / Math.max(endOffset - startOffset, 1);
+    const progress = smoothstep(clampValue(0, rawProgress, 1));
+    const from = getGiftTarget(currentIndex, width, height);
+    const to = getGiftTarget(currentIndex + 1, width, height);
+
+    return {
+      shiftX: lerp(from.shiftX, to.shiftX, progress),
+      shiftY: lerp(from.shiftY, to.shiftY, progress),
+      rotate: lerp(from.rotate, to.rotate, progress),
+      scale: lerp(from.scale, to.scale, progress)
+    };
   }
 
   useEffect(() => {
@@ -129,27 +268,16 @@ export function AuthPage({
       return undefined;
     }
 
-    const scrollY = window.scrollY;
     const { documentElement, body } = document;
     const previousHtmlOverflow = documentElement.style.overflow;
-    const previousOverflow = body.style.overflow;
-    const previousPosition = body.style.position;
-    const previousTop = body.style.top;
-    const previousWidth = body.style.width;
+    const previousBodyOverflow = body.style.overflow;
 
     documentElement.style.overflow = "hidden";
     body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
 
     return () => {
       documentElement.style.overflow = previousHtmlOverflow;
-      body.style.overflow = previousOverflow;
-      body.style.position = previousPosition;
-      body.style.top = previousTop;
-      body.style.width = previousWidth;
-      window.scrollTo(0, scrollY);
+      body.style.overflow = previousBodyOverflow;
     };
   }, [isAuthModalOpen]);
 
@@ -205,6 +333,176 @@ export function AuthPage({
     return () => script.removeEventListener("load", initializeGoogle);
   }, [googleClientId]);
 
+  useEffect(() => {
+    if (!isAuthModalOpen || typeof window === "undefined") {
+      return undefined;
+    }
+
+    authModalReturnFocusRef.current = document.activeElement;
+
+    const focusTarget =
+      authModalRef.current?.querySelector('input, button:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])') || null;
+
+    if (focusTarget instanceof HTMLElement) {
+      window.setTimeout(() => focusTarget.focus(), 0);
+    }
+
+    function handleKeydown(event) {
+      if (event.key === "Tab" && authModalRef.current) {
+        const focusable = Array.from(
+          authModalRef.current.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+
+        if (focusable.length === 0) {
+          return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const activeElement = document.activeElement;
+
+        if (event.shiftKey && activeElement === first) {
+          event.preventDefault();
+          last.focus();
+          return;
+        }
+
+        if (!event.shiftKey && activeElement === last) {
+          event.preventDefault();
+          first.focus();
+          return;
+        }
+      }
+
+      if (event.key === "Escape" && !submitting) {
+        closeAuthModal();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeydown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeydown);
+
+      if (authModalReturnFocusRef.current instanceof HTMLElement) {
+        authModalReturnFocusRef.current.focus();
+      }
+    };
+  }, [isAuthModalOpen, submitting]);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const sections = Array.from(container.querySelectorAll("[data-snap-section]"));
+    if (sections.length === 0) {
+      return undefined;
+    }
+
+    function updateGiftScene() {
+      const scrollTop = container.scrollTop;
+      const offsets = sections.map((section) => section.offsetTop);
+      setGiftScene((prev) => {
+        if (
+          prev.scrollTop === scrollTop &&
+          prev.width === container.clientWidth &&
+          prev.height === container.clientHeight &&
+          prev.offsets.length === offsets.length &&
+          prev.offsets.every((offset, index) => offset === offsets[index])
+        ) {
+          return prev;
+        }
+
+        return {
+          scrollTop,
+          width: container.clientWidth,
+          height: container.clientHeight,
+          offsets
+        };
+      });
+    }
+
+    updateGiftScene();
+    container.addEventListener("scroll", updateGiftScene, { passive: true });
+    window.addEventListener("resize", updateGiftScene);
+
+    return () => {
+      container.removeEventListener("scroll", updateGiftScene);
+      window.removeEventListener("resize", updateGiftScene);
+    };
+  }, []);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 720px)");
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    function clearSnapScrollLock() {
+      if (snapScrollTimeoutRef.current) {
+        window.clearTimeout(snapScrollTimeoutRef.current);
+      }
+
+      snapScrollLockRef.current = false;
+      snapScrollTimeoutRef.current = null;
+    }
+
+    function getSectionOffsets() {
+      return Array.from(container.querySelectorAll("[data-snap-section]")).map((section) => section.offsetTop);
+    }
+
+    function handleWheel(event) {
+      if (mediaQuery.matches || reducedMotionQuery.matches) {
+        return;
+      }
+
+      if (Math.abs(event.deltaY) < 24 || snapScrollLockRef.current) {
+        return;
+      }
+
+      const offsets = getSectionOffsets();
+      if (offsets.length < 2) {
+        return;
+      }
+
+      const currentTop = container.scrollTop;
+      const direction = Math.sign(event.deltaY);
+      const threshold = container.clientHeight * 0.18;
+      const currentIndex = offsets.findIndex((offset, index) => {
+        const nextOffset = offsets[index + 1] ?? Number.POSITIVE_INFINITY;
+        return currentTop >= offset - threshold && currentTop < nextOffset - threshold;
+      });
+      const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+      const targetIndex = Math.max(0, Math.min(offsets.length - 1, safeIndex + direction));
+      const targetTop = offsets[targetIndex];
+
+      if (targetTop === undefined || Math.abs(targetTop - currentTop) < 8) {
+        return;
+      }
+
+      event.preventDefault();
+      snapScrollLockRef.current = true;
+      container.scrollTo({ top: targetTop, behavior: "smooth" });
+      snapScrollTimeoutRef.current = window.setTimeout(clearSnapScrollLock, 820);
+    }
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      clearSnapScrollLock();
+      container.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
+
+  const giftMotion = getGiftMotion(giftScene.scrollTop, giftScene.width, giftScene.height, giftScene.offsets);
+
   function openYandexAuth() {
     const apiBase = getApiBase();
     const popupUrl = `${apiBase}/api/auth/yandex/start?origin=${encodeURIComponent(window.location.origin)}`;
@@ -230,7 +528,8 @@ export function AuthPage({
   function switchMode(nextMode) {
     onModeChange(nextMode);
     setRegisterStep(1);
-    setHasTriedRegisterSubmit(false);
+    setShowRegisterErrors(false);
+    setRegisterValidationError("");
   }
 
   function openAuthModal(nextMode) {
@@ -265,9 +564,11 @@ export function AuthPage({
   }
 
   function goToNextRegisterStep() {
-    setHasTriedRegisterSubmit(false);
+    setShowRegisterErrors(false);
+    setRegisterValidationError("");
     if (registerStep === 1) {
-      if (!String(form.firstName || "").trim() || !String(form.lastName || "").trim()) {
+      if (!String(form.firstName || "").trim()) {
+        setRegisterValidationError("Укажи имя.");
         return;
       }
       setRegisterStep(2);
@@ -276,6 +577,7 @@ export function AuthPage({
 
     if (registerStep === 2) {
       if (!String(form.birthday || "").trim()) {
+        setRegisterValidationError("Укажи дату рождения.");
         return;
       }
       setRegisterStep(3);
@@ -283,25 +585,61 @@ export function AuthPage({
   }
 
   function goToPreviousRegisterStep() {
-    setHasTriedRegisterSubmit(false);
+    setShowRegisterErrors(false);
+    setRegisterValidationError("");
     setRegisterStep((prev) => Math.max(1, prev - 1));
   }
 
   function handleAuthSubmit(event) {
+    event?.preventDefault?.();
+
     if (!isLogin && registerStep < 3) {
-      event.preventDefault();
       goToNextRegisterStep();
       return;
     }
 
     if (!isLogin) {
-      setHasTriedRegisterSubmit(true);
+      setShowRegisterErrors(true);
+      setRegisterValidationError("");
+
+      const email = String(form.email || "").trim();
+      const password = String(form.password || "");
+      if (!email || !password) {
+        event.preventDefault();
+        setRegisterValidationError("Укажи email и пароль.");
+        return;
+      }
     }
 
     onSubmit(event);
   }
 
+  function handleRegisterFinalSubmit() {
+    setShowRegisterErrors(true);
+    setRegisterValidationError("");
+
+    const email = String(form.email || "").trim();
+    const password = String(form.password || "");
+    if (!email || !password) {
+      setRegisterValidationError("Укажи email и пароль.");
+      return;
+    }
+
+    handleAuthSubmit({ preventDefault() {} });
+  }
+
+  function handleAuthInputChange(event) {
+    if (!isLogin) {
+      setShowRegisterErrors(false);
+      setRegisterValidationError("");
+    }
+
+    onInputChange(event);
+  }
+
   function updateBirthday(nextValue) {
+    setShowRegisterErrors(false);
+    setRegisterValidationError("");
     onInputChange({ target: { name: "birthday", value: nextValue } });
   }
 
@@ -315,7 +653,7 @@ export function AuthPage({
               type="text"
               name="firstName"
               value={form.firstName}
-              onChange={onInputChange}
+              onChange={handleAuthInputChange}
               placeholder="Имя"
               autoComplete="given-name"
             />
@@ -327,7 +665,7 @@ export function AuthPage({
               type="text"
               name="lastName"
               value={form.lastName}
-              onChange={onInputChange}
+              onChange={handleAuthInputChange}
               placeholder="Фамилия"
               autoComplete="family-name"
             />
@@ -366,10 +704,10 @@ export function AuthPage({
         <label>
           Email
           <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={onInputChange}
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleAuthInputChange}
             placeholder="you@example.com"
             autoComplete="email"
           />
@@ -378,10 +716,10 @@ export function AuthPage({
         <label>
           Пароль
           <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={onInputChange}
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleAuthInputChange}
             placeholder="Минимум 6 символов"
             autoComplete="new-password"
           />
@@ -390,10 +728,10 @@ export function AuthPage({
         <label>
           Подтверждение пароля
           <input
-            type="password"
-            name="confirmPassword"
-            value={form.confirmPassword}
-            onChange={onInputChange}
+              type="password"
+              name="confirmPassword"
+              value={form.confirmPassword}
+              onChange={handleAuthInputChange}
             placeholder="Повтори пароль"
             autoComplete="new-password"
           />
@@ -404,21 +742,19 @@ export function AuthPage({
 
   function renderAuthCard(cardMode = mode) {
     const cardIsLogin = cardMode === "login";
-    const showOauthBlock = cardIsLogin && (yandexClientId || googleClientId);
+    const showOauthBlock = yandexClientId || googleClientId;
 
     return (
-      <section className="auth-card landing-auth-card">
-        <p className="landing-auth-kicker">{cardIsLogin ? "Вход" : "Регистрация"}</p>
-        <h3 className="landing-auth-title">
-          {cardIsLogin ? "Вернуться к своим спискам" : "Создать аккаунт"}
-        </h3>
-        <p className="auth-subtitle landing-auth-subtitle">
+      <section className="auth-card snap-auth-card">
+        <p className="snap-auth-kicker">{cardIsLogin ? "Вход" : "Регистрация"}</p>
+        <h3 className="snap-auth-title">{cardIsLogin ? "Вернуться к своим спискам" : "Создать аккаунт"}</h3>
+        <p className="auth-subtitle snap-auth-subtitle">
           {cardIsLogin
             ? "Открой свои вишлисты и продолжай делиться ими с друзьями."
-            : "Создай аккаунт, чтобы собрать желания и получить персональную ссылку."}
+            : "Создай аккаунт, чтобы собирать желания и получать отдельные ссылки на события."}
         </p>
 
-        <div className="auth-switch landing-auth-switch">
+        <div className="auth-switch snap-auth-switch">
           <button type="button" className={cardIsLogin ? "button-primary" : "button-secondary"} onClick={() => switchMode("login")}>
             Вход
           </button>
@@ -427,7 +763,7 @@ export function AuthPage({
           </button>
         </div>
 
-        <form className="donation-form auth-form" onSubmit={handleAuthSubmit}>
+        <form className="donation-form auth-form" onSubmit={cardIsLogin ? handleAuthSubmit : undefined}>
           {!cardIsLogin ? (
             <>
               <div className="auth-register-progress" aria-label={`Шаг ${registerStep} из 3`}>
@@ -447,7 +783,7 @@ export function AuthPage({
                   type="email"
                   name="email"
                   value={form.email}
-                  onChange={onInputChange}
+                  onChange={handleAuthInputChange}
                   placeholder="you@example.com"
                   autoComplete="email"
                 />
@@ -459,7 +795,7 @@ export function AuthPage({
                   type="password"
                   name="password"
                   value={form.password}
-                  onChange={onInputChange}
+                  onChange={handleAuthInputChange}
                   placeholder="Минимум 6 символов"
                   autoComplete="current-password"
                 />
@@ -467,7 +803,11 @@ export function AuthPage({
             </>
           )}
 
-          {error && (isLogin || hasTriedRegisterSubmit) ? <p className="donation-error">{error}</p> : null}
+          {!cardIsLogin && registerValidationError ? <p className="donation-error">{registerValidationError}</p> : null}
+          {cardIsLogin && error ? <p className="donation-error">{error}</p> : null}
+          {!cardIsLogin && registerStep === 3 && showRegisterErrors && (registerValidationError || error) ? (
+            registerValidationError ? null : <p className="donation-error">{error}</p>
+          ) : null}
 
           <div className={`donation-actions${cardIsLogin ? " auth-login-actions" : " auth-register-actions"}`}>
             {!cardIsLogin && registerStep > 1 ? (
@@ -485,7 +825,7 @@ export function AuthPage({
                 Далее
               </button>
             ) : (
-              <button type="submit" className="button-primary" disabled={submitting}>
+              <button type="button" className="button-primary" onClick={handleRegisterFinalSubmit} disabled={submitting}>
                 {submitting ? "Подождите..." : "Создать аккаунт"}
               </button>
             )}
@@ -495,7 +835,7 @@ export function AuthPage({
             <>
               <div className="auth-divider auth-divider-after-submit" aria-hidden="true" />
 
-              <p className="auth-oauth-label">Войти с помощью</p>
+              <p className="auth-oauth-label">Быстрый вход</p>
               <div className="auth-oauth-row">
                 {yandexClientId ? (
                   <button type="button" className="button-secondary auth-oauth-button auth-yandex-button" onClick={openYandexAuth}>
@@ -507,7 +847,7 @@ export function AuthPage({
                 ) : null}
 
                 {googleClientId ? (
-                  <button
+                    <button
                     type="button"
                     className="button-secondary auth-oauth-button auth-google-custom-button"
                     onClick={openGoogleAuth}
@@ -536,274 +876,267 @@ export function AuthPage({
                         />
                       </svg>
                     )}
-                    {isGoogleSubmitting ? null : <span>Войти через Google</span>}
+                    {isGoogleSubmitting ? null : <span>Google</span>}
                   </button>
                 ) : null}
               </div>
             </>
           ) : null}
+
+          <button type="button" className="auth-dismiss-button" onClick={closeAuthModal} disabled={submitting}>
+            Не сейчас
+          </button>
         </form>
       </section>
     );
   }
 
-  return (
-    <div className="page-shell auth-shell landing-shell">
-      <div className="glow glow-left" />
-      <div className="glow glow-right" />
+  function renderLegalPage() {
+    return (
+      <div className="page-shell auth-shell snap-landing-shell snap-legal-shell">
+        <div className="snap-landing-bg snap-landing-bg-left" />
+        <div className="snap-landing-bg snap-landing-bg-right" />
 
-      <main className="layout landing-layout">
-        <header className="landing-nav">
-          <div className="landing-brand">
-            <span className="landing-brand-mark">W</span>
-            <div>
-              <strong>Wishlist</strong>
-              <span>умный вишлист для событий</span>
+        <header className="snap-fixed-header">
+          <div className="snap-fixed-header-inner">
+            <a className="snap-brand" href="/">
+              <div>
+                <strong>Список желаний</strong>
+              </div>
+            </a>
+
+            <div className="snap-nav snap-nav-desktop">
+              <a className="snap-nav-link" href="/">
+                На главную
+              </a>
+              <a className="snap-nav-link snap-nav-link-accent" href="/">
+                Создать вишлист
+              </a>
             </div>
-          </div>
-
-          <div className="landing-nav-links">
-            <button type="button" className="landing-nav-link" onClick={() => scrollToSection("landing-benefits")}>
-              Преимущества
-            </button>
-            <button type="button" className="landing-nav-link" onClick={() => scrollToSection("landing-flow")}>
-              Как это работает
-            </button>
-            <button
-              type="button"
-              className={`button-primary landing-nav-cta${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
-              onClick={() => handlePrimaryCta("login")}
-              disabled={isPrimaryCtaLoading}
-            >
-              <span className="landing-cta-label">{seoPage.navCta}</span>
-              {isPrimaryCtaLoading ? <span className="landing-cta-spinner auth-button-spinner" aria-hidden="true" /> : null}
-            </button>
           </div>
         </header>
 
-        <section className="landing-hero">
-          <div className="landing-hero-copy">
-            <h1 className={`landing-title${seoPage.heroTitle.length > 50 ? " landing-title-compact" : ""}`}>{seoPage.heroTitle}</h1>
-            <p className="landing-subtitle">{seoPage.heroText}</p>
+        <main className="snap-legal-main">
+          <section className="snap-legal-card">
+            <p className="snap-legal-kicker">{seoPage.navLabel}</p>
+            <h1 className="snap-legal-title">{seoPage.documentTitle || seoPage.title}</h1>
+            {seoPage.documentUpdatedAt ? <p className="snap-legal-updated">{seoPage.documentUpdatedAt}</p> : null}
+            {seoPage.documentLead ? <p className="snap-legal-lead">{seoPage.documentLead}</p> : null}
 
-            <div className="landing-hero-actions">
-              <button
-                type="button"
-                className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
-                onClick={() => handlePrimaryCta("login")}
-                disabled={isPrimaryCtaLoading}
-              >
-                <span className="landing-cta-label">{seoPage.heroPrimaryCta}</span>
-                {isPrimaryCtaLoading ? <span className="landing-cta-spinner auth-button-spinner" aria-hidden="true" /> : null}
+            <div className="snap-legal-sections">
+              {(seoPage.documentSections || []).map((section) => (
+                <section className="snap-legal-section" key={section.title}>
+                  <h2>{section.title}</h2>
+                  {(section.paragraphs || []).map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                  {section.list?.length ? (
+                    <ul>
+                      {section.list.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ))}
+            </div>
+
+            <footer className="snap-legal-footer" aria-label="Навигация по служебным страницам">
+              <div className="snap-legal-footer-brand">
+                <strong>Список желаний</strong>
+              </div>
+              <nav className="snap-legal-footer-links">
+                {legalLinks.map((item) => (
+                  <a key={item.href} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+            </footer>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  if (seoPage.layout === "legal") {
+    return renderLegalPage();
+  }
+
+  return (
+    <div className="page-shell auth-shell snap-landing-shell">
+      <div className="snap-landing-bg snap-landing-bg-left" />
+      <div className="snap-landing-bg snap-landing-bg-right" />
+
+      <header className="snap-fixed-header">
+        <div className="snap-fixed-header-inner">
+          <button type="button" className="snap-brand" onClick={() => scrollToSection("landing-hero")}>
+            <div>
+              <strong>Список желаний</strong>
+            </div>
+          </button>
+
+          <div className="snap-nav">
+            <div className="snap-nav-desktop">
+              <button type="button" className="snap-nav-link" onClick={() => openAuthModal("login")}>
+                Вход
               </button>
-              <button type="button" className="button-secondary landing-secondary-action" onClick={() => scrollToSection("landing-flow")}>
-                {seoPage.heroSecondaryCta}
+              <button type="button" className="snap-nav-link snap-nav-link-accent" onClick={() => openAuthModal("register")}>
+                Регистрация
               </button>
             </div>
 
-            <div className="landing-proof-grid">
-              {proofItems.map((item) => (
-                <article className="landing-proof-card" key={item.value}>
-                  <strong>{item.value}</strong>
-                  <p>{item.label}</p>
+            <div className="snap-mobile-nav">
+              <button
+                type="button"
+                className="snap-mobile-nav-toggle"
+                aria-label="Open login modal"
+                onClick={() => openAuthModal("login")}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 12.25a4.25 4.25 0 1 0-4.25-4.25A4.25 4.25 0 0 0 12 12.25Zm0 2.25c-4.07 0-7.5 2.08-7.5 4.55 0 .52.43.95.95.95h13.1c.52 0 .95-.43.95-.95 0-2.47-3.43-4.55-7.5-4.55Z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div
+        className="snap-hero-image-card"
+        aria-hidden="true"
+        style={{
+          "--gift-shift-x": `${giftMotion.shiftX.toFixed(1)}px`,
+          "--gift-shift-y": `${giftMotion.shiftY.toFixed(1)}px`,
+          "--gift-rotate": `${giftMotion.rotate.toFixed(2)}deg`,
+          "--gift-scale": `${giftMotion.scale.toFixed(3)}`
+        }}
+      >
+        <img
+          className="snap-hero-gift-image"
+          src="/branding/gift-box.png"
+          alt=""
+        />
+      </div>
+
+      <div className="snap-landing-scroll" ref={scrollRef}>
+        <section className="snap-panel snap-panel-hero" id="landing-hero" data-snap-section>
+          <div className="snap-panel-inner snap-hero-simple">
+            <div className="snap-copy">
+              <h1 className="snap-title">Если ты сюда зашел, значит у тебя скоро праздник!</h1>
+
+              <div className="snap-actions">
+                <button
+                  type="button"
+                  className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
+                  onClick={() => handlePrimaryCta("login")}
+                  disabled={isPrimaryCtaLoading}
+                >
+                  Создать вишлист
+                </button>
+              </div>
+            </div>
+
+            <p className="snap-hero-side-note">А мы поможем тебе ответить на вопрос "Что подарить?"</p>
+          </div>
+        </section>
+
+        <section className="snap-panel snap-panel-benefits" id="landing-benefits" data-snap-section>
+          <div className="snap-panel-inner snap-panel-grid snap-panel-grid-gift-safe">
+            <div className="snap-heading">
+              <h2>
+                Дорогой подарок можно собрать <span className="snap-accent-word">вместе</span>
+              </h2>
+            </div>
+
+            <div className="snap-feature-list">
+              {featureList.map((item, index) => (
+                <article className="snap-feature-card" key={item}>
+                  <strong>0{index + 1}</strong>
+                  <p>{item}</p>
                 </article>
               ))}
             </div>
           </div>
-
-          <div className="landing-hero-visual" aria-hidden="true">
-            <div className="landing-showcase">
-              <div className="landing-showcase-top">
-                <span className="landing-showcase-chip">{seoPage.showcaseChip}</span>
-                <span className="landing-showcase-status">{seoPage.showcaseStatus}</span>
-              </div>
-
-              <div className="landing-showcase-grid">
-                <div className="landing-showcase-main">
-                  <div className="landing-showcase-heading">
-                    <span>{seoPage.showcaseLabel}</span>
-                    <strong>{seoPage.showcaseHeading}</strong>
-                    <p>{seoPage.showcaseText}</p>
-                  </div>
-
-                  <div className="landing-showcase-list">
-                    <article className="landing-wish-preview">
-                      <div className="landing-wish-preview-top">
-                        <span>Техника</span>
-                        <span>29 900 руб.</span>
-                      </div>
-                      <strong>Наушники Sony XM5</strong>
-                      <p>Можно скинуться компанией, чтобы закрыть один сильный подарок.</p>
-                      <div className="landing-preview-progress">
-                        <span style={{ width: "64%" }} />
-                      </div>
-                    </article>
-
-                    <article className="landing-wish-preview landing-wish-preview-soft">
-                      <div className="landing-wish-preview-top">
-                        <span>Дом</span>
-                        <span>6 500 руб.</span>
-                      </div>
-                      <strong>Настольная лампа</strong>
-                      <p>Конкретная вещь со ссылкой, чтобы никто не покупал похожее наугад.</p>
-                      <div className="landing-preview-progress">
-                        <span style={{ width: "34%" }} />
-                      </div>
-                    </article>
-                  </div>
-                </div>
-
-                <div className="landing-showcase-side">
-                  <article className="landing-side-card">
-                    <span>Совместный сбор</span>
-                    <strong>7 друзей уже участвуют</strong>
-                    <p>Каждый видит прогресс и понимает, что еще актуально.</p>
-                  </article>
-
-                  <article className="landing-side-card landing-side-card-accent">
-                    <span>Пожелания</span>
-                    <strong>Цвета, форматы, нюансы</strong>
-                    <p>Никаких лишних вопросов. Контекст уже встроен в страницу.</p>
-                  </article>
-                </div>
-              </div>
-            </div>
-
-            <div className="landing-floating-card landing-floating-card-top">
-              <span>{seoPage.floatingTopLabel}</span>
-              <strong>{seoPage.floatingTopText}</strong>
-            </div>
-
-            <div className="landing-floating-card landing-floating-card-bottom">
-              <span>{seoPage.floatingBottomLabel}</span>
-              <strong>{seoPage.floatingBottomText}</strong>
-            </div>
-          </div>
         </section>
 
-        <section className="landing-section" id="landing-benefits">
-          <div className="section-head landing-section-head">
-            <p className="section-label">Преимущества</p>
-            <h2>{seoPage.benefitsTitle}</h2>
-            <p>{seoPage.benefitsText}</p>
-          </div>
-
-          <div className="landing-feature-grid">
-            {featureCards.map((card) => (
-              <article className="landing-feature-card" key={card.title}>
-                <span className="landing-feature-eyebrow">{card.eyebrow}</span>
-                <h3>{card.title}</h3>
-                <p>{card.text}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="landing-flow" id="landing-flow">
-          <div className="landing-flow-card">
-            <div className="section-head compact landing-section-head">
-              <p className="section-label">Как это работает</p>
-              <h2>{seoPage.flowTitle}</h2>
-            </div>
-
-            <div className="landing-step-list">
-              {workflowSteps.map((step) => (
-                <article className="landing-step-card" key={step.number}>
-                  <span className="landing-step-number">{step.number}</span>
+        <section className="snap-panel snap-panel-flow" id="landing-flow" data-snap-section>
+          <div className="snap-panel-inner snap-panel-grid snap-panel-grid-gift-safe snap-panel-grid-gift-safe-mirror">
+            <div className="snap-step-list">
+              {flowSteps.map((step) => (
+                <article className="snap-step-card" key={step.number}>
+                  <span>{step.number}</span>
                   <div>
-                    <h3>{step.title}</h3>
                     <p>{step.text}</p>
                   </div>
                 </article>
               ))}
             </div>
-          </div>
-
-          <aside className="landing-events-card">
-            <p className="section-label">Сценарии</p>
-            <h2>{seoPage.eventsTitle}</h2>
-
-            <div className="landing-event-list">
-              {eventCards.map((card) => (
-                <article className="landing-event-card" key={card.title}>
-                  <h3>{card.title}</h3>
-                  <p>{card.text}</p>
-                </article>
-              ))}
+            <div className="snap-flow-side">
+              <h2 className="snap-flow-gift-title">
+                Твой путь от <span className="snap-accent-word">желания</span> до подарка
+              </h2>
             </div>
-          </aside>
+          </div>
         </section>
 
-        <section className="landing-auth-section" id="landing-auth">
-          <div className="landing-auth-copy">
-            <p className="section-label">Запуск за минуту</p>
-            <h2>{seoPage.authTitle}</h2>
-            <p>{seoPage.authText}</p>
+        <section className="snap-panel snap-panel-auth" id="landing-auth" data-snap-section>
+          <div className="snap-panel-inner snap-auth-panel">
+            <div className="snap-auth-stage">
+              <div className="snap-auth-layout">
+                <div className="snap-heading snap-auth-copy">
+                  <h2>
+                    {seoPage.authTitle === "Желания сбываются чаще, когда ими делятся" ? (
+                      <>
+                        Желания <span className="snap-accent-word">сбываются</span> чаще, когда ими делятся
+                      </>
+                    ) : (
+                      seoPage.authTitle
+                    )}
+                  </h2>
 
-            <div className="landing-auth-benefits">
-              {authBenefits.map((benefit) => (
-                <div className="landing-auth-benefit" key={benefit}>
-                  <span>+</span>
-                  <p>{benefit}</p>
+                  <div className="snap-actions">
+                    <button
+                    type="button"
+                    className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
+                    onClick={() => handlePrimaryCta("register")}
+                    disabled={isPrimaryCtaLoading}
+                  >
+                    {seoPage.authText || "Создать вишлист"}
+                    </button>
+                  </div>
                 </div>
-              ))}
+                <div className="snap-auth-gift-slot" aria-hidden="true" />
+              </div>
             </div>
 
-            <div className="landing-auth-cta-row">
-              <button
-                type="button"
-                className={`button-primary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
-                onClick={() => handlePrimaryCta("login")}
-                disabled={isPrimaryCtaLoading}
-              >
-                <span className="landing-cta-label">{currentUser ? "Перейти к вишлистам" : "Создать аккаунт"}</span>
-                {isPrimaryCtaLoading ? <span className="landing-cta-spinner auth-button-spinner" aria-hidden="true" /> : null}
-              </button>
-              <button
-                type="button"
-                className={`button-secondary landing-auth-cta-secondary${isPrimaryCtaLoading ? " landing-cta-loading" : ""}`}
-                onClick={() => handlePrimaryCta("login")}
-                disabled={isPrimaryCtaLoading}
-              >
-                <span className="landing-cta-label">{currentUser ? "Открыть дашборд" : "Уже есть аккаунт"}</span>
-                {isPrimaryCtaLoading ? <span className="landing-cta-spinner auth-button-spinner" aria-hidden="true" /> : null}
-              </button>
-            </div>
-          </div>
-
-          <div className="landing-faq-panel">
-            <div className="section-head landing-section-head compact">
-              <p className="section-label">FAQ</p>
-              <h2>{seoPage.faqTitle}</h2>
-            </div>
-
-            <div className="landing-faq-grid">
-              {seoPage.faqItems.map((item) => (
-                <article className="landing-faq-card" key={item.question}>
-                  <h3>{item.question}</h3>
-                  <p>{item.answer}</p>
-                </article>
-              ))}
-            </div>
+            <footer className="snap-legal-footer" aria-label="Юридическая информация">
+              <div className="snap-legal-footer-brand">
+                <strong>Список желаний</strong>
+              </div>
+              <nav className="snap-legal-footer-links">
+                {legalLinks.map((item) => (
+                  <a key={item.href} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+            </footer>
           </div>
         </section>
-
-        <footer className="landing-thin-footer">
-          <nav className="landing-thin-footer-links" aria-label="Полезные страницы">
-            {relatedSeoPages.map((page) => (
-              <a key={page.key} className="landing-thin-footer-link" href={page.path}>
-                {page.navLabel}
-              </a>
-            ))}
-          </nav>
-        </footer>
-
-      </main>
+      </div>
 
       {isAuthModalOpen ? (
-        <div className="donation-modal-backdrop auth-modal-backdrop" onClick={closeAuthModal}>
-          <div className="donation-modal auth-landing-modal" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="auth-modal-close" aria-label="Закрыть окно входа" onClick={closeAuthModal} disabled={submitting}>
+        <div className="donation-modal-backdrop auth-modal-backdrop snap-auth-backdrop" onClick={closeAuthModal}>
+          <div
+            ref={authModalRef}
+            className="donation-modal snap-auth-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Вход и регистрация"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button type="button" className="auth-modal-close snap-auth-close" aria-label="Закрыть окно входа" onClick={closeAuthModal} disabled={submitting}>
               x
             </button>
             {renderAuthCard(mode)}

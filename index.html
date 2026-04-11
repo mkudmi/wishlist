@@ -19,12 +19,18 @@
       content="Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков."
     />
     <meta property="og:url" content="https://xn--80ajchdgcktejxc.xn--p1ai/" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:image" content="https://xn--80ajchdgcktejxc.xn--p1ai/icon-512.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="Логотип сервиса Список желаний" />
+    <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Список желаний - Онлайн-вишлист для подарков" />
     <meta
       name="twitter:description"
       content="Удобный онлайн-вишлист: одна ссылка для гостей, список желаний и совместные подарки без хаоса."
     />
+    <meta name="twitter:image" content="https://xn--80ajchdgcktejxc.xn--p1ai/icon-512.png" />
     <meta name="theme-color" content="#c96a2c" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="alternate icon" href="/favicon.ico" sizes="64x64" />
@@ -84,78 +90,34 @@
         ]
       }
     </script>
-    <script id="seo-page-faq-schema" type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Что такое вишлист?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Вишлист — это онлайн-список желаний или подарков, который можно собрать в одной странице и отправить гостям по ссылке."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Нужно ли гостям регистрироваться, чтобы открыть список?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Нет. Публичную страницу вишлиста можно открыть по ссылке без регистрации, чтобы посмотреть подарки и при желании поучаствовать в общем сборе."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Можно ли собрать деньги на один большой подарок?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Да. Вишлист подходит не только для отдельных вещей, но и для совместного подарка, когда несколько человек участвуют в одной цели."
-            }
-          }
-        ]
-      }
-    </script>
+    <script src="/seo-pages.js"></script>
     <script>
       (function () {
-        var origin = "https://xn--80ajchdgcktejxc.xn--p1ai";
+        var seoConfig = window.__WISHLIST_SEO__ || {};
+        var origin = seoConfig.origin || "https://xn--80ajchdgcktejxc.xn--p1ai";
+        var lastActiveWishlistStorageKey = "wishlist:last-active-id";
         var pathname = window.location.pathname || "/";
         var path = pathname !== "/" && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-        var seoPages = {
-          "/": {
-            title: "Список желаний - Онлайн-вишлист для подарков",
-            description:
-              "Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков."
-          },
-          "/vishlist": {
-            title: "Вишлист онлайн - Список желаний для подарков",
-            description:
-              "Онлайн-вишлист для подарков: соберите список желаний, добавьте ссылки и цены, отправьте одну страницу гостям и собирайте совместные подарки без лишних вопросов."
-          },
-          "/spisok-podarkov": {
-            title: "Список подарков онлайн - Удобный сервис для гостей и именинника",
-            description:
-              "Список подарков онлайн для дня рождения, свадьбы и других событий. Добавьте конкретные идеи, укажите ссылки и бюджет, чтобы гостям было проще выбрать подарок."
-          },
-          "/vishlist-na-den-rozhdeniya": {
-            title: "Вишлист на день рождения - Список подарков без хаоса",
-            description:
-              "Создайте вишлист на день рождения: список подарков, ссылки, цены, правила и совместные сборы на один подарок. Удобно для именинника и гостей."
-          },
-          "/spisok-zhelaniy-online": {
-            title: "Список желаний онлайн - Красивый и понятный вишлист",
-            description:
-              "Список желаний онлайн для подарков и событий. Соберите всё, что хочется получить, в одной красивой странице и поделитесь ею по ссылке."
-          },
-          "/sovmestniy-podarok": {
-            title: "Совместный подарок - Как собрать деньги на один хороший подарок",
-            description:
-              "Совместный подарок без хаоса: соберите деньги на один большой подарок через вишлист, покажите прогресс и дайте друзьям понятный способ поучаствовать."
+        if (path === "/wishlist") {
+          try {
+            var lastActiveWishlistId = window.localStorage.getItem(lastActiveWishlistStorageKey);
+            if (lastActiveWishlistId) {
+              var redirectedPath = "/wishlists/" + encodeURIComponent(lastActiveWishlistId) + "/edit";
+              window.history.replaceState(null, "", redirectedPath);
+              path = redirectedPath;
+            }
+          } catch (error) {
+            // Ignore storage access issues and let the app resolve the fallback route.
           }
+        }
+        var seoPages = seoConfig.pages || {};
+        var defaultSeoPage = seoConfig.defaultPage || {
+          title: document.title,
+          description: ""
         };
-        var currentSeoPage = seoPages[path] || seoPages["/"];
-        var title = currentSeoPage.title;
-        var description = currentSeoPage.description;
+        var currentSeoPage = seoPages[path] || defaultSeoPage;
+        var title = currentSeoPage.title || defaultSeoPage.title;
+        var description = currentSeoPage.description || defaultSeoPage.description;
         var robots = "index,follow,max-image-preview:large";
         var canonicalPath = seoPages[path] ? path : "/";
 
@@ -164,11 +126,11 @@
           description = "Личный кабинет сервиса Список желаний.";
           robots = "noindex,nofollow";
           canonicalPath = "/dashboard";
-        } else if (path === "/wishlist") {
+        } else if (path === "/wishlist" || /^\/wishlists\/[^/]+\/edit$/.test(path)) {
           title = "Редактирование вишлиста - Список желаний";
           description = "Управление вашим списком подарков в сервисе Список желаний.";
           robots = "noindex,nofollow";
-          canonicalPath = "/wishlist";
+          canonicalPath = path;
         } else if (path === "/auth/yandex/callback") {
           title = "Вход через Яндекс - Список желаний";
           description = "Служебная страница авторизации Список желаний.";
