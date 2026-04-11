@@ -1730,6 +1730,26 @@ export default function App({ initialRouteOverride = null }) {
       .catch(() => {});
   }
 
+  const pageThemeColor = (() => {
+    if (page === "dashboard") return "#eaf2fb";
+    if (page === "wishlist" || page === "shared") {
+      const themeId =
+        page === "shared"
+          ? sharedWishlistMeta?.theme || defaultWishlistTheme
+          : (wishlists.find((w) => w.id === currentWishlistId)?.theme || defaultWishlistTheme);
+      const theme = wishlistThemes.find((t) => t.value === themeId) || wishlistThemes[0];
+      return theme.themeColor || "#efe7db";
+    }
+    return "#efe7db";
+  })();
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", pageThemeColor);
+    document.documentElement.style.backgroundColor = pageThemeColor;
+    document.body.style.backgroundColor = pageThemeColor;
+  }, [pageThemeColor]);
+
   if (isAuthLoading && page !== "landing") {
     return null;
   }

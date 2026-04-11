@@ -14,6 +14,7 @@ export const wishlistThemes = [
     value: "sand",
     label: "Песок",
     preview: ["#f8d2a8", "#ec9552", "#fffaf2"],
+    themeColor: "#efe7db",
     vars: {
       "--color-ink": "#241f1a",
       "--color-muted": "#54483d",
@@ -35,6 +36,7 @@ export const wishlistThemes = [
     value: "sage",
     label: "Шалфей",
     preview: ["#c9dcc8", "#7aa88f", "#f3f8f1"],
+    themeColor: "#e4eee1",
     vars: {
       "--color-ink": "#1f261f",
       "--color-muted": "#4e5f53",
@@ -56,6 +58,7 @@ export const wishlistThemes = [
     value: "berry",
     label: "Ягоды",
     preview: ["#f0c8d2", "#d16d8f", "#fff5f7"],
+    themeColor: "#f1e3e8",
     vars: {
       "--color-ink": "#271a22",
       "--color-muted": "#6b4b58",
@@ -77,6 +80,7 @@ export const wishlistThemes = [
     value: "sky",
     label: "Небо",
     preview: ["#cde6ff", "#74a7df", "#f4f9ff"],
+    themeColor: "#e5edf8",
     vars: {
       "--color-ink": "#1b2430",
       "--color-muted": "#506072",
@@ -98,6 +102,7 @@ export const wishlistThemes = [
     value: "midnight",
     label: "Ночь",
     preview: ["#23324a", "#7eb6ff", "#101827"],
+    themeColor: "#172335",
     vars: {
       "--color-ink": "#f4f3ef",
       "--color-muted": "rgba(236, 235, 230, 0.76)",
