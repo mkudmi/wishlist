@@ -15,7 +15,7 @@ const WISHLIST_THEME_VALUES = new Set(["sand", "sage", "berry", "sky", "midnight
 let wishImageColumnAvailable = null;
 
 app.use(cors({ origin: config.corsOrigin === "*" ? true : config.corsOrigin }));
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "5mb" }));
 app.use(morgan("combined"));
 
 const SESSION_TTL_DAYS = 30;
@@ -1278,7 +1278,8 @@ app.post("/api/wishes", requireAuth, async (req, res, next) => {
     const tag = normalizeName(req.body?.tag) || "Без категории";
     const price = String(req.body?.price || "").trim();
     const url = String(req.body?.url || "").trim();
-    const imageUrl = url ? await fetchWishPreviewImageUrl(url) : "";
+    const imageUrlFromBody = typeof req.body?.image_url === "string" ? req.body.image_url : null;
+    const imageUrl = imageUrlFromBody !== null ? imageUrlFromBody : (url ? await fetchWishPreviewImageUrl(url) : "");
 
     if (!wishlistId || !title || !note) {
       return res.status(400).json({ error: "wishlist_id, title and note are required" });
@@ -1330,7 +1331,8 @@ app.patch("/api/wishes/:id", requireAuth, async (req, res, next) => {
     const tag = normalizeName(req.body?.tag) || "Без категории";
     const price = String(req.body?.price || "").trim();
     const url = String(req.body?.url || "").trim();
-    const imageUrl = url ? await fetchWishPreviewImageUrl(url) : "";
+    const imageUrlFromBody = typeof req.body?.image_url === "string" ? req.body.image_url : null;
+    const imageUrl = imageUrlFromBody !== null ? imageUrlFromBody : (url ? await fetchWishPreviewImageUrl(url) : "");
 
     const wishSelect = await getWishSelectFragment();
     const { rows } = await (await hasWishImageColumn())
