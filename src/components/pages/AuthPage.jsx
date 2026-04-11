@@ -26,6 +26,7 @@ export function AuthPage({
   form,
   error,
   submitting,
+  currentUser,
   onModeChange,
   onErrorReset,
   onInputChange,
@@ -53,6 +54,7 @@ export function AuthPage({
   const snapScrollTimeoutRef = useRef(null);
   const authModalRef = useRef(null);
   const authModalReturnFocusRef = useRef(null);
+  const googleSdkPromiseRef = useRef(null);
 
   useEffect(() => {
     googleCallbackRef.current = onGoogleAuth;
@@ -281,6 +283,60 @@ export function AuthPage({
     };
   }, [isAuthModalOpen]);
 
+  function ensureGoogleSdkLoaded() {
+    if (typeof window === "undefined") {
+      return Promise.reject(new Error("Google SDK недоступен."));
+    }
+
+    if (window.google?.accounts?.id) {
+      return Promise.resolve();
+    }
+
+    if (googleSdkPromiseRef.current) {
+      return googleSdkPromiseRef.current;
+    }
+
+    googleSdkPromiseRef.current = new Promise((resolve, reject) => {
+      const existingScript = document.querySelector('script[data-google-gsi="true"]');
+
+      function cleanup(script) {
+        script?.removeEventListener("load", handleLoad);
+        script?.removeEventListener("error", handleError);
+      }
+
+      function handleLoad() {
+        cleanup(existingScript || script);
+        if (window.google?.accounts?.id) {
+          resolve();
+          return;
+        }
+        reject(new Error("Google SDK недоступен."));
+      }
+
+      function handleError() {
+        cleanup(existingScript || script);
+        reject(new Error("Не удалось загрузить Google SDK."));
+      }
+
+      const script = existingScript || document.createElement("script");
+      script.addEventListener("load", handleLoad, { once: true });
+      script.addEventListener("error", handleError, { once: true });
+
+      if (!existingScript) {
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        script.dataset.googleGsi = "true";
+        document.head.appendChild(script);
+      }
+    }).catch((error) => {
+      googleSdkPromiseRef.current = null;
+      throw error;
+    });
+
+    return googleSdkPromiseRef.current;
+  }
+
   useEffect(() => {
     if (!googleClientId || typeof window === "undefined") {
       return undefined;
@@ -311,26 +367,8 @@ export function AuthPage({
       googleInitializedClientIdRef.current = googleClientId;
     }
 
-    if (window.google?.accounts?.id) {
-      initializeGoogle();
-      return undefined;
-    }
-
-    const existingScript = document.querySelector('script[data-google-gsi="true"]');
-    if (existingScript) {
-      existingScript.addEventListener("load", initializeGoogle, { once: true });
-      return () => existingScript.removeEventListener("load", initializeGoogle);
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.dataset.googleGsi = "true";
-    script.addEventListener("load", initializeGoogle, { once: true });
-    document.head.appendChild(script);
-
-    return () => script.removeEventListener("load", initializeGoogle);
+    ensureGoogleSdkLoaded().then(initializeGoogle).catch(() => {});
+    return undefined;
   }, [googleClientId]);
 
   useEffect(() => {
@@ -509,20 +547,43 @@ export function AuthPage({
     window.open(popupUrl, "wishlist-yandex-auth", "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes");
   }
 
-  function openGoogleAuth() {
-    if (!window.google?.accounts?.id) {
+  async function openGoogleAuth() {
+    if (isGoogleSubmitting) {
       return;
     }
 
     setIsGoogleSubmitting(true);
-    window.google.accounts.id.prompt((notification) => {
-      const noPromptShown =
-        notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.();
 
-      if (noPromptShown) {
-        setIsGoogleSubmitting(false);
+    try {
+      await ensureGoogleSdkLoaded();
+
+      if (!window.google?.accounts?.id) {
+        throw new Error("Google SDK недоступен.");
       }
-    });
+
+      let isSettled = false;
+      const releaseSubmitting = () => {
+        if (isSettled) {
+          return;
+        }
+        isSettled = true;
+        setIsGoogleSubmitting(false);
+      };
+
+      const guardTimeout = window.setTimeout(releaseSubmitting, 12000);
+
+      window.google.accounts.id.prompt((notification) => {
+        const noPromptShown =
+          notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.();
+
+        if (noPromptShown) {
+          window.clearTimeout(guardTimeout);
+          releaseSubmitting();
+        }
+      });
+    } catch {
+      setIsGoogleSubmitting(false);
+    }
   }
 
   function switchMode(nextMode) {
@@ -546,6 +607,11 @@ export function AuthPage({
 
   async function handlePrimaryCta(nextMode = "login") {
     if (isPrimaryCtaLoading) {
+      return;
+    }
+
+    if (!currentUser) {
+      openAuthModal(nextMode);
       return;
     }
 
