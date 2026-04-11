@@ -1738,9 +1738,9 @@ export default function App({ initialRouteOverride = null }) {
           ? sharedWishlistMeta?.theme || defaultWishlistTheme
           : (wishlists.find((w) => w.id === currentWishlistId)?.theme || defaultWishlistTheme);
       const theme = wishlistThemes.find((t) => t.value === themeId) || wishlistThemes[0];
-      return theme.themeColor || "#efe7db";
+      return theme.themeColor || "#d7efff";
     }
-    return "#efe7db";
+    return "#d7efff";
   })();
 
   useEffect(() => {
