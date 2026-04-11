@@ -1174,7 +1174,7 @@ export default function App({ initialRouteOverride = null }) {
     setProfileError("");
     setWishlistToDelete(null);
     setIsHeaderMenuOpen(false);
-    setIsProfileOpen(false);
+    closeProfileModal();
     setIsDeleteAccountConfirmOpen(false);
     setDeleteAccountConfirmation("");
     setPage("landing");
