@@ -44,11 +44,11 @@ export function AuthPage({
   const [isBirthdayPickerOpen, setIsBirthdayPickerOpen] = useState(false);
   const [showRegisterErrors, setShowRegisterErrors] = useState(false);
   const [registerValidationError, setRegisterValidationError] = useState("");
-  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isPrimaryCtaLoading, setIsPrimaryCtaLoading] = useState(false);
   const [giftScene, setGiftScene] = useState({ scrollTop: 0, width: 0, height: 0, offsets: [] });
   const googleCallbackRef = useRef(onGoogleAuth);
   const googleInitializedClientIdRef = useRef("");
+  const googleButtonRef = useRef(null);
   const scrollRef = useRef(null);
   const snapScrollLockRef = useRef(false);
   const snapScrollTimeoutRef = useRef(null);
@@ -372,6 +372,39 @@ export function AuthPage({
   }, [googleClientId]);
 
   useEffect(() => {
+    if (!googleClientId || !isAuthModalOpen || !googleButtonRef.current || typeof window === "undefined") {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    function renderGoogleButton() {
+      if (isCancelled || !googleButtonRef.current || !window.google?.accounts?.id) {
+        return;
+      }
+
+      googleButtonRef.current.replaceChildren();
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        text: "signin_with",
+        shape: "pill",
+        width: Math.max(220, Math.round(googleButtonRef.current.clientWidth || 240)),
+        locale: "ru"
+      });
+    }
+
+    ensureGoogleSdkLoaded().then(renderGoogleButton).catch(() => {});
+    window.addEventListener("resize", renderGoogleButton);
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener("resize", renderGoogleButton);
+    };
+  }, [googleClientId, isAuthModalOpen]);
+
+  useEffect(() => {
     if (!isAuthModalOpen || typeof window === "undefined") {
       return undefined;
     }
@@ -545,45 +578,6 @@ export function AuthPage({
     const apiBase = getApiBase();
     const popupUrl = `${apiBase}/api/auth/yandex/start?origin=${encodeURIComponent(window.location.origin)}`;
     window.open(popupUrl, "wishlist-yandex-auth", "popup=yes,width=520,height=720,resizable=yes,scrollbars=yes");
-  }
-
-  async function openGoogleAuth() {
-    if (isGoogleSubmitting) {
-      return;
-    }
-
-    setIsGoogleSubmitting(true);
-
-    try {
-      await ensureGoogleSdkLoaded();
-
-      if (!window.google?.accounts?.id) {
-        throw new Error("Google SDK недоступен.");
-      }
-
-      let isSettled = false;
-      const releaseSubmitting = () => {
-        if (isSettled) {
-          return;
-        }
-        isSettled = true;
-        setIsGoogleSubmitting(false);
-      };
-
-      const guardTimeout = window.setTimeout(releaseSubmitting, 12000);
-
-      window.google.accounts.id.prompt((notification) => {
-        const noPromptShown =
-          notification.isNotDisplayed?.() || notification.isSkippedMoment?.() || notification.isDismissedMoment?.();
-
-        if (noPromptShown) {
-          window.clearTimeout(guardTimeout);
-          releaseSubmitting();
-        }
-      });
-    } catch {
-      setIsGoogleSubmitting(false);
-    }
   }
 
   function switchMode(nextMode) {
@@ -913,37 +907,7 @@ export function AuthPage({
                 ) : null}
 
                 {googleClientId ? (
-                    <button
-                    type="button"
-                    className="button-secondary auth-oauth-button auth-google-custom-button"
-                    onClick={openGoogleAuth}
-                    disabled={isGoogleSubmitting}
-                    aria-label={isGoogleSubmitting ? "Google авторизация загружается" : "Войти через Google"}
-                  >
-                    {isGoogleSubmitting ? (
-                      <span className="auth-button-spinner" aria-hidden="true" />
-                    ) : (
-                      <svg className="auth-google-logo" viewBox="0 0 18 18" aria-hidden="true">
-                        <path
-                          fill="#4285F4"
-                          d="M17.64 9.2045c0-.6382-.0573-1.2518-.1636-1.8409H9v3.4818h4.8436c-.2087 1.125-.8427 2.0782-1.796 2.7164v2.2582h2.9087c1.7018-1.5668 2.6837-3.8741 2.6837-6.6155z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M9 18c2.43 0 4.4673-.8059 5.9563-2.1791l-2.9087-2.2582c-.806.54-1.8369.8591-3.0476.8591-2.3441 0-4.3282-1.5832-5.0364-3.7105H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M3.9636 10.7105C3.7832 10.1705 3.6818 9.5932 3.6818 9s.1014-1.1705.2818-1.7105V4.9577H.9573C.3477 6.1732 0 7.5482 0 9s.3477 2.8268.9573 4.0423l3.0063-2.3318z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M9 3.5782c1.3214 0 2.5077.4541 3.4405 1.3459l2.5809-2.5809C13.4632.8918 11.4264 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9577l3.0063 2.3318C4.6718 5.1614 6.6559 3.5782 9 3.5782z"
-                        />
-                      </svg>
-                    )}
-                    {isGoogleSubmitting ? null : <span>Google</span>}
-                  </button>
+                  <div className="auth-google-button-host" ref={googleButtonRef} aria-label="Войти через Google" />
                 ) : null}
               </div>
             </>
