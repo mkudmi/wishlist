@@ -874,6 +874,13 @@ export default function App({ initialRouteOverride = null }) {
     setAuthForm(emptyAuthForm);
   }
 
+  function openLandingRegister() {
+    setAuthMode("register");
+    setAuthError("");
+    setAuthForm(emptyAuthForm);
+    navigate("/");
+  }
+
   function resetAuthError() {
     setAuthError("");
   }
@@ -1307,25 +1314,33 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
+    const deletedWishlistId = wishlistToDelete.id;
+
     setIsWishlistSubmitting(true);
     setWishlistsError("");
 
-    const { error } = await deleteWishlistRecord(wishlistToDelete.id);
+    const { error } = await deleteWishlistRecord(deletedWishlistId);
     if (error) {
       setWishlistsError("Не удалось удалить вишлист.");
       setIsWishlistSubmitting(false);
       return;
     }
 
-    const nextWishlists = wishlists.filter((item) => item.id !== wishlistToDelete.id);
+    const nextWishlists = wishlists.filter((item) => item.id !== deletedWishlistId);
     setWishlists(nextWishlists);
     await loadDashboardStats(nextWishlists);
 
-    if (shareSheetWishlist?.id === wishlistToDelete.id) {
+    if (shareSheetWishlist?.id === deletedWishlistId) {
       closeShareSheet();
     }
 
-    if (currentWishlistId === wishlistToDelete.id) {
+    if (currentWishlistId === deletedWishlistId) {
+      setOpenedWishId(null);
+      closeDonationModal();
+      setEditingWishId(null);
+      setForm(emptyForm);
+      setIsWishEditorOpen(false);
+
       if (nextWishlists.length > 0) {
         await selectWishlist(nextWishlists[0]);
         navigate(getWishlistEditPath(nextWishlists[0].id), { replace: true });
@@ -1840,6 +1855,19 @@ export default function App({ initialRouteOverride = null }) {
           />
         ) : null}
 
+        {page === "shared" ? (
+          <div className="shared-landing-header">
+            <button
+              type="button"
+              className="shared-landing-brand"
+              onClick={() => navigate("/")}
+              aria-label="Перейти на главный лендинг"
+            >
+              <strong>Список желаний</strong>
+            </button>
+          </div>
+        ) : null}
+
         {page === "dashboard" ? (
           <DashboardPage
             wishlists={wishlists}
@@ -1881,6 +1909,7 @@ export default function App({ initialRouteOverride = null }) {
             onCloseWishEditor={closeWishEditorModal}
             onDeleteWish={deleteWish}
             onSaveRules={saveRulesForWishlist}
+            onOpenLandingRegister={openLandingRegister}
           />
         )}
       </main>

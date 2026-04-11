@@ -32,18 +32,9 @@ export function WishlistPage({
   onOpenWishEdit,
   onCloseWishEditor,
   onDeleteWish,
-  onSaveRules
+  onSaveRules,
+  onOpenLandingRegister
 }) {
-  function scrollToSection(sectionId) {
-    if (typeof document === "undefined") {
-      return;
-    }
-    const target = document.getElementById(sectionId);
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }
-
   const eventInfo = getEventCountdownInfo(countdownDate, { recurring: isRecurringEvent });
   const genitiveName = toGenitiveFirstName(ownerFirstName);
   const normalizedEventTitle = String(eventTitle || "").replace(/^Мой\s+/i, "").trim();
@@ -347,11 +338,8 @@ export function WishlistPage({
             </p>
 
             <div className="hero-actions">
-              <button type="button" className="button-primary wishlist-hero-primary-button" onClick={() => scrollToSection("wishlist")}>
+              <button type="button" className="button-primary wishlist-hero-primary-button" onClick={() => document.getElementById("wishlist")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
                 К подаркам
-              </button>
-              <button type="button" className="button-secondary" onClick={() => scrollToSection("gift-guide")}>
-                Как лучше подарить
               </button>
             </div>
           </div>
@@ -471,9 +459,6 @@ export function WishlistPage({
 
       <section className="wishlist-section" id="wishlist">
         <div className="section-head section-head-with-action">
-          <div>
-            <h2>Что можно подарить</h2>
-          </div>
           <button
             type="button"
             className="tiny-admin-button wish-sort-button"
@@ -534,36 +519,24 @@ export function WishlistPage({
         </div>
       </section>
 
-      <section className="guide-section" id="gift-guide">
-        <div className="guide-card">
-          <div className="section-head compact">
-            <p className="section-label">Gift guide</p>
-            <h2>Небольшие пожелания</h2>
-            {canEdit ? (
-              <div className="rules-edit-actions">
-                <button type="button" className="tiny-admin-button" onClick={openRulesEditor}>
-                  Редактировать пожелания
-                </button>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="rules-list">
-            {rules.map((rule) => (
-              <div className="rule-item" key={rule}>
-                <span className="rule-index">+</span>
-                <p>{rule}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="contact-card">
-          <p className="section-label">Сюрприз тоже ок</p>
-          <h2>Главное, чтобы от души</h2>
-          <p>Даже если выберешь что-то вне списка, мне будет приятно.</p>
+      <section className="guide-section guide-section-single" id="gift-guide">
+        <div className="guide-card contact-card guide-card-single">
+          <h2>Ничего не выбрал?</h2>
+          <p>Даже если подаришь что-то не из списка, мне всё равно будет приятно. Главное, чтобы от души.</p>
         </div>
       </section>
+
+      {!canEdit ? (
+        <section className="shared-promo-section" aria-label="Создание своего вишлиста">
+          <div className="shared-promo-card">
+            <h2>Хочешь такой же вишлист?</h2>
+            <p>Создай свой и поделись ссылкой с близкими.</p>
+            <button type="button" className="button-primary shared-promo-button" onClick={onOpenLandingRegister}>
+              Создать вишлист
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       {canEdit && isRulesEditorOpen ? (
         <div className="donation-modal-backdrop" onClick={closeRulesEditor}>

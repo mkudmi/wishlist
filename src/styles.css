@@ -2400,6 +2400,35 @@ span.snap-accent-word {
   text-align: center;
 }
 
+.shared-landing-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.shared-landing-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #203145;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shared-landing-brand strong {
+  font-family: "Unifix SP Demo", "Farabee", sans-serif;
+  font-size: 1.34rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .auth-userbar {
   position: relative;
   z-index: 80;
@@ -2598,6 +2627,20 @@ span.snap-accent-word {
     font-size: 1.05rem;
     width: 100%;
     text-align: center;
+  }
+
+  .shared-landing-header {
+    margin-bottom: 14px;
+  }
+
+  .shared-landing-brand {
+    width: 100%;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .shared-landing-brand strong {
+    font-size: 1rem;
   }
 
   .dashboard-card {
@@ -3028,5 +3071,149 @@ span.snap-accent-word {
 
   .profile-modal-head .donation-modal-title {
     margin-top: -4px;
+  }
+}
+
+.contact-card {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  text-align: left;
+  gap: 10px;
+}
+
+.contact-card h2,
+.contact-card p {
+  max-width: 24rem;
+}
+
+.hero-card + .wishlist-settings-card,
+.hero-card + .wishlist-section,
+.wishlist-settings-card + .wishlist-section,
+.wishlist-section + .guide-section {
+  margin-top: 24px;
+}
+
+.guide-section-single {
+  grid-template-columns: 1fr;
+}
+
+.guide-card-single,
+.shared-promo-card {
+  min-height: 0;
+  display: grid;
+  gap: 10px;
+  padding: 24px 28px;
+  border-radius: 28px;
+}
+
+.guide-card-single h2,
+.shared-promo-card h2 {
+  margin: 0;
+  max-width: 16ch;
+  font-size: clamp(1.72rem, 3vw, 2.35rem);
+  line-height: 1.05;
+}
+
+.guide-card-single p,
+.shared-promo-card p:last-of-type {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--color-muted);
+}
+
+.guide-section + .shared-promo-section {
+  margin-top: 24px;
+}
+
+.shared-promo-section {
+  position: relative;
+}
+
+.shared-promo-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(155, 193, 241, 0.22), transparent 34%),
+    linear-gradient(145deg, rgba(252, 254, 255, 0.98), rgba(240, 247, 255, 0.96));
+  border: 1px solid rgba(112, 145, 181, 0.18);
+  box-shadow: 0 22px 46px rgba(45, 78, 117, 0.16);
+}
+
+.shared-promo-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -72px -90px auto;
+  width: 240px;
+  height: 240px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(130, 173, 230, 0.18), transparent 70%);
+  pointer-events: none;
+}
+
+.shared-promo-kicker {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5a7ea7;
+}
+
+.shared-promo-card h2,
+.shared-promo-card p:last-of-type {
+  position: relative;
+  z-index: 1;
+}
+
+.shared-promo-button {
+  position: relative;
+  z-index: 1;
+  justify-self: start;
+  min-width: 198px;
+  background: linear-gradient(135deg, #5f92cf, #88b6e5);
+  color: #f7fbff;
+  box-shadow: none;
+}
+
+.shared-promo-button:hover {
+  box-shadow: none;
+}
+
+@media (min-width: 721px) {
+  .hero-card,
+  .wishlist-settings-card,
+  .guide-card,
+  .contact-card,
+  .wish-card,
+  .shared-promo-card {
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .guide-card-single,
+  .shared-promo-card {
+    gap: 12px;
+    padding: 24px 18px;
+    border-radius: 28px;
+  }
+
+  .guide-card-single h2,
+  .shared-promo-card h2 {
+    max-width: none;
+    font-size: clamp(1.56rem, 7.4vw, 2rem);
+  }
+
+  .guide-card-single p,
+  .shared-promo-card p:last-of-type {
+    max-width: none;
+  }
+
+  .shared-promo-button {
+    width: 100%;
+    min-width: 0;
   }
 }
