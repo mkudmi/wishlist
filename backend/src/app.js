@@ -1291,7 +1291,8 @@ app.post("/api/wishes", requireAuth, async (req, res, next) => {
     }
 
     const wishSelect = await getWishSelectFragment();
-    const { rows } = await (await hasWishImageColumn())
+    const hasImageCol = await hasWishImageColumn();
+    const { rows } = await (hasImageCol
       ? pool.query(
           `INSERT INTO wishes (wishlist_id, title, note, tag, price, url, image_url)
            VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -1303,7 +1304,7 @@ app.post("/api/wishes", requireAuth, async (req, res, next) => {
            VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING ${wishSelect};`,
           [wishlistId, title, note, tag, price, url]
-        );
+        ));
 
     res.status(201).json(rows[0]);
   } catch (error) {
@@ -1335,7 +1336,8 @@ app.patch("/api/wishes/:id", requireAuth, async (req, res, next) => {
     const imageUrl = imageUrlFromBody !== null ? imageUrlFromBody : (url ? await fetchWishPreviewImageUrl(url) : "");
 
     const wishSelect = await getWishSelectFragment();
-    const { rows } = await (await hasWishImageColumn())
+    const hasImageCol = await hasWishImageColumn();
+    const { rows } = await (hasImageCol
       ? pool.query(
           `UPDATE wishes
            SET title = $2, note = $3, tag = $4, price = $5, url = $6, image_url = $7
@@ -1349,7 +1351,7 @@ app.patch("/api/wishes/:id", requireAuth, async (req, res, next) => {
            WHERE id = $1
            RETURNING ${wishSelect};`,
           [id, title, note, tag, price, url]
-        );
+        ));
 
     res.json(rows[0]);
   } catch (error) {
