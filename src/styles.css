@@ -1061,9 +1061,16 @@ span.snap-accent-word {
 
 .snap-auth-modal .auth-yandex-button {
   width: 100%;
+  height: 40px;
+  min-height: 30px;
   justify-content: center;
   text-align: center;
   white-space: nowrap;
+  box-shadow: none;
+}
+
+.snap-auth-modal .auth-yandex-button:hover {
+  box-shadow: none;
 }
 
 .snap-auth-modal .auth-provider-logo {
