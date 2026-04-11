@@ -978,10 +978,10 @@ export function AuthPage({
 
           <div className="snap-nav">
             <div className="snap-nav-desktop">
-              <button type="button" className="snap-nav-link" onClick={() => openAuthModal("login")}>
+              <button type="button" className="snap-nav-link" onClick={() => handlePrimaryCta("login")}>
                 Вход
               </button>
-              <button type="button" className="snap-nav-link snap-nav-link-accent" onClick={() => openAuthModal("register")}>
+              <button type="button" className="snap-nav-link snap-nav-link-accent" onClick={() => handlePrimaryCta("register")}>
                 Регистрация
               </button>
             </div>
@@ -990,8 +990,8 @@ export function AuthPage({
               <button
                 type="button"
                 className="snap-mobile-nav-toggle"
-                aria-label="Open login modal"
-                onClick={() => openAuthModal("login")}
+                aria-label="Вход или переход в аккаунт"
+                onClick={() => handlePrimaryCta("login")}
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 12.25a4.25 4.25 0 1 0-4.25-4.25A4.25 4.25 0 0 0 12 12.25Zm0 2.25c-4.07 0-7.5 2.08-7.5 4.55 0 .52.43.95.95.95h13.1c.52 0 .95-.43.95-.95 0-2.47-3.43-4.55-7.5-4.55Z" />
