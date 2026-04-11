@@ -2100,10 +2100,50 @@ span.snap-accent-word {
   color: #36526f;
 }
 
+.wish-editor-image-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 2px 0 18px;
+}
+
+.wish-editor-image-btn:disabled {
+  cursor: default;
+}
+
+.wish-editor-image-change-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.18s;
+  border-radius: 20px;
+  color: #fff;
+}
+
+.wish-editor-image-btn:hover .wish-editor-image-change-overlay,
+.wish-editor-image-btn:focus-visible .wish-editor-image-change-overlay {
+  opacity: 1;
+}
+
+.wish-editor-image-change-overlay .wish-image-placeholder-label {
+  color: #fff;
+}
+
 .wish-editor-image-wrap {
   aspect-ratio: auto;
   min-height: 78px;
-  margin: 2px 0 18px;
+  margin: 0;
   border-radius: 20px;
 }
 
@@ -3039,9 +3079,13 @@ span.snap-accent-word {
     max-width: min(220px, calc(100vw - 56px));
   }
 
+  .wish-editor-image-btn {
+    margin: 2px 0 14px;
+  }
+
   .wish-editor-image-wrap {
     min-height: 68px;
-    margin: 2px 0 14px;
+    margin: 0;
   }
 
   .wish-editor-image-wrap .wish-image-placeholder-visual {

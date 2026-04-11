@@ -62,6 +62,7 @@ export function WishlistPage({
   const settingsSaveLabelTimeoutRef = useRef(null);
   const lastSubmittedSettingsRef = useRef("");
   const [priceSortDirection, setPriceSortDirection] = useState("desc");
+  const wishImageInputRef = useRef(null);
 
   function renderWishImageBlock(title, imageUrl, options = {}) {
     const { className = "", showEditorOverlay = false } = options;
@@ -616,10 +617,40 @@ export function WishlistPage({
             <p className="donation-modal-title">Заполни поля и сохрани изменения</p>
 
             <form className="donation-form" onSubmit={onWishFormSubmit}>
-              {renderWishImageBlock(wishForm.title || "Подарок", "", {
-                className: "wish-editor-image-wrap",
-                showEditorOverlay: true
-              })}
+              <button
+                type="button"
+                className="wish-editor-image-btn"
+                onClick={() => wishImageInputRef.current?.click()}
+                disabled={isWishSubmitting}
+                aria-label="Добавить картинку"
+              >
+                {renderWishImageBlock(wishForm.title || "Подарок", wishForm.imageUrl || "", {
+                  className: "wish-editor-image-wrap",
+                  showEditorOverlay: !wishForm.imageUrl
+                })}
+                {wishForm.imageUrl ? (
+                  <div className="wish-image-placeholder-cta wish-editor-image-change-overlay" aria-hidden="true">
+                    <span className="wish-image-placeholder-plus">✎</span>
+                    <span className="wish-image-placeholder-label">Изменить</span>
+                  </div>
+                ) : null}
+              </button>
+              <input
+                ref={wishImageInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    onWishFormChange({ target: { name: "imageUrl", value: reader.result } });
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = "";
+                }}
+              />
 
               <label>
                 Название

@@ -1393,7 +1393,8 @@ export default function App({ initialRouteOverride = null }) {
           note: nextWish.note,
           tag: nextWish.tag,
           price: nextWish.price,
-          url: nextWish.url
+          url: nextWish.url,
+          image_url: form.imageUrl || null
         });
 
         if (error) {
@@ -1407,7 +1408,8 @@ export default function App({ initialRouteOverride = null }) {
         const nextWish = createWish(form);
         const { data, error } = await createWishRecord({
           ...nextWish,
-          wishlist_id: currentWishlistId
+          wishlist_id: currentWishlistId,
+          image_url: form.imageUrl || null
         });
 
         if (error) {

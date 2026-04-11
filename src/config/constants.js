@@ -128,7 +128,8 @@ export const emptyForm = {
   note: "",
   tag: "",
   price: "",
-  url: ""
+  url: "",
+  imageUrl: ""
 };
 
 export const emptyAuthForm = {

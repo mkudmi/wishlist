@@ -59,7 +59,8 @@ export function mapWishToForm(wish) {
     note: wish.note || "",
     tag: wish.tag || "",
     price: wish.price || "",
-    url: wish.url || ""
+    url: wish.url || "",
+    imageUrl: wish.imageUrl || ""
   };
 }
 
