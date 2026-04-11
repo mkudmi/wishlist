@@ -1519,7 +1519,7 @@ export default function App({ initialRouteOverride = null }) {
       body.style.top = previousTop;
       body.style.width = previousWidth;
       body.style.touchAction = previousTouchAction;
-      window.scrollTo(0, scrollY);
+      window.scrollTo({ top: scrollY, behavior: "instant" });
     };
   }, [openedWishId]);
 
