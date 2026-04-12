@@ -114,7 +114,7 @@ export function useGoogleIdentity({ googleClientId, onGoogleAuth, isAuthModalOpe
         size: "large",
         text: isMobile ? undefined : "signin_with",
         shape: isMobile ? "circle" : "pill",
-        width: isMobile ? 48 : Math.round(googleButtonRef.current.clientWidth || 240),
+        width: isMobile ? 40 : Math.round(googleButtonRef.current.clientWidth || 240),
         locale: "ru"
       });
     }

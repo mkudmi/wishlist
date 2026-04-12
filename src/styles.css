@@ -1174,7 +1174,7 @@ span.snap-accent-word {
   .snap-auth-modal .auth-google-button-host iframe {
     width: 40px !important;
     height: 40px !important;
-    opacity: 0 !important;
+    opacity: 0.01 !important;
   }
 }
 
