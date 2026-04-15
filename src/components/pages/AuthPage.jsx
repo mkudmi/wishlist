@@ -337,7 +337,7 @@ export function AuthPage({
         <section className="snap-panel snap-panel-hero" id="landing-hero" data-snap-section>
           <div className="snap-panel-inner snap-hero-simple">
             <div className="snap-copy">
-              <h1 className="snap-title">Если ты сюда зашел, значит у тебя скоро праздник!</h1>
+              <h1 className="snap-title">{seoPage.heroTitle || "Если ты сюда зашел, значит у тебя скоро праздник!"}</h1>
 
               <div className="snap-actions">
                 <button
@@ -351,7 +351,7 @@ export function AuthPage({
               </div>
             </div>
 
-            <p className="snap-hero-side-note">А мы поможем тебе ответить на вопрос "Что подарить?"</p>
+            <p className="snap-hero-side-note">{seoPage.heroNote || "А мы поможем тебе ответить на вопрос \"Что подарить?\""}</p>
           </div>
         </section>
 
