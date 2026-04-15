@@ -13,6 +13,8 @@ import { useYandexAuth } from "../../hooks/useYandexAuth";
 
 const gsap = gsapBundle.gsap || gsapBundle.default?.gsap || gsapBundle.default || gsapBundle;
 const ScrollTrigger = scrollTriggerBundle.ScrollTrigger || scrollTriggerBundle.default;
+const LANDING_DESKTOP_QUERY = "(min-width: 721px)";
+const AUTH_GIFT_SCALE = 1.38;
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
@@ -82,8 +84,13 @@ export function AuthPage({
   useGSAP(() => {
     const container = scrollRef.current;
     const gift = giftRef.current;
-    const targetRefs = [benefitsGiftTargetRef, flowGiftTargetRef, authGiftTargetRef];
-    if (!container || !gift || targetRefs.some((ref) => !ref.current)) {
+    const giftTargets = [
+      { ref: benefitsGiftTargetRef, label: "benefits", scale: 1 },
+      { ref: flowGiftTargetRef, label: "flow", scale: 1 },
+      { ref: authGiftTargetRef, label: "auth", scale: AUTH_GIFT_SCALE }
+    ];
+
+    if (!container || !gift || giftTargets.some((target) => !target.ref.current)) {
       return undefined;
     }
 
@@ -94,7 +101,7 @@ export function AuthPage({
 
     const media = gsap.matchMedia();
 
-    media.add("(min-width: 721px)", () => {
+    media.add(LANDING_DESKTOP_QUERY, () => {
       let states = [];
 
       function getCenter(element) {
@@ -111,14 +118,14 @@ export function AuthPage({
         const currentScrollTop = container.scrollTop;
         states = [
           { x: 0, y: 0, scale: 1 },
-          ...targetRefs.map((ref, index) => {
-            const section = ref.current.closest("[data-snap-section]");
+          ...giftTargets.map((target) => {
+            const section = target.ref.current.closest("[data-snap-section]");
             const sectionOffset = section?.offsetTop || 0;
-            const center = getCenter(ref.current);
+            const center = getCenter(target.ref.current);
             return {
               x: center.x - baseCenter.x,
               y: center.y + currentScrollTop - sectionOffset - baseCenter.y,
-              scale: index === 2 ? 1.38 : 1
+              scale: target.scale
             };
           })
         ];
@@ -145,36 +152,25 @@ export function AuthPage({
         }
       });
 
-      timeline
-        .addLabel("hero", 0)
-        .set(gift, {
-          x: () => stateAt(0, "x"),
-          y: () => stateAt(0, "y"),
-          yPercent: -50,
-          scale: () => stateAt(0, "scale"),
-          rotation: 0
-        })
-        .to(gift, {
-          x: () => stateAt(1, "x"),
-          y: () => stateAt(1, "y"),
-          scale: () => stateAt(1, "scale"),
-          duration: 1
-        })
-        .addLabel("benefits")
-        .to(gift, {
-          x: () => stateAt(2, "x"),
-          y: () => stateAt(2, "y"),
-          scale: () => stateAt(2, "scale"),
-          duration: 1
-        })
-        .addLabel("flow")
-        .to(gift, {
-          x: () => stateAt(3, "x"),
-          y: () => stateAt(3, "y"),
-          scale: () => stateAt(3, "scale"),
-          duration: 1
-        })
-        .addLabel("auth");
+      timeline.addLabel("hero", 0).set(gift, {
+        x: () => stateAt(0, "x"),
+        y: () => stateAt(0, "y"),
+        yPercent: -50,
+        scale: () => stateAt(0, "scale"),
+        rotation: 0
+      });
+
+      giftTargets.forEach((target, index) => {
+        const stateIndex = index + 1;
+        timeline
+          .to(gift, {
+            x: () => stateAt(stateIndex, "x"),
+            y: () => stateAt(stateIndex, "y"),
+            scale: () => stateAt(stateIndex, "scale"),
+            duration: 1
+          })
+          .addLabel(target.label);
+      });
 
       ScrollTrigger.refresh();
 

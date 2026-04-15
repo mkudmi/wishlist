@@ -51,10 +51,6 @@
 }
 
 .snap-landing-shell {
-  --gift-shift-x: 0px;
-  --gift-shift-y: 0px;
-  --gift-rotate: 0deg;
-  --gift-scale: 1;
   --gift-base-translate-y: -50%;
   --gift-base-top: 41%;
   --gift-base-right: max(-10px, calc((100vw - min(1180px, calc(100vw - 40px))) / 2 - 10px));
@@ -241,10 +237,7 @@
   top: var(--gift-base-top);
   right: var(--gift-base-right);
   width: var(--gift-base-width);
-  transform:
-    translate3d(var(--gift-shift-x), calc(var(--gift-base-translate-y) + var(--gift-shift-y)), 0)
-    rotate(var(--gift-rotate))
-    scale(var(--gift-scale));
+  transform: translate3d(0, var(--gift-base-translate-y), 0);
   transform-origin: center center;
   padding: 0;
   border-radius: 0;
@@ -1004,17 +997,10 @@ span.snap-accent-word {
 
 .snap-auth-modal .auth-oauth-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  align-items: stretch;
-}
-
-@media (max-width: 720px) {
-  .snap-auth-modal .auth-oauth-row {
-    grid-template-columns: repeat(2, 48px);
-    justify-content: center;
-    gap: 12px;
-  }
+  grid-template-columns: repeat(2, 48px);
+  justify-content: center;
+  gap: 12px;
+  align-items: center;
 }
 
 .auth-inline-actions {
@@ -1055,13 +1041,12 @@ span.snap-accent-word {
   min-height: 40px;
   justify-content: center;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid #dadce0;
-  background: #ffffff;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: #1f1f1f;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.08);
+  box-shadow: none;
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
@@ -1077,16 +1062,18 @@ span.snap-accent-word {
 }
 
 .snap-auth-modal .auth-oauth-button:hover {
-  background: #ffffff;
-  border-color: #c7c9cc;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.16);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .snap-auth-modal .auth-yandex-button {
-  width: 100%;
+  width: 40px;
   height: 40px;
-  min-height: 30px;
+  min-height: 40px;
   justify-content: center;
+  justify-self: center;
+  border-radius: 0;
   text-align: center;
   white-space: nowrap;
   box-shadow: none;
@@ -1098,107 +1085,48 @@ span.snap-accent-word {
 
 .snap-auth-modal .auth-provider-logo {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
   flex: 0 0 auto;
 }
 
 .snap-auth-modal .auth-google-button-shell {
   position: relative;
-  width: 100%;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
   min-height: 40px;
+  justify-self: center;
 }
 
 .snap-auth-modal .auth-google-button-host {
+  position: absolute;
+  inset: 0;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
   min-height: 40px;
-  display: flex;
-  align-items: center;
-  width: 100%;
-  justify-content: stretch;
 }
 
 .snap-auth-modal .auth-google-button-visual {
-  display: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
-.snap-auth-modal .auth-google-button-host > div {
-  width: 100%;
-}
-
+.snap-auth-modal .auth-google-button-host > div,
 .snap-auth-modal .auth-google-button-host iframe {
-  width: 100% !important;
+  width: 40px !important;
+  height: 40px !important;
+  opacity: 0.01 !important;
 }
 
-@media (max-width: 720px) {
-  .snap-auth-modal .auth-oauth-button {
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-  }
-
-  .snap-auth-modal .auth-oauth-button:hover {
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
-  }
-
-  .snap-auth-modal .auth-yandex-button {
-    width: 40px;
-    height: 40px;
-    min-height: 40px;
-    padding: 0;
-    border-radius: 0;
-    justify-self: center;
-    gap: 0;
-  }
-
-  .snap-auth-modal .auth-yandex-logo {
-    width: 24px;
-    height: 24px;
-  }
-
-  .snap-auth-modal .auth-oauth-button-text {
-    display: none;
-  }
-
-  .snap-auth-modal .auth-google-button-shell {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    min-height: 40px;
-    justify-self: center;
-  }
-
-  .snap-auth-modal .auth-google-button-visual {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-
-  .snap-auth-modal .auth-google-logo {
-    width: 24px;
-    height: 24px;
-  }
-
-  .snap-auth-modal .auth-google-button-host {
-    position: absolute;
-    inset: 0;
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    min-height: 40px;
-  }
-
-  .snap-auth-modal .auth-google-button-host > div,
-  .snap-auth-modal .auth-google-button-host iframe {
-    width: 40px !important;
-    height: 40px !important;
-    opacity: 0.01 !important;
-  }
+.snap-auth-modal .auth-oauth-button-text {
+  display: none;
 }
 
 .snap-auth-modal .auth-oauth-button > span:last-child {
