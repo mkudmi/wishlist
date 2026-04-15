@@ -232,7 +232,7 @@ export function DashboardPage({
             <div className="dashboard-overview-title-row">
               <h2>Твои вишлисты</h2>
               <span className="dashboard-overview-title-box" aria-hidden="true">
-                <img src="/branding/gift-box.png" alt="" className="dashboard-overview-title-gift" />
+                <img src="/branding/gift-box.png" alt="" className="dashboard-overview-title-gift" loading="lazy" width={48} height={48} />
               </span>
             </div>
             <p>Создай, добавь подарки, отправь друзьям!</p>

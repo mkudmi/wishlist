@@ -32,19 +32,19 @@ function ShareIcon({ type }) {
 
   if (type === "telegram") {
     return (
-      <img src={shareBrandIcons.telegram} alt="" aria-hidden="true" />
+      <img src={shareBrandIcons.telegram} alt="" aria-hidden="true" width={24} height={24} loading="lazy" />
     );
   }
 
   if (type === "vk") {
     return (
-      <img src={shareBrandIcons.vk} alt="" aria-hidden="true" />
+      <img src={shareBrandIcons.vk} alt="" aria-hidden="true" width={24} height={24} loading="lazy" />
     );
   }
 
   if (type === "whatsapp") {
     return (
-      <img src={shareBrandIcons.whatsapp} alt="" aria-hidden="true" />
+      <img src={shareBrandIcons.whatsapp} alt="" aria-hidden="true" width={24} height={24} loading="lazy" />
     );
   }
 

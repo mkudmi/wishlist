@@ -330,7 +330,7 @@ export function AuthPage({
         aria-hidden="true"
         ref={giftRef}
       >
-        <img className="snap-hero-gift-image" src="/branding/gift-box.png" alt="" />
+        <img className="snap-hero-gift-image" src="/branding/gift-box.png" alt="" width={1024} height={1024} />
       </div>
 
       <div className="snap-landing-scroll" ref={scrollRef}>

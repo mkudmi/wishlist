@@ -13,6 +13,35 @@ const distIndexPath = path.join(distDir, "index.html");
 const siteOrigin = seoSite.origin;
 const defaultSocialImageUrl = `${seoSite.origin}${seoSite.defaultSocialImagePath}`;
 
+function buildBreadcrumbSchema(page) {
+  if (page.key !== "faq") {
+    return "";
+  }
+
+  return JSON.stringify(
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Главная",
+          item: siteOrigin + "/"
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: page.navLabel || page.documentTitle || page.title,
+          item: siteOrigin + page.path
+        }
+      ]
+    },
+    null,
+    2
+  );
+}
+
 function buildFaqSchema(page) {
   if (!Array.isArray(page.faqItems) || page.faqItems.length === 0) {
     return "";
@@ -43,6 +72,7 @@ function renderPageMarkup(page) {
 function replaceMeta(html, page) {
   const canonical = `${siteOrigin}${page.path}`;
   const faqSchema = buildFaqSchema(page);
+  const breadcrumbSchema = buildBreadcrumbSchema(page);
 
   const htmlWithMeta = html
     .replace(/<title>.*?<\/title>/, `<title>${page.title}</title>`)
@@ -56,21 +86,32 @@ function replaceMeta(html, page) {
     .replace(/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/>/, `<meta name="twitter:description" content="${page.description}" />`)
     .replace(/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/>/, `<meta name="twitter:image" content="${defaultSocialImageUrl}" />`);
 
+  const breadcrumbTag = breadcrumbSchema
+    ? `\n    <script id="seo-page-breadcrumb-schema" type="application/ld+json">\n${breadcrumbSchema}\n    </script>`
+    : "";
+
   if (!faqSchema) {
-    return htmlWithMeta.replace(/\s*<script id="seo-page-faq-schema" type="application\/ld\+json">[\s\S]*?<\/script>/, "");
+    let result = htmlWithMeta.replace(/\s*<script id="seo-page-faq-schema" type="application\/ld\+json">[\s\S]*?<\/script>/, "");
+    if (breadcrumbTag) {
+      result = result.replace('<script src="/seo-pages.js"></script>', `${breadcrumbTag}\n    <script src="/seo-pages.js"></script>`);
+    }
+    return result;
   }
 
+  let result;
   if (/<script id="seo-page-faq-schema" type="application\/ld\+json">[\s\S]*?<\/script>/.test(htmlWithMeta)) {
-    return htmlWithMeta.replace(
+    result = htmlWithMeta.replace(
       /<script id="seo-page-faq-schema" type="application\/ld\+json">[\s\S]*?<\/script>/,
-      `<script id="seo-page-faq-schema" type="application/ld+json">\n${faqSchema}\n    </script>`
+      `<script id="seo-page-faq-schema" type="application/ld+json">\n${faqSchema}\n    </script>${breadcrumbTag}`
+    );
+  } else {
+    result = htmlWithMeta.replace(
+      '<script src="/seo-pages.js"></script>',
+      `<script id="seo-page-faq-schema" type="application/ld+json">\n${faqSchema}\n    </script>${breadcrumbTag}\n    <script src="/seo-pages.js"></script>`
     );
   }
 
-  return htmlWithMeta.replace(
-    '<script src="/seo-pages.js"></script>',
-    `<script id="seo-page-faq-schema" type="application/ld+json">\n${faqSchema}\n    </script>\n    <script src="/seo-pages.js"></script>`
-  );
+  return result;
 }
 
 async function writePageHtml(templateHtml, page) {

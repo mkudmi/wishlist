@@ -420,7 +420,7 @@ export function AuthFormCard({
                     tabIndex={isLogin ? 0 : -1}
                     aria-label="Войти через Яндекс ID"
                   >
-                    <img className="auth-provider-logo auth-yandex-logo" src={yandexIconSrc} alt="" aria-hidden="true" />
+                    <img className="auth-provider-logo auth-yandex-logo" src={yandexIconSrc} alt="" aria-hidden="true" width={24} height={24} />
                     <span className="auth-oauth-button-text">Войти через Яндекс ID</span>
                   </button>
                 ) : null}
@@ -428,7 +428,7 @@ export function AuthFormCard({
                 {googleClientId ? (
                   <div className="auth-google-button-shell">
                     <div className="auth-google-button-visual" aria-hidden="true">
-                      <img className="auth-provider-logo auth-google-logo" src={googleIconSrc} alt="" />
+                      <img className="auth-provider-logo auth-google-logo" src={googleIconSrc} alt="" width={24} height={24} />
                     </div>
                     <div className="auth-google-button-host" ref={googleButtonRef} aria-label="Войти через Google" />
                   </div>

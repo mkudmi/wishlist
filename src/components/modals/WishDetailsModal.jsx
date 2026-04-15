@@ -28,10 +28,10 @@ export function WishDetailsModal({
 
         <div className="wish-modal-image-wrap">
           {wish.imageUrl ? (
-            <img className="wish-modal-image" src={wish.imageUrl} alt={wish.title} loading="lazy" />
+            <img className="wish-modal-image" src={wish.imageUrl} alt={wish.title} loading="lazy" width={640} height={400} />
           ) : (
             <div className="wish-image-placeholder-visual" aria-hidden="true">
-              <img className="wish-image-placeholder-gift" src="/branding/gift-box.png" alt="" loading="lazy" />
+              <img className="wish-image-placeholder-gift" src="/branding/gift-box.png" alt="" loading="lazy" width={158} height={158} />
             </div>
           )}
         </div>

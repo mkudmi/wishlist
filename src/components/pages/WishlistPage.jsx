@@ -73,11 +73,11 @@ export function WishlistPage({
     return (
       <div className={wrapClassName}>
         {imageUrl ? (
-          <img className="wish-image" src={imageUrl} alt={title} loading="lazy" />
+          <img className="wish-image" src={imageUrl} alt={title} loading="lazy" width={640} height={400} />
         ) : (
           <>
             <div className="wish-image-placeholder-visual" aria-hidden="true">
-              <img className="wish-image-placeholder-gift" src="/branding/gift-box.png" alt="" loading="lazy" />
+              <img className="wish-image-placeholder-gift" src="/branding/gift-box.png" alt="" loading="lazy" width={158} height={158} />
             </div>
             {showEditorOverlay ? (
               <div className="wish-image-placeholder-cta" aria-hidden="true">
