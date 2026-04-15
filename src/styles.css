@@ -3438,3 +3438,39 @@ span.snap-accent-word {
     min-width: 0;
   }
 }
+
+.wish-open-button {
+  align-self: flex-start;
+  margin-top: 12px;
+  min-height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
+  color: #fff8f1;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.wish-open-button:hover {
+  background: linear-gradient(135deg, var(--color-accent-deep), var(--color-accent));
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-open-button {
+  background: rgba(126, 182, 255, 0.16);
+  color: #dbeaff;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"] .wish-open-button:hover {
+  background: rgba(126, 182, 255, 0.24);
+  color: #ffffff;
+}
+
+@media (max-width: 720px) {
+  .wish-open-button {
+    width: 100%;
+    min-height: 42px;
+  }
+}

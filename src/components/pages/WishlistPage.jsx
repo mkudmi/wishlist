@@ -503,6 +503,9 @@ export function WishlistPage({
                     </div>
                   </div>
                 </button>
+                <button type="button" className="wish-open-button" onClick={() => onOpenWish(wish.id)}>
+                  Открыть
+                </button>
 
                 {canEdit ? (
                   <div className="wish-card-tools">
