@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import * as gsapBundle from "gsap";
+import { useGSAP } from "@gsap/react";
+import * as scrollTriggerBundle from "gsap/ScrollTrigger";
 import { seoLandingPages } from "../../config/seoPages";
 import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
 import { AuthFormCard } from "../auth/AuthFormCard";
@@ -7,6 +10,11 @@ import { featureList, flowSteps, legalLinks } from "../auth/authContent";
 import { useAuthModalBehavior } from "../../hooks/useAuthModalBehavior";
 import { useGoogleIdentity } from "../../hooks/useGoogleIdentity";
 import { useYandexAuth } from "../../hooks/useYandexAuth";
+
+const gsap = gsapBundle.gsap || gsapBundle.default?.gsap || gsapBundle.default || gsapBundle;
+const ScrollTrigger = scrollTriggerBundle.ScrollTrigger || scrollTriggerBundle.default;
+
+gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 export function AuthPage({
   mode,
@@ -27,10 +35,12 @@ export function AuthPage({
   const yandexClientId = import.meta.env?.VITE_YANDEX_CLIENT_ID || "";
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isPrimaryCtaLoading, setIsPrimaryCtaLoading] = useState(false);
-  const [giftScene, setGiftScene] = useState({ scrollTop: 0, width: 0, height: 0, offsets: [] });
+  const landingShellRef = useRef(null);
   const scrollRef = useRef(null);
-  const snapScrollLockRef = useRef(false);
-  const snapScrollTimeoutRef = useRef(null);
+  const giftRef = useRef(null);
+  const benefitsGiftTargetRef = useRef(null);
+  const flowGiftTargetRef = useRef(null);
+  const authGiftTargetRef = useRef(null);
   const authModalRef = useRef(null);
   const { googleButtonRef } = useGoogleIdentity({
     googleClientId,
@@ -69,243 +79,115 @@ export function AuthPage({
     }
   }
 
-  function clampValue(min, value, max) {
-    return Math.min(Math.max(value, min), max);
-  }
-
-  function lerp(start, end, progress) {
-    return start + (end - start) * progress;
-  }
-
-  function smoothstep(progress) {
-    return progress * progress * (3 - 2 * progress);
-  }
-
-  function getGiftBaseMetrics(width, height) {
-    const containerWidth = Math.min(1180, width - 40);
-    const containerLeft = (width - containerWidth) / 2;
-
-    if (width >= 1440) {
-      return {
-        containerWidth,
-        containerLeft,
-        giftWidth: clampValue(460, width * 0.35, 720),
-        baseRight: Math.max(0, (width - Math.min(1180, width - 40)) / 2 - 10),
-        baseCenterY: height * 0.4
-      };
-    }
-
-    if (width >= 721 && width <= 1024) {
-      return {
-        containerWidth,
-        containerLeft,
-        giftWidth: clampValue(340, width * 0.41, 480),
-        baseRight: clampValue(-4, width * 0.008, 8),
-        baseCenterY: height * 0.42
-      };
-    }
-
-    return {
-      containerWidth,
-      containerLeft,
-      giftWidth: clampValue(400, width * 0.39, 650),
-      baseRight: Math.max(-10, (width - Math.min(1180, width - 40)) / 2 - 10),
-      baseCenterY: height * 0.41
-    };
-  }
-
-  function getGiftTarget(section, width, height) {
-    if (width > 720 && (section === 1 || section === 2)) {
-      const { containerWidth, containerLeft, giftWidth, baseRight, baseCenterY } = getGiftBaseMetrics(width, height);
-      const safeWidth = clampValue(180, width * 0.2, 320);
-      const scale = 1;
-      const visualGiftWidth = giftWidth * scale;
-      const desiredCenterX =
-        section === 1
-          ? containerLeft + containerWidth - safeWidth / 2
-          : containerLeft + safeWidth / 2 - clampValue(24, width * 0.035, 56);
-
-      return {
-        shiftX: desiredCenterX - (width - baseRight - visualGiftWidth / 2),
-        shiftY: height / 2 - baseCenterY,
-        rotate: 0,
-        scale
-      };
-    }
-
-    if (width > 720 && section === 3) {
-      const { containerWidth, containerLeft, giftWidth, baseRight, baseCenterY } = getGiftBaseMetrics(width, height);
-      const scale = 1.38;
-      const visualGiftWidth = giftWidth * scale;
-      const textColumnWidth = Math.min(464, containerWidth * 0.48);
-      const gap = clampValue(20, width * 0.03, 48);
-      const rightColumnWidth = Math.max(containerWidth - textColumnWidth - gap, 280);
-      const opticalOffsetX = Math.min(rightColumnWidth * 0.08, 40);
-      const opticalOffsetY = Math.min(giftWidth * (scale - 1) * 0.08, 22);
-      const desiredCenterX = containerLeft + textColumnWidth + gap + rightColumnWidth / 2 - opticalOffsetX;
-
-      return {
-        shiftX: desiredCenterX - (width - baseRight - visualGiftWidth / 2),
-        shiftY: height / 2 - baseCenterY - opticalOffsetY,
-        rotate: 0,
-        scale
-      };
-    }
-
-    switch (section) {
-      case 1:
-        return { shiftX: width * 0.11, shiftY: -height * 0.075, rotate: 0, scale: 1 };
-      case 2:
-        return { shiftX: width * -0.43, shiftY: height * 0.12, rotate: 0, scale: 1 };
-      case 3:
-        return { shiftX: width * 0.07, shiftY: height * 0.09, rotate: 0, scale: 1.5 };
-      default:
-        return { shiftX: 0, shiftY: 0, rotate: 0, scale: 1 };
-    }
-  }
-
-  function getGiftMotion(scrollTop, width, height, offsets) {
-    if (!offsets?.length) {
-      return getGiftTarget(0, width, height);
-    }
-
-    const lastIndex = offsets.length - 1;
-    let currentIndex = lastIndex;
-
-    for (let index = 0; index < lastIndex; index += 1) {
-      if (scrollTop < offsets[index + 1]) {
-        currentIndex = index;
-        break;
-      }
-    }
-
-    if (currentIndex === lastIndex) {
-      return getGiftTarget(lastIndex, width, height);
-    }
-
-    const startOffset = offsets[currentIndex];
-    const endOffset = offsets[currentIndex + 1];
-    const rawProgress = (scrollTop - startOffset) / Math.max(endOffset - startOffset, 1);
-    const progress = smoothstep(clampValue(0, rawProgress, 1));
-    const from = getGiftTarget(currentIndex, width, height);
-    const to = getGiftTarget(currentIndex + 1, width, height);
-
-    return {
-      shiftX: lerp(from.shiftX, to.shiftX, progress),
-      shiftY: lerp(from.shiftY, to.shiftY, progress),
-      rotate: lerp(from.rotate, to.rotate, progress),
-      scale: lerp(from.scale, to.scale, progress)
-    };
-  }
-
-  useEffect(() => {
+  useGSAP(() => {
     const container = scrollRef.current;
-    if (!container || typeof window === "undefined") {
+    const gift = giftRef.current;
+    const targetRefs = [benefitsGiftTargetRef, flowGiftTargetRef, authGiftTargetRef];
+    if (!container || !gift || targetRefs.some((ref) => !ref.current)) {
       return undefined;
     }
 
-    const sections = Array.from(container.querySelectorAll("[data-snap-section]"));
-    if (sections.length === 0) {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reduceMotion.matches) {
       return undefined;
     }
 
-    function updateGiftScene() {
-      const scrollTop = container.scrollTop;
-      const offsets = sections.map((section) => section.offsetTop);
-      setGiftScene((prev) => {
-        if (
-          prev.scrollTop === scrollTop &&
-          prev.width === container.clientWidth &&
-          prev.height === container.clientHeight &&
-          prev.offsets.length === offsets.length &&
-          prev.offsets.every((offset, index) => offset === offsets[index])
-        ) {
-          return prev;
-        }
+    const media = gsap.matchMedia();
 
+    media.add("(min-width: 721px)", () => {
+      let states = [];
+
+      function getCenter(element) {
+        const rect = element.getBoundingClientRect();
         return {
-          scrollTop,
-          width: container.clientWidth,
-          height: container.clientHeight,
-          offsets
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
         };
+      }
+
+      function collectStates() {
+        gsap.set(gift, { x: 0, y: 0, yPercent: -50, scale: 1, rotation: 0 });
+        const baseCenter = getCenter(gift);
+        const currentScrollTop = container.scrollTop;
+        states = [
+          { x: 0, y: 0, scale: 1 },
+          ...targetRefs.map((ref, index) => {
+            const section = ref.current.closest("[data-snap-section]");
+            const sectionOffset = section?.offsetTop || 0;
+            const center = getCenter(ref.current);
+            return {
+              x: center.x - baseCenter.x,
+              y: center.y + currentScrollTop - sectionOffset - baseCenter.y,
+              scale: index === 2 ? 1.38 : 1
+            };
+          })
+        ];
+      }
+
+      function stateAt(index, key) {
+        return states[index]?.[key] ?? (key === "scale" ? 1 : 0);
+      }
+
+      collectStates();
+
+      const refreshHandler = () => collectStates();
+      ScrollTrigger.addEventListener("refreshInit", refreshHandler);
+
+      const timeline = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+          trigger: container,
+          scroller: container,
+          start: "top top",
+          end: () => `+=${Math.max(container.scrollHeight - container.clientHeight, 1)}`,
+          scrub: true,
+          invalidateOnRefresh: true
+        }
       });
-    }
 
-    updateGiftScene();
-    container.addEventListener("scroll", updateGiftScene, { passive: true });
-    window.addEventListener("resize", updateGiftScene);
+      timeline
+        .addLabel("hero", 0)
+        .set(gift, {
+          x: () => stateAt(0, "x"),
+          y: () => stateAt(0, "y"),
+          yPercent: -50,
+          scale: () => stateAt(0, "scale"),
+          rotation: 0
+        })
+        .to(gift, {
+          x: () => stateAt(1, "x"),
+          y: () => stateAt(1, "y"),
+          scale: () => stateAt(1, "scale"),
+          duration: 1
+        })
+        .addLabel("benefits")
+        .to(gift, {
+          x: () => stateAt(2, "x"),
+          y: () => stateAt(2, "y"),
+          scale: () => stateAt(2, "scale"),
+          duration: 1
+        })
+        .addLabel("flow")
+        .to(gift, {
+          x: () => stateAt(3, "x"),
+          y: () => stateAt(3, "y"),
+          scale: () => stateAt(3, "scale"),
+          duration: 1
+        })
+        .addLabel("auth");
 
-    return () => {
-      container.removeEventListener("scroll", updateGiftScene);
-      window.removeEventListener("resize", updateGiftScene);
-    };
-  }, []);
+      ScrollTrigger.refresh();
 
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container || typeof window === "undefined") {
-      return undefined;
-    }
+      return () => {
+        ScrollTrigger.removeEventListener("refreshInit", refreshHandler);
+        timeline.scrollTrigger?.kill();
+        timeline.kill();
+        gsap.set(gift, { clearProps: "transform" });
+      };
+    });
 
-    const mediaQuery = window.matchMedia("(max-width: 720px)");
-    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    function clearSnapScrollLock() {
-      if (snapScrollTimeoutRef.current) {
-        window.clearTimeout(snapScrollTimeoutRef.current);
-      }
-
-      snapScrollLockRef.current = false;
-      snapScrollTimeoutRef.current = null;
-    }
-
-    function getSectionOffsets() {
-      return Array.from(container.querySelectorAll("[data-snap-section]")).map((section) => section.offsetTop);
-    }
-
-    function handleWheel(event) {
-      if (mediaQuery.matches || reducedMotionQuery.matches) {
-        return;
-      }
-
-      if (Math.abs(event.deltaY) < 24 || snapScrollLockRef.current) {
-        return;
-      }
-
-      const offsets = getSectionOffsets();
-      if (offsets.length < 2) {
-        return;
-      }
-
-      const currentTop = container.scrollTop;
-      const direction = Math.sign(event.deltaY);
-      const threshold = container.clientHeight * 0.18;
-      const currentIndex = offsets.findIndex((offset, index) => {
-        const nextOffset = offsets[index + 1] ?? Number.POSITIVE_INFINITY;
-        return currentTop >= offset - threshold && currentTop < nextOffset - threshold;
-      });
-      const safeIndex = currentIndex === -1 ? 0 : currentIndex;
-      const targetIndex = Math.max(0, Math.min(offsets.length - 1, safeIndex + direction));
-      const targetTop = offsets[targetIndex];
-
-      if (targetTop === undefined || Math.abs(targetTop - currentTop) < 8) {
-        return;
-      }
-
-      event.preventDefault();
-      snapScrollLockRef.current = true;
-      container.scrollTo({ top: targetTop, behavior: "smooth" });
-      snapScrollTimeoutRef.current = window.setTimeout(clearSnapScrollLock, 820);
-    }
-
-    container.addEventListener("wheel", handleWheel, { passive: false });
-
-    return () => {
-      clearSnapScrollLock();
-      container.removeEventListener("wheel", handleWheel);
-    };
-  }, []);
+    return () => media.revert();
+  }, { scope: landingShellRef });
 
   function openAuthModal(nextMode) {
     onModeChange(nextMode);
@@ -335,8 +217,6 @@ export function AuthPage({
       setIsPrimaryCtaLoading(false);
     }
   }
-
-  const giftMotion = getGiftMotion(giftScene.scrollTop, giftScene.width, giftScene.height, giftScene.offsets);
 
   function renderLegalPage() {
     return (
@@ -411,7 +291,7 @@ export function AuthPage({
   }
 
   return (
-    <div className="page-shell auth-shell snap-landing-shell">
+    <div className="page-shell auth-shell snap-landing-shell" ref={landingShellRef}>
       <div className="snap-landing-bg snap-landing-bg-left" />
       <div className="snap-landing-bg snap-landing-bg-right" />
 
@@ -452,12 +332,7 @@ export function AuthPage({
       <div
         className="snap-hero-image-card"
         aria-hidden="true"
-        style={{
-          "--gift-shift-x": `${giftMotion.shiftX.toFixed(1)}px`,
-          "--gift-shift-y": `${giftMotion.shiftY.toFixed(1)}px`,
-          "--gift-rotate": `${giftMotion.rotate.toFixed(2)}deg`,
-          "--gift-scale": `${giftMotion.scale.toFixed(3)}`
-        }}
+        ref={giftRef}
       >
         <img className="snap-hero-gift-image" src="/branding/gift-box.png" alt="" />
       </div>
@@ -486,6 +361,7 @@ export function AuthPage({
 
         <section className="snap-panel snap-panel-benefits" id="landing-benefits" data-snap-section>
           <div className="snap-panel-inner snap-panel-grid snap-panel-grid-gift-safe">
+            <span className="snap-gift-target snap-gift-target-benefits" ref={benefitsGiftTargetRef} aria-hidden="true" />
             <div className="snap-heading">
               <h2>
                 Дорогой подарок можно собрать <span className="snap-accent-word">вместе</span>
@@ -505,6 +381,7 @@ export function AuthPage({
 
         <section className="snap-panel snap-panel-flow" id="landing-flow" data-snap-section>
           <div className="snap-panel-inner snap-panel-grid snap-panel-grid-gift-safe snap-panel-grid-gift-safe-mirror">
+            <span className="snap-gift-target snap-gift-target-flow" ref={flowGiftTargetRef} aria-hidden="true" />
             <div className="snap-step-list">
               {flowSteps.map((step) => (
                 <article className="snap-step-card" key={step.number}>
@@ -549,7 +426,9 @@ export function AuthPage({
                     </button>
                   </div>
                 </div>
-                <div className="snap-auth-gift-slot" aria-hidden="true" />
+                <div className="snap-auth-gift-slot" aria-hidden="true">
+                  <span className="snap-gift-target snap-gift-target-auth" ref={authGiftTargetRef} />
+                </div>
               </div>
             </div>
 

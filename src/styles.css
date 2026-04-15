@@ -70,7 +70,7 @@
   z-index: 1;
   height: 100svh;
   overflow-y: auto;
-  scroll-snap-type: y proximity;
+  scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
   overscroll-behavior-y: contain;
 }
@@ -173,6 +173,7 @@
 }
 
 .snap-auth-gift-slot {
+  position: relative;
   width: 100%;
   height: clamp(320px, 42vh, 500px);
   justify-self: stretch;
@@ -252,9 +253,31 @@
   backdrop-filter: none;
   overflow: hidden;
   will-change: transform;
-  transition: transform 760ms cubic-bezier(0.2, 0.9, 0.22, 1);
+  transition: none;
   z-index: 6;
   pointer-events: none;
+}
+
+.snap-gift-target {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.snap-gift-target-benefits {
+  top: 50%;
+  right: clamp(90px, 10vw, 160px);
+}
+
+.snap-gift-target-flow {
+  top: 52%;
+  left: clamp(72px, 8vw, 136px);
+}
+
+.snap-gift-target-auth {
+  top: 50%;
+  left: 50%;
 }
 
 .snap-hero-gift-image {
