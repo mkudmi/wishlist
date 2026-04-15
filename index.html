@@ -141,6 +141,11 @@
           description = "Публичная ссылка на вишлист в сервисе Список желаний.";
           robots = "noindex,nofollow";
           canonicalPath = path;
+        } else if (!seoPages[path]) {
+          title = "404 — Страница не найдена - Список желаний";
+          description = "Такой страницы не существует.";
+          robots = "noindex,nofollow";
+          canonicalPath = "/";
         }
 
         var canonical = document.querySelector('link[rel="canonical"]');

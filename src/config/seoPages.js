@@ -52,6 +52,7 @@ const marketingLandingPages = [
   {
     key: "wishlist",
     path: "/vishlist",
+    lastmod: "2026-04-15",
     title: "Вишлист онлайн - Список желаний для подарков",
     description:
       "Онлайн-вишлист для подарков: соберите список желаний, добавьте ссылки и цены, отправьте одну страницу гостям и собирайте совместные подарки без лишних вопросов.",
@@ -64,6 +65,7 @@ const marketingLandingPages = [
   {
     key: "gift-list",
     path: "/spisok-podarkov",
+    lastmod: "2026-04-15",
     title: "Список подарков онлайн - Удобный сервис для гостей и именинника",
     description:
       "Список подарков онлайн для дня рождения, свадьбы и других событий. Добавьте конкретные идеи, укажите ссылки и бюджет, чтобы гостям было проще выбрать подарок.",
@@ -76,6 +78,7 @@ const marketingLandingPages = [
   {
     key: "birthday",
     path: "/vishlist-na-den-rozhdeniya",
+    lastmod: "2026-04-15",
     title: "Вишлист на день рождения - Список подарков без хаоса",
     description:
       "Создайте вишлист на день рождения: список подарков, ссылки, цены, правила и совместные сборы на один подарок. Удобно для именинника и гостей.",
@@ -88,6 +91,7 @@ const marketingLandingPages = [
   {
     key: "wishes",
     path: "/spisok-zhelaniy-online",
+    lastmod: "2026-04-15",
     title: "Список желаний онлайн - Красивый и понятный вишлист",
     description:
       "Список желаний онлайн для подарков и событий. Соберите всё, что хочется получить, в одной красивой странице и поделитесь ею по ссылке.",
@@ -100,6 +104,7 @@ const marketingLandingPages = [
   {
     key: "group-gift",
     path: "/sovmestniy-podarok",
+    lastmod: "2026-04-15",
     title: "Совместный подарок - Как собрать деньги на один хороший подарок",
     description:
       "Совместный подарок без хаоса: соберите деньги на один большой подарок через вишлист, покажите прогресс и дайте друзьям понятный способ поучаствовать.",
@@ -115,6 +120,7 @@ const legalDocumentPages = [
   {
     key: "faq",
     path: "/faq",
+    lastmod: "2026-04-11",
     layout: "legal",
     title: "FAQ - Список желаний",
     description:
@@ -130,6 +136,7 @@ const legalDocumentPages = [
   {
     key: "privacy-policy",
     path: "/privacy-policy",
+    lastmod: "2026-04-01",
     layout: "legal",
     title: "Политика конфиденциальности - Список желаний",
     description:
@@ -231,6 +238,7 @@ const legalDocumentPages = [
   {
     key: "terms-of-use",
     path: "/terms",
+    lastmod: "2026-04-01",
     layout: "legal",
     title: "Пользовательское соглашение - Список желаний",
     description:

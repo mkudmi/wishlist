@@ -302,7 +302,7 @@ export function getRouteFromLocation() {
   if (sharedMatch) {
     return { page: "shared", shareToken: sharedMatch[1], seoPageKey: null, wishlistId: null };
   }
-  return { page: "landing", shareToken: null, seoPageKey: "home", wishlistId: null };
+  return { page: "not-found", shareToken: null, seoPageKey: null, wishlistId: null };
 }
 
 export function getWishlistEditPath(wishlistId) {

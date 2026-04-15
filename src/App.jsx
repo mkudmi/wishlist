@@ -72,6 +72,7 @@ import { IdentityModal } from "./components/modals/IdentityModal";
 import { ProfileModal } from "./components/modals/ProfileModal";
 import { ShareSheetModal } from "./components/modals/ShareSheetModal";
 import { WishDetailsModal } from "./components/modals/WishDetailsModal";
+import { NotFoundPage } from "./components/pages/NotFoundPage";
 import { seoLandingPageMap, seoSite } from "./config/seoPages";
 import { useAccountPanel } from "./hooks/useAccountPanel";
 export default function App({ initialRouteOverride = null }) {
@@ -759,7 +760,7 @@ export default function App({ initialRouteOverride = null }) {
   }, [currentUser, currentWishlistId, isAuthLoading, isWishlistsLoading, page, wishlistRouteId, wishlists]);
 
   useEffect(() => {
-    if (isAuthLoading || currentUser || page === "shared" || page === "landing") {
+    if (isAuthLoading || currentUser || page === "shared" || page === "landing" || page === "not-found") {
       return;
     }
 
@@ -839,6 +840,11 @@ export default function App({ initialRouteOverride = null }) {
       seo.description = "Служебная страница авторизации Список желаний.";
       seo.robots = "noindex,nofollow";
       seo.canonical = `${siteOrigin}/auth/yandex/callback`;
+    } else if (page === "not-found") {
+      seo.title = "404 — Страница не найдена - Список желаний";
+      seo.description = "Такой страницы не существует.";
+      seo.robots = "noindex,nofollow";
+      seo.canonical = `${siteOrigin}/`;
     }
 
     document.title = seo.title;
@@ -1822,8 +1828,12 @@ export default function App({ initialRouteOverride = null }) {
     document.body.style.backgroundColor = pageThemeColor;
   }, [pageThemeColor]);
 
-  if (isAuthLoading && page !== "landing") {
+  if (isAuthLoading && page !== "landing" && page !== "not-found") {
     return null;
+  }
+
+  if (page === "not-found") {
+    return <NotFoundPage />;
   }
 
   if (page === "yandex-callback") {
