@@ -77,7 +77,7 @@ export function WishlistPage({
         ) : (
           <>
             <div className="wish-image-placeholder-visual" aria-hidden="true">
-              <img className="wish-image-placeholder-gift" src="/branding/gift-box.png" alt="" loading="lazy" width={158} height={158} />
+              <img className="wish-image-placeholder-gift" src="/branding/gift-box.webp" alt="" loading="lazy" width={158} height={158} />
             </div>
             {showEditorOverlay ? (
               <div className="wish-image-placeholder-cta" aria-hidden="true">
