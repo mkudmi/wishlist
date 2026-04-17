@@ -813,7 +813,7 @@ export default function App({ initialRouteOverride = null }) {
       title: activeSeoPage.title,
       description: activeSeoPage.description,
       robots: "index,follow,max-image-preview:large",
-      canonical: `${siteOrigin}${activeSeoPage.path}`
+      canonical: activeSeoPage.path === "/" ? `${siteOrigin}/` : `${siteOrigin}${activeSeoPage.path}/`
     };
 
     if (page === "dashboard") {

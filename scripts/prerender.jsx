@@ -70,7 +70,7 @@ function renderPageMarkup(page) {
 }
 
 function replaceMeta(html, page) {
-  const canonical = `${siteOrigin}${page.path}`;
+  const canonical = page.path === "/" ? `${siteOrigin}/` : `${siteOrigin}${page.path}/`;
   const faqSchema = buildFaqSchema(page);
   const breadcrumbSchema = buildBreadcrumbSchema(page);
 

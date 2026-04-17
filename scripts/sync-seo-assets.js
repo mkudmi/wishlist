@@ -28,7 +28,7 @@ function buildSitemapXml() {
 
       return [
         "  <url>",
-        `    <loc>${escapeXml(`${seoSite.origin}${page.path}`)}</loc>`,
+        `    <loc>${escapeXml(page.path === "/" ? `${seoSite.origin}/` : `${seoSite.origin}${page.path}/`)}</loc>`,
         `    <changefreq>${changefreq}</changefreq>`,
         `    <priority>${priority}</priority>`,
         "  </url>"
