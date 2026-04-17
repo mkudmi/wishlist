@@ -5,7 +5,6 @@ import { formatDateToDdMmYyyy, normalizeStorageDate } from "../../lib/helpers";
 
 export function DashboardPage({
   wishlists,
-  dashboardStats,
   userBirthday,
   currentWishlistId,
   isLoading,
@@ -120,11 +119,11 @@ export function DashboardPage({
     return "дней";
   }
 
-  function getTimeLeftLabel(wishlist) {
+  function getDaysUntilEvent(wishlist, { includePast = false } = {}) {
     const eventSourceDate = wishlist?.celebration_type === "birthday" ? userBirthday : wishlist?.event_date;
     const normalizedDate = normalizeStorageDate(eventSourceDate);
     if (!normalizedDate) {
-      return "Без даты";
+      return null;
     }
 
     const [year, month, day] = normalizedDate.split("-").map(Number);
@@ -135,16 +134,24 @@ export function DashboardPage({
     if (wishlist?.celebration_type === "birthday") {
       const thisYearTargetUtc = Date.UTC(now.getFullYear(), month - 1, day);
       const nextTargetUtc = thisYearTargetUtc >= todayUtc ? thisYearTargetUtc : Date.UTC(now.getFullYear() + 1, month - 1, day);
-      const diffDays = Math.round((nextTargetUtc - todayUtc) / dayMs);
-
-      if (diffDays === 0) {
-        return "Сегодня";
-      }
-      return `${diffDays} ${getDaysWord(diffDays)}`;
+      return Math.round((nextTargetUtc - todayUtc) / dayMs);
     }
 
     const targetUtc = Date.UTC(year, month - 1, day);
     const diffDays = Math.round((targetUtc - todayUtc) / dayMs);
+
+    if (!includePast && diffDays < 0) {
+      return null;
+    }
+
+    return diffDays;
+  }
+
+  function getTimeLeftLabel(wishlist) {
+    const diffDays = getDaysUntilEvent(wishlist, { includePast: true });
+    if (diffDays === null) {
+      return "Без даты";
+    }
 
     if (diffDays === 0) {
       return "Сегодня";
@@ -155,6 +162,31 @@ export function DashboardPage({
     const elapsedDays = Math.abs(diffDays);
     return `${elapsedDays} ${getDaysWord(elapsedDays)} назад`;
   }
+
+  const nearestEventLabel = useMemo(() => {
+    const nearestDays = wishlists.reduce((closest, wishlist) => {
+      const diffDays = getDaysUntilEvent(wishlist);
+      if (diffDays === null) {
+        return closest;
+      }
+
+      if (closest === null || diffDays < closest) {
+        return diffDays;
+      }
+
+      return closest;
+    }, null);
+
+    if (nearestDays === null) {
+      return "Нет даты";
+    }
+
+    if (nearestDays === 0) {
+      return "Сегодня";
+    }
+
+    return `${nearestDays} ${getDaysWord(nearestDays)}`;
+  }, [wishlists, userBirthday]);
 
   function openCreateModal() {
     setNewWishlistTitle("");
@@ -231,20 +263,22 @@ export function DashboardPage({
           <div className="section-head compact dashboard-overview-copy">
             <div className="dashboard-overview-title-row">
               <h2>Твои вишлисты</h2>
-              <span className="dashboard-overview-title-box" aria-hidden="true">
+              <span className="dashboard-overview-title-box dashboard-overview-title-box-inline" aria-hidden="true">
                 <img src="/branding/gift-box.webp" alt="" className="dashboard-overview-title-gift" loading="lazy" width={48} height={48} />
               </span>
             </div>
             <p>Создай, добавь подарки, отправь друзьям!</p>
           </div>
 
-          <div className="dashboard-stats" aria-label="Статистика по вишлистам">
-            {dashboardStats.map((stat) => (
-              <article className="dashboard-stat" key={stat.label}>
-                <strong>{stat.value}</strong>
-                <span>{stat.label}</span>
-              </article>
-            ))}
+          <span className="dashboard-overview-title-box dashboard-overview-title-box-centered" aria-hidden="true">
+            <img src="/branding/gift-box.webp" alt="" className="dashboard-overview-title-gift" loading="lazy" width={48} height={48} />
+          </span>
+
+          <div className="dashboard-stats" aria-label="Ближайшее событие">
+            <article className="dashboard-stat dashboard-stat-highlight">
+              <span>До ближайшего события</span>
+              <strong>{nearestEventLabel}</strong>
+            </article>
           </div>
         </div>
 
