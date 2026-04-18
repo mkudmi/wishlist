@@ -26,13 +26,18 @@ function buildSitemapXml() {
       const changefreq = page.path === "/" ? "weekly" : isReferencePage ? "monthly" : "weekly";
       const priority = page.path === "/" ? "1.0" : isReferencePage ? "0.5" : "0.9";
 
-      return [
+      const lines = [
         "  <url>",
-        `    <loc>${escapeXml(page.path === "/" ? `${seoSite.origin}/` : `${seoSite.origin}${page.path}/`)}</loc>`,
-        `    <changefreq>${changefreq}</changefreq>`,
-        `    <priority>${priority}</priority>`,
-        "  </url>"
-      ].join("\n");
+        `    <loc>${escapeXml(page.path === "/" ? `${seoSite.origin}/` : `${seoSite.origin}${page.path}/`)}</loc>`
+      ];
+
+      if (page.lastmod) {
+        lines.push(`    <lastmod>${escapeXml(page.lastmod)}</lastmod>`);
+      }
+
+      lines.push(`    <changefreq>${changefreq}</changefreq>`, `    <priority>${priority}</priority>`, "  </url>");
+
+      return lines.join("\n");
     })
     .join("\n");
 

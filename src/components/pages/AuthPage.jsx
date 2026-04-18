@@ -6,7 +6,7 @@ import { seoLandingPages } from "../../config/seoPages";
 import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
 import { AuthFormCard } from "../auth/AuthFormCard";
 import { AuthModal } from "../auth/AuthModal";
-import { featureList, flowSteps, legalLinks } from "../auth/authContent";
+import { featureList as defaultFeatureList, flowSteps as defaultFlowSteps, legalLinks } from "../auth/authContent";
 import { useAuthModalBehavior } from "../../hooks/useAuthModalBehavior";
 import { useGoogleIdentity } from "../../hooks/useGoogleIdentity";
 import { useYandexAuth } from "../../hooks/useYandexAuth";
@@ -33,6 +33,8 @@ export function AuthPage({
   onContinueAuthenticated,
   seoPage = seoLandingPages[0]
 }) {
+  const featureList = seoPage.featureList || defaultFeatureList;
+  const flowSteps = seoPage.flowSteps || defaultFlowSteps;
   const googleClientId = import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
   const yandexClientId = import.meta.env?.VITE_YANDEX_CLIENT_ID || "";
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -366,8 +368,8 @@ export function AuthPage({
 
             <div className="snap-feature-list">
               {featureList.map((item, index) => (
-                <article className="snap-feature-card" key={item}>
-                  <strong>0{index + 1}</strong>
+                <article className="snap-feature-card" key={index}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
                   <p>{item}</p>
                 </article>
               ))}
@@ -379,11 +381,11 @@ export function AuthPage({
           <div className="snap-panel-inner snap-panel-grid snap-panel-grid-gift-safe snap-panel-grid-gift-safe-mirror">
             <span className="snap-gift-target snap-gift-target-flow" ref={flowGiftTargetRef} aria-hidden="true" />
             <div className="snap-step-list">
-              {flowSteps.map((step) => (
-                <article className="snap-step-card" key={step.number}>
-                  <span>{step.number}</span>
+              {flowSteps.map((text, index) => (
+                <article className="snap-step-card" key={index}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
                   <div>
-                    <p>{step.text}</p>
+                    <p>{text}</p>
                   </div>
                 </article>
               ))}

@@ -578,7 +578,8 @@
 }
 
 .snap-stage-facts strong,
-.snap-feature-card strong {
+.snap-feature-card strong,
+.snap-feature-card span {
   display: block;
   color: #223248;
   font-size: 1.1rem;
@@ -695,8 +696,10 @@ span.snap-accent-word {
   border-top: 0;
 }
 
-.snap-panel-benefits .snap-feature-card strong {
+.snap-panel-benefits .snap-feature-card strong,
+.snap-panel-benefits .snap-feature-card > span {
   font-size: clamp(1.7rem, 2.2vw, 2.4rem);
+  font-weight: 800;
   line-height: 0.9;
   color: #de6c65;
   letter-spacing: -0.04em;
@@ -1685,7 +1688,8 @@ span.snap-accent-word {
   }
 
   .snap-panel-flow .snap-step-card > span,
-  .snap-panel-benefits .snap-feature-card strong {
+  .snap-panel-benefits .snap-feature-card strong,
+  .snap-panel-benefits .snap-feature-card > span {
     font-size: clamp(1.6rem, 7vw, 2.1rem);
     line-height: 0.92;
   }
