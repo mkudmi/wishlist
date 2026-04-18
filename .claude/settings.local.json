@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(grep -o \".\\\\{0,200\\\\}wish-card-tools.\\\\{0,400\\\\}\" \"C:\\\\Users\\\\mkudm\\\\OneDrive\\\\Documentos\\\\Projects\\\\wishlist\\\\src\\\\styles.css\")"
     ]
   }
 }

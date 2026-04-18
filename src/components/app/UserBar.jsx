@@ -67,6 +67,30 @@ export function UserBar({
       </div>
 
       <div className="auth-userbar-right">
+        {canManage ? (
+          <button
+            type="button"
+            className="userbar-share-button"
+            onClick={onCopyShareLink}
+            aria-label="Поделиться"
+          >
+            <svg
+              className="userbar-share-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <circle cx="18" cy="5" r="3" stroke="currentColor" strokeWidth="2" />
+              <circle cx="6" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+              <circle cx="18" cy="19" r="3" stroke="currentColor" strokeWidth="2" />
+              <path d="M8.6 10.5L15.4 6.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M8.6 13.5L15.4 17.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <span>Поделиться</span>
+          </button>
+        ) : null}
+
         <div className="header-menu" ref={menuRef}>
           <button type="button" className="burger-button" aria-label="Открыть меню" onClick={onToggleHeaderMenu}>
             <span className="burger-icon" aria-hidden="true">
@@ -84,11 +108,6 @@ export function UserBar({
               <button type="button" className="header-menu-item" onClick={onOpenProfile}>
                 Профиль
               </button>
-              {canManage ? (
-                <button type="button" className="header-menu-item" onClick={onCopyShareLink}>
-                  Поделиться ссылкой
-                </button>
-              ) : null}
               {showDashboardLink ? (
                 <button type="button" className="header-menu-item" onClick={onOpenDashboard}>
                   Мои вишлисты

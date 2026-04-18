@@ -74,22 +74,25 @@ export function WishDetailsModal({
         </div>
 
         <div className="wish-actions wish-actions-modal">
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={onOpenReservation}
-            disabled={completed || !target}
-          >
-            {completed ? "Собрано" : !target ? "Нет суммы" : "Забронировать"}
-          </button>
-          <button
-            type="button"
-            className="wish-donate-button"
-            onClick={onOpenContribution}
-            disabled={completed}
-          >
-            {completed ? "Собрано" : "Поучаствовать"}
-          </button>
+          {!completed ? (
+            <>
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={onOpenReservation}
+                disabled={!target}
+              >
+                {!target ? "Нет суммы" : "Забронировать"}
+              </button>
+              <button
+                type="button"
+                className="wish-donate-button"
+                onClick={onOpenContribution}
+              >
+                Поучаствовать
+              </button>
+            </>
+          ) : null}
           {wish.url ? (
             <a className="wish-shop-link" href={wish.url} target="_blank" rel="noreferrer">
               В магазин

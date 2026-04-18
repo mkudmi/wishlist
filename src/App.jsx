@@ -1978,7 +1978,9 @@ export default function App({ initialRouteOverride = null }) {
             }}
             onCopyShareLink={() => {
               setIsHeaderMenuOpen(false);
-              copyShareLink();
+              if (currentWishlist) {
+                openWishlistShareSheet(currentWishlist);
+              }
             }}
             onOpenWishCreate={() => {
               setIsHeaderMenuOpen(false);
