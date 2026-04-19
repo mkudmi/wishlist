@@ -1,4 +1,5 @@
 import { formatMoney } from "../../lib/helpers";
+import { ExternalLinkIcon } from "../icons/ExternalLinkIcon";
 
 export function WishDetailsModal({
   wish,
@@ -103,7 +104,8 @@ export function WishDetailsModal({
           ) : null}
           {wish.url ? (
             <a className="wish-shop-link" href={wish.url} target="_blank" rel="noreferrer">
-              В магазин
+              <span>В магазин</span>
+              <ExternalLinkIcon className="wish-shop-link-icon" />
             </a>
           ) : null}
         </div>

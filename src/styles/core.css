@@ -509,6 +509,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   min-height: 34px;
   padding: 0 12px;
   border-radius: 999px;
@@ -517,6 +518,11 @@ h3 {
   color: #8e4b1a;
   font-weight: 700;
   text-decoration: none;
+}
+.wish-shop-link-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
 }
 .wish-shop-link:hover {
   color: #b96427;
