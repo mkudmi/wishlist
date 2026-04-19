@@ -1,0 +1,472 @@
+/* 404 */
+
+.not-found-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  background: linear-gradient(180deg, #eaf2fb 0%, #d7efff 100%);
+}
+
+.not-found-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 24px;
+  gap: 8px;
+}
+
+.not-found-gift {
+  width: clamp(160px, 36vw, 280px);
+  aspect-ratio: 1;
+  animation: snap-gift-float 4.8s ease-in-out infinite;
+}
+
+.not-found-gift img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.not-found-title {
+  font-family: "Playfair Display", serif;
+  font-size: clamp(4rem, 12vw, 8rem);
+  font-weight: 700;
+  line-height: 1;
+  color: #36526f;
+  margin: 0;
+}
+
+.not-found-text {
+  font-size: clamp(1rem, 2.4vw, 1.2rem);
+  color: #4c6f91;
+  line-height: 1.6;
+  max-width: 32ch;
+  margin: 0 0 12px;
+}
+
+.not-found-button {
+  text-decoration: none;
+}
+
+.donation-role-note {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(95, 67, 39, 0.14);
+  background: rgba(255, 247, 236, 0.92);
+}
+
+.donation-role-note-text {
+  margin: 0;
+  color: #5e4a37;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.donation-checkbox {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.donation-checkbox input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  opacity: 0;
+  position: absolute;
+  inset: 0 auto auto 0;
+  pointer-events: none;
+}
+
+.donation-checkbox-visual {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  border: 2px solid rgba(95, 67, 39, 0.22);
+  background: rgba(255, 252, 247, 0.96);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.donation-checkbox-visual::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 11px;
+  border-right: 3px solid #fffaf4;
+  border-bottom: 3px solid #fffaf4;
+  transform: translate(-42%, -58%) rotate(45deg) scale(0.7);
+  transform-origin: center;
+  opacity: 0;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.donation-checkbox-text {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(95, 67, 39, 0.16);
+  background: rgba(255, 255, 255, 0.68);
+  color: #3f3227;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.35;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+}
+
+.donation-checkbox:focus,
+.donation-checkbox:active {
+  outline: none;
+}
+
+.donation-checkbox:hover .donation-checkbox-visual {
+  border-color: rgba(201, 106, 44, 0.48);
+  background: rgba(255, 249, 243, 1);
+  box-shadow: 0 0 0 4px rgba(201, 106, 44, 0.08);
+}
+
+.donation-checkbox:hover .donation-checkbox-text {
+  border-color: rgba(201, 106, 44, 0.24);
+  background: rgba(255, 252, 247, 0.92);
+}
+
+.donation-checkbox input:focus-visible + .donation-checkbox-visual {
+  outline: 3px solid rgba(201, 106, 44, 0.16);
+  outline-offset: 2px;
+}
+
+.donation-checkbox input:focus-visible ~ .donation-checkbox-text {
+  box-shadow: 0 0 0 3px rgba(201, 106, 44, 0.12);
+}
+
+.donation-checkbox input:checked + .donation-checkbox-visual {
+  border-color: #c96a2c;
+  background: linear-gradient(135deg, #c96a2c, #e48847);
+  box-shadow: 0 8px 18px rgba(201, 106, 44, 0.22);
+}
+
+.donation-checkbox input:checked + .donation-checkbox-visual::before {
+  opacity: 1;
+  transform: translate(-42%, -58%) rotate(45deg) scale(1);
+}
+
+.donation-checkbox input:checked ~ .donation-checkbox-text {
+  color: #8e4b1a;
+  border-color: rgba(201, 106, 44, 0.3);
+  background: rgba(255, 241, 228, 0.92);
+  box-shadow: 0 8px 18px rgba(201, 106, 44, 0.12);
+}
+
+.donation-checkbox:active .donation-checkbox-visual,
+.donation-checkbox:active .donation-checkbox-text {
+  transform: scale(0.97);
+}
+
+.donation-checkbox input:checked + .donation-checkbox-visual,
+.donation-checkbox input:checked ~ .donation-checkbox-text {
+  animation: donation-checkbox-pop 220ms ease;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .donation-role-note {
+  border-color: rgba(126, 182, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .donation-role-note-text,
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .donation-checkbox-text {
+  color: rgba(244, 243, 239, 0.92);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .donation-checkbox-visual {
+  border-color: rgba(126, 182, 255, 0.3);
+  background: rgba(28, 39, 61, 0.96);
+  box-shadow: none;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .donation-checkbox:hover
+  .donation-checkbox-visual {
+  border-color: rgba(126, 182, 255, 0.44);
+  background: rgba(34, 47, 72, 0.98);
+  box-shadow: 0 0 0 4px rgba(126, 182, 255, 0.1);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .donation-checkbox:hover
+  .donation-checkbox-text {
+  border-color: rgba(126, 182, 255, 0.28);
+  background: rgba(34, 47, 72, 0.72);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .donation-checkbox
+  input:focus-visible
+  ~ .donation-checkbox-text {
+  box-shadow: 0 0 0 3px rgba(126, 182, 255, 0.12);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .donation-checkbox
+  input:checked
+  + .donation-checkbox-visual {
+  border-color: rgba(126, 182, 255, 0.52);
+  background: linear-gradient(135deg, #5b8fd1, #88b7f5);
+  box-shadow: 0 10px 20px rgba(91, 143, 209, 0.24);
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .donation-checkbox
+  input:checked
+  ~ .donation-checkbox-text {
+  color: #dbeaff;
+  border-color: rgba(126, 182, 255, 0.34);
+  background: rgba(91, 143, 209, 0.18);
+  box-shadow: 0 10px 20px rgba(8, 14, 25, 0.24);
+}
+
+@keyframes donation-checkbox-pop {
+  0% {
+    transform: scale(0.96);
+  }
+
+  55% {
+    transform: scale(1.04);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes donation-field-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-4px);
+  }
+
+  50% {
+    transform: translateX(3px);
+  }
+
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+.wish-coordinator-note {
+  margin: 0 0 10px;
+  color: #6f4b2d;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.page-shell[style*="--color-surface: rgba(18, 25, 40, 0.72)"]
+  .wish-coordinator-note {
+  color: rgba(201, 220, 255, 0.88);
+}
+
+.donation-modal {
+  position: relative;
+  padding: 24px;
+}
+
+.donation-modal h3 {
+  margin-bottom: 6px;
+  padding-right: 44px;
+}
+
+.donation-close-button {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(95, 67, 39, 0.08);
+  color: #6f4b2d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.donation-close-button span {
+  display: block;
+  font-size: 1.4rem;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.donation-close-button:hover {
+  background: rgba(95, 67, 39, 0.14);
+}
+
+.donation-close-action {
+  display: none;
+}
+
+.donation-modal-title {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+.donation-modal-subtitle {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.donation-form {
+  display: grid;
+  gap: 14px;
+}
+
+.donation-form > label {
+  display: grid;
+  gap: 8px;
+}
+
+.donation-form input {
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.donation-role-note {
+  display: grid;
+  gap: 12px;
+  margin-top: 2px;
+  padding: 14px;
+}
+
+.donation-role-note .donation-role-note-text {
+  margin-bottom: 0;
+}
+
+.donation-role-note > label:not(.donation-checkbox) {
+  display: block;
+}
+
+.donation-role-note > label:not(.donation-checkbox) input {
+  width: 100%;
+}
+
+.donation-field-invalid input {
+  border-color: rgba(184, 66, 55, 0.5);
+  background: rgba(255, 241, 239, 0.96);
+  box-shadow: 0 0 0 3px rgba(184, 66, 55, 0.12);
+  animation: donation-field-shake 240ms ease;
+}
+
+.donation-checkbox {
+  margin-top: 0;
+}
+
+.donation-checkbox-invalid {
+  animation: donation-field-shake 240ms ease;
+}
+
+.donation-checkbox-invalid .donation-checkbox-visual {
+  border-color: rgba(184, 66, 55, 0.52);
+  box-shadow: 0 0 0 4px rgba(184, 66, 55, 0.12);
+}
+
+.donation-checkbox-invalid .donation-checkbox-text {
+  border-color: rgba(184, 66, 55, 0.28);
+  background: rgba(255, 241, 239, 0.92);
+  color: #a53b32;
+}
+
+.donation-error {
+  margin: -2px 0 0;
+  color: #b84237;
+  font-weight: 700;
+}
+
+.donation-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.donation-actions .button-primary,
+.donation-actions .button-secondary {
+  flex: 1 1 0;
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .donation-modal {
+    padding: 18px;
+  }
+
+  .donation-close-button {
+    display: none;
+  }
+
+  .donation-modal-subtitle {
+    margin-bottom: 16px;
+  }
+
+  .donation-form {
+    gap: 12px;
+  }
+
+  .donation-role-note {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .donation-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 4px;
+    gap: 8px;
+  }
+
+  .donation-actions .button-primary,
+  .donation-actions .button-secondary {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .donation-close-action {
+    display: inline-flex;
+  }
+}

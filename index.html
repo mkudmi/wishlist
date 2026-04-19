@@ -2,7 +2,10 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>Список желаний - Онлайн-вишлист для подарков</title>
     <meta
       name="description"
@@ -13,33 +16,56 @@
     <meta property="og:locale" content="ru_RU" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Список желаний" />
-    <meta property="og:title" content="Список желаний - Онлайн-вишлист для подарков" />
+    <meta
+      property="og:title"
+      content="Список желаний - Онлайн-вишлист для подарков"
+    />
     <meta
       property="og:description"
       content="Создайте вишлист подарков для дня рождения, свадьбы, новоселья и других событий. Делитесь одной ссылкой, собирайте совместные подарки и избавьтесь от путаницы с выбором подарков."
     />
     <meta property="og:url" content="https://xn--80ajchdgcktejxc.xn--p1ai/" />
-    <meta property="og:image" content="https://xn--80ajchdgcktejxc.xn--p1ai/icon-512.png" />
+    <meta
+      property="og:image"
+      content="https://xn--80ajchdgcktejxc.xn--p1ai/icon-512.png"
+    />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
     <meta property="og:image:alt" content="Логотип сервиса Список желаний" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Список желаний - Онлайн-вишлист для подарков" />
+    <meta
+      name="twitter:title"
+      content="Список желаний - Онлайн-вишлист для подарков"
+    />
     <meta
       name="twitter:description"
       content="Удобный онлайн-вишлист: одна ссылка для гостей, список желаний и совместные подарки без хаоса."
     />
-    <meta name="twitter:image" content="https://xn--80ajchdgcktejxc.xn--p1ai/icon-512.png" />
+    <meta
+      name="twitter:image"
+      content="https://xn--80ajchdgcktejxc.xn--p1ai/icon-512.png"
+    />
     <meta name="theme-color" content="#d7efff" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="alternate icon" href="/favicon.ico" sizes="64x64" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-cyrillic.woff2" crossorigin />
-    <link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin.woff2" crossorigin />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/manrope-cyrillic.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/manrope-latin.woff2"
+      crossorigin
+    />
     <link rel="stylesheet" href="/fonts/fonts.css" />
-    <link rel="stylesheet" href="/src/styles.css" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -94,12 +120,20 @@
         var origin = seoConfig.origin || "https://xn--80ajchdgcktejxc.xn--p1ai";
         var lastActiveWishlistStorageKey = "wishlist:last-active-id";
         var pathname = window.location.pathname || "/";
-        var path = pathname !== "/" && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+        var path =
+          pathname !== "/" && pathname.endsWith("/")
+            ? pathname.slice(0, -1)
+            : pathname;
         if (path === "/wishlist") {
           try {
-            var lastActiveWishlistId = window.localStorage.getItem(lastActiveWishlistStorageKey);
+            var lastActiveWishlistId = window.localStorage.getItem(
+              lastActiveWishlistStorageKey,
+            );
             if (lastActiveWishlistId) {
-              var redirectedPath = "/wishlists/" + encodeURIComponent(lastActiveWishlistId) + "/edit";
+              var redirectedPath =
+                "/wishlists/" +
+                encodeURIComponent(lastActiveWishlistId) +
+                "/edit";
               window.history.replaceState(null, "", redirectedPath);
               path = redirectedPath;
             }
@@ -110,11 +144,12 @@
         var seoPages = seoConfig.pages || {};
         var defaultSeoPage = seoConfig.defaultPage || {
           title: document.title,
-          description: ""
+          description: "",
         };
         var currentSeoPage = seoPages[path] || defaultSeoPage;
         var title = currentSeoPage.title || defaultSeoPage.title;
-        var description = currentSeoPage.description || defaultSeoPage.description;
+        var description =
+          currentSeoPage.description || defaultSeoPage.description;
         var robots = "index,follow,max-image-preview:large";
         var canonicalPath = seoPages[path] ? path : "/";
 
@@ -123,9 +158,13 @@
           description = "Личный кабинет сервиса Список желаний.";
           robots = "noindex,nofollow";
           canonicalPath = "/dashboard";
-        } else if (path === "/wishlist" || /^\/wishlists\/[^/]+\/edit$/.test(path)) {
+        } else if (
+          path === "/wishlist" ||
+          /^\/wishlists\/[^/]+\/edit$/.test(path)
+        ) {
           title = "Редактирование вишлиста - Список желаний";
-          description = "Управление вашим списком подарков в сервисе Список желаний.";
+          description =
+            "Управление вашим списком подарков в сервисе Список желаний.";
           robots = "noindex,nofollow";
           canonicalPath = path;
         } else if (path === "/auth/yandex/callback") {
@@ -149,10 +188,14 @@
         var robotsMeta = document.querySelector('meta[name="robots"]');
         var descMeta = document.querySelector('meta[name="description"]');
         var ogTitle = document.querySelector('meta[property="og:title"]');
-        var ogDescription = document.querySelector('meta[property="og:description"]');
+        var ogDescription = document.querySelector(
+          'meta[property="og:description"]',
+        );
         var ogUrl = document.querySelector('meta[property="og:url"]');
         var twitterTitle = document.querySelector('meta[name="twitter:title"]');
-        var twitterDescription = document.querySelector('meta[name="twitter:description"]');
+        var twitterDescription = document.querySelector(
+          'meta[name="twitter:description"]',
+        );
 
         document.title = title;
         if (canonical) canonical.href = origin + canonicalPath;
@@ -184,7 +227,13 @@
         k.async = 1;
         k.src = r;
         a.parentNode.insertBefore(k, a);
-      })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=107711291", "ym");
+      })(
+        window,
+        document,
+        "script",
+        "https://mc.yandex.ru/metrika/tag.js?id=107711291",
+        "ym",
+      );
 
       ym(107711291, "init", {
         ssr: true,
@@ -194,7 +243,7 @@
         referrer: document.referrer,
         url: location.href,
         accurateTrackBounce: true,
-        trackLinks: true
+        trackLinks: true,
       });
     </script>
     <!-- /Yandex.Metrika counter -->
@@ -202,8 +251,14 @@
   </head>
   <body>
     <noscript>
-      <div><img src="https://mc.yandex.ru/watch/107711291" style="position:absolute; left:-9999px;" alt="" /></div>
-      <main style="padding:24px;font-family:sans-serif;">
+      <div>
+        <img
+          src="https://mc.yandex.ru/watch/107711291"
+          style="position: absolute; left: -9999px"
+          alt=""
+        />
+      </div>
+      <main style="padding: 24px; font-family: sans-serif">
         <h1>Wishlist</h1>
         <p>Для работы приложения нужно включить JavaScript.</p>
       </main>
