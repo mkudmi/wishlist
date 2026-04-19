@@ -87,7 +87,7 @@ export function WishDetailsModal({
             <>
               <button
                 type="button"
-                className="button-secondary"
+                className="button-secondary wish-modal-action"
                 onClick={onOpenReservation}
                 disabled={!target}
               >
@@ -95,7 +95,7 @@ export function WishDetailsModal({
               </button>
               <button
                 type="button"
-                className="wish-donate-button"
+                className="wish-donate-button wish-modal-action"
                 onClick={onOpenContribution}
               >
                 Скинуться
@@ -103,7 +103,7 @@ export function WishDetailsModal({
             </>
           ) : null}
           {wish.url ? (
-            <a className="wish-shop-link" href={wish.url} target="_blank" rel="noreferrer">
+            <a className="wish-shop-link wish-modal-action" href={wish.url} target="_blank" rel="noreferrer">
               <span>В магазин</span>
               <ExternalLinkIcon className="wish-shop-link-icon" />
             </a>
@@ -111,7 +111,7 @@ export function WishDetailsModal({
         </div>
 
         <div className="wish-actions wish-actions-modal-secondary">
-          <button type="button" className="button-secondary" onClick={onClose}>
+          <button type="button" className="button-secondary wish-modal-action" onClick={onClose}>
             Закрыть
           </button>
         </div>

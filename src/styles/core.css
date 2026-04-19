@@ -679,23 +679,45 @@ h3 {
   justify-content: stretch;
   flex-wrap: nowrap;
 }
-.wish-actions-modal .wish-donate-button,
-.wish-actions-modal .wish-shop-link,
-.wish-actions-modal .button-secondary {
-  flex: 1 1 0;
+.wish-modal-action {
   min-height: 42px;
   padding: 0 14px;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
+  transition:
+    transform 0.22s ease,
+    background-color 0.22s ease,
+    border-color 0.22s ease,
+    color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+.wish-modal-action:hover {
+  transform: translateY(-1px);
+}
+.wish-modal-action:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(185, 100, 39, 0.18),
+    0 10px 24px rgba(40, 28, 15, 0.12);
+}
+.wish-modal-action:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.wish-actions-modal .wish-modal-action {
+  flex: 1 1 0;
 }
 .wish-actions-modal-secondary {
   margin-top: 8px;
   flex-direction: row;
   justify-content: stretch;
 }
-.wish-actions-modal-secondary .button-secondary {
-  min-height: 42px;
-  padding: 0 14px;
-  font-size: 0.88rem;
+.wish-actions-modal-secondary .wish-modal-action {
   width: 100%;
 }
 .wish-donate-button {
@@ -3140,13 +3162,12 @@ h3 {
     align-items: stretch;
     gap: 8px;
   }
-  .wish-actions-modal .wish-donate-button,
-  .wish-actions-modal .wish-shop-link,
-  .wish-actions-modal .button-secondary {
+  .wish-actions-modal .wish-modal-action {
     width: 100%;
     min-height: 42px;
     font-size: 0.92rem;
     padding: 0 14px;
+    white-space: normal;
   }
   .wish-participants {
     width: 100%;
