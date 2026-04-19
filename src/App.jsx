@@ -125,6 +125,8 @@ export default function App({ initialRouteOverride = null }) {
   const [donationMode, setDonationMode] = useState("contribute");
   const [donationAmount, setDonationAmount] = useState("");
   const [donationName, setDonationName] = useState("");
+  const [donationContact, setDonationContact] = useState("");
+  const [isDonationCoordinatorConfirmed, setIsDonationCoordinatorConfirmed] = useState(false);
   const [donationError, setDonationError] = useState("");
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
   const [guestSessionId, setGuestSessionId] = useState(() => getOrCreateGuestSessionId());
@@ -1606,6 +1608,8 @@ export default function App({ initialRouteOverride = null }) {
     setDonationMode(mode);
     setDonationAmount("");
     setDonationName(currentUser ? getUserDisplayName(currentUser) : "");
+    setDonationContact("");
+    setIsDonationCoordinatorConfirmed(false);
     setDonationError("");
   }
 
@@ -1614,6 +1618,8 @@ export default function App({ initialRouteOverride = null }) {
     setDonationMode("contribute");
     setDonationAmount("");
     setDonationName("");
+    setDonationContact("");
+    setIsDonationCoordinatorConfirmed(false);
     setDonationError("");
     setIsDonationSubmitting(false);
   }
@@ -1625,6 +1631,7 @@ export default function App({ initialRouteOverride = null }) {
         ...(prev[wishId] || []),
         {
           name: entry.contributor_name,
+          contact: entry.contributor_contact || "",
           userId: entry.contributor_user_id || null,
           guestSessionId: entry.guest_session_id || null,
           amount: Number(entry.amount),
@@ -1653,6 +1660,16 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
+    if ((contributions[donationWish.id] || []).length === 0 && !donationContact.trim()) {
+      setDonationError("Укажи контакт для связи с Распределителем подарка.");
+      return;
+    }
+
+    if ((contributions[donationWish.id] || []).length === 0 && !isDonationCoordinatorConfirmed) {
+      setDonationError("Подтверди, что берешь координацию подарка на себя.");
+      return;
+    }
+
     setIsDonationSubmitting(true);
     setDonationError("");
 
@@ -1661,6 +1678,7 @@ export default function App({ initialRouteOverride = null }) {
       wish_id: donationWish.id,
       wishlist_id: wishlistId,
       contributor_name: contributorName,
+      contributor_contact: donationContact.trim() || null,
       contributor_user_id: currentUser?.id || null,
       amount
     });
@@ -1749,6 +1767,16 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
+    if ((contributions[donationWish.id] || []).length === 0 && !donationContact.trim()) {
+      setDonationError("Укажи контакт для связи с Распределителем подарка.");
+      return;
+    }
+
+    if ((contributions[donationWish.id] || []).length === 0 && !isDonationCoordinatorConfirmed) {
+      setDonationError("Подтверди, что берешь координацию подарка на себя.");
+      return;
+    }
+
     setIsDonationSubmitting(true);
     setDonationError("");
 
@@ -1757,6 +1785,7 @@ export default function App({ initialRouteOverride = null }) {
       wish_id: donationWish.id,
       wishlist_id: wishlistId,
       contributor_name: contributorName,
+      contributor_contact: donationContact.trim() || null,
       contributor_user_id: currentUser?.id || null,
       amount: remaining
     });
@@ -1898,7 +1927,14 @@ export default function App({ initialRouteOverride = null }) {
   const openedWish = activeWishes.find((wish) => wish.id === openedWishId) || null;
   const openedWishTarget = openedWish ? parseTargetFromPrice(openedWish.price) : null;
   const openedWishDonated = openedWish ? getWishDonated(contributions, openedWish.id) : 0;
+  const openedWishEntries = openedWish ? contributions[openedWish.id] || [] : [];
   const openedWishParticipants = openedWish ? getWishParticipants(contributions, openedWish.id) : [];
+  const openedWishCoordinator = openedWishEntries[0]
+    ? {
+        name: openedWishEntries[0].name,
+        contact: openedWishEntries[0].contact || ""
+      }
+    : null;
   const currentUserName =
     [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(" ").trim() ||
     getUserDisplayName(currentUser);
@@ -1942,6 +1978,7 @@ export default function App({ initialRouteOverride = null }) {
   const isSharedView = page === "shared";
   const donationWishTarget = donationWish ? parseTargetFromPrice(donationWish.price) : null;
   const donationWishDonated = donationWish ? getWishDonated(contributions, donationWish.id) : 0;
+  const isDonationFirstContributor = donationWish ? (contributions[donationWish.id] || []).length === 0 : false;
   const donationWishRemaining = donationWishTarget
     ? Math.max(0, donationWishTarget - donationWishDonated)
     : 0;
@@ -2059,6 +2096,7 @@ export default function App({ initialRouteOverride = null }) {
           target={openedWishTarget}
           donated={openedWishDonated}
           participants={openedWishParticipants}
+          coordinator={openedWishCoordinator}
           isCurrentUserParticipant={isCurrentUserParticipant}
           onRemoveMyParticipation={removeMyParticipation}
           onOpenReservation={() => openDonationModal(openedWish, "reserve")}
@@ -2125,6 +2163,9 @@ export default function App({ initialRouteOverride = null }) {
         currentUser={currentUser}
         donationName={donationName}
         donationAmount={donationAmount}
+        donationContact={donationContact}
+        isFirstContributor={isDonationFirstContributor}
+        isCoordinatorConfirmed={isDonationCoordinatorConfirmed}
         donationError={donationError}
         isDonationSubmitting={isDonationSubmitting}
         target={donationWishTarget}
@@ -2137,6 +2178,18 @@ export default function App({ initialRouteOverride = null }) {
         }}
         onAmountChange={(event) => {
           setDonationAmount(event.target.value);
+          if (donationError) {
+            setDonationError("");
+          }
+        }}
+        onContactChange={(event) => {
+          setDonationContact(event.target.value);
+          if (donationError) {
+            setDonationError("");
+          }
+        }}
+        onCoordinatorConfirmChange={(event) => {
+          setIsDonationCoordinatorConfirmed(event.target.checked);
           if (donationError) {
             setDonationError("");
           }

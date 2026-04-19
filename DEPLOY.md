@@ -5,12 +5,20 @@
 ## Как работает
 
 - Пуш в `main` запускает workflow `.github/workflows/deploy.yml`.
+- Для отдельного прогона миграций без полного деплоя доступен ручной workflow `.github/workflows/db-migrate.yml`.
 - GitHub Actions собирает Vite-приложение.
 - `dist` заливается на сервер в `/var/www/wishlist/releases/<commit_sha>`.
 - Симлинк `/var/www/wishlist/current` переключается на новый релиз.
 - Backend-код синхронизируется в `/opt/wishlist/backend`.
 - На сервере выполняются `npm ci`, `npm run db:migrate` и `systemctl restart wishlist-api.service`.
 - `nginx` отдает `/var/www/wishlist/current` и проксирует `/api/*` в backend.
+
+## Отдельный прогон базы
+
+- Workflow `DB Migrate` запускается вручную через `workflow_dispatch`.
+- Он не собирает фронтенд, не переключает релиз и не перезапускает `wishlist-api.service`.
+- Workflow синхронизирует актуальные `backend/`, `package.json` и `package-lock.json`, затем выполняет `npm ci` и `npm run db:migrate` на сервере.
+- Это удобно, когда нужно отдельно прокатить SQL-миграции и продолжить дебаг без полного деплоя приложения.
 
 ## GitHub Secrets
 

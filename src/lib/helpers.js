@@ -365,6 +365,7 @@ export function groupReservationsByWish(items) {
 
     acc[item.wish_id].push({
       name: item.contributor_name,
+      contact: item.contributor_contact || "",
       userId: item.contributor_user_id || null,
       guestSessionId: item.guest_session_id || null,
       amount,

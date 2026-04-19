@@ -6,12 +6,17 @@ export function DonationModal({
   currentUser,
   donationName,
   donationAmount,
+  donationContact,
+  isFirstContributor,
+  isCoordinatorConfirmed,
   donationError,
   isDonationSubmitting,
   target,
   remaining,
   onNameChange,
   onAmountChange,
+  onContactChange,
+  onCoordinatorConfirmChange,
   onDonateFullRemaining,
   onSubmitContribution,
   onSubmitReservation,
@@ -58,6 +63,32 @@ export function DonationModal({
                 autoFocus={Boolean(currentUser)}
               />
             </label>
+          ) : null}
+
+          {mode !== "reserve" && isFirstContributor ? (
+            <div className="donation-role-note">
+              <p className="donation-role-note-text">
+                Ты будешь первым дарителем и станешь координатором этого подарка. Следующие участники будут
+                ориентироваться на тебя как на Распределителя подарка.
+              </p>
+              <label>
+                Контакт для связи
+                <input
+                  type="text"
+                  value={donationContact}
+                  onChange={onContactChange}
+                  placeholder="Например: @anya или +7..."
+                />
+              </label>
+              <label className="donation-checkbox">
+                <input
+                  type="checkbox"
+                  checked={isCoordinatorConfirmed}
+                  onChange={onCoordinatorConfirmChange}
+                />
+                <span>Подтверждаю, что беру координацию подарка на себя</span>
+              </label>
+            </div>
           ) : null}
 
           {donationError ? <p className="donation-error">{donationError}</p> : null}

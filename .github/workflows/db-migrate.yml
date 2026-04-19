@@ -1,0 +1,56 @@
+name: DB Migrate
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-db-production
+  cancel-in-progress: true
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      APP_PATH: /opt/wishlist
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      NODE_NO_WARNINGS: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Prepare SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload backend migration files
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$APP_PATH/backend'"
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key -p $DEPLOY_PORT" \
+            backend/ \
+            "$DEPLOY_USER@$DEPLOY_HOST:$APP_PATH/backend/"
+          rsync -az -e "ssh -i ~/.ssh/deploy_key -p $DEPLOY_PORT" \
+            package.json package-lock.json \
+            "$DEPLOY_USER@$DEPLOY_HOST:$APP_PATH/"
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "chmod -R u=rwX,go=rX '$APP_PATH/backend' '$APP_PATH/package.json' '$APP_PATH/package-lock.json'"
+
+      - name: Run database migrations
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "\
+            cd '$APP_PATH' && \
+            npm ci --omit=dev --no-audit --no-fund --loglevel=error && \
+            npm run db:migrate \
+          "

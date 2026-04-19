@@ -1478,7 +1478,7 @@ app.get("/api/wishlists/:wishlistId/reservations", requireAuth, async (req, res,
     }
 
     const { rows } = await pool.query(
-      `SELECT id, wish_id, wishlist_id, contributor_name, contributor_user_id, guest_session_id, amount::float8 AS amount, created_at
+      `SELECT id, wish_id, wishlist_id, contributor_name, contributor_contact, contributor_user_id, guest_session_id, amount::float8 AS amount, created_at
        FROM wish_reservations
        WHERE wishlist_id = $1
        ORDER BY created_at ASC;`,
@@ -1524,6 +1524,7 @@ app.post("/api/reservations", async (req, res, next) => {
     const wishId = req.body?.wish_id;
     const wishlistId = req.body?.wishlist_id;
     const contributorName = normalizeName(req.body?.contributor_name);
+    const contributorContact = normalizeName(req.body?.contributor_contact) || null;
     const contributorUserId = req.body?.contributor_user_id || null;
     const amount = Number(req.body?.amount);
     const guestSessionId = getGuestSessionId(req);
@@ -1556,12 +1557,24 @@ app.post("/api/reservations", async (req, res, next) => {
 
     const safeContributorUserId = authUser?.id || contributorUserId;
     const safeGuestSessionId = authUser ? null : guestSessionId;
+    const { rows: existingRows } = await pool.query(
+      `SELECT id
+       FROM wish_reservations
+       WHERE wish_id = $1
+       ORDER BY created_at ASC
+       LIMIT 1;`,
+      [wishId]
+    );
+
+    if (!existingRows[0] && !contributorContact) {
+      return res.status(400).json({ error: "contributor_contact is required for first contribution" });
+    }
 
     const { rows } = await pool.query(
-      `INSERT INTO wish_reservations (wish_id, wishlist_id, contributor_name, contributor_user_id, guest_session_id, amount)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, wish_id, wishlist_id, contributor_name, contributor_user_id, guest_session_id, amount::float8 AS amount, created_at;`,
-      [wishId, wishlistId, contributorName, safeContributorUserId, safeGuestSessionId, amount]
+      `INSERT INTO wish_reservations (wish_id, wishlist_id, contributor_name, contributor_contact, contributor_user_id, guest_session_id, amount)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, wish_id, wishlist_id, contributor_name, contributor_contact, contributor_user_id, guest_session_id, amount::float8 AS amount, created_at;`,
+      [wishId, wishlistId, contributorName, contributorContact, safeContributorUserId, safeGuestSessionId, amount]
     );
 
     res.status(201).json(rows[0]);
@@ -1627,7 +1640,7 @@ app.get("/api/shared/:token/meta", async (req, res, next) => {
 app.get("/api/shared/:token/reservations", async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT wr.id, wr.wish_id, wr.wishlist_id, wr.contributor_name, wr.contributor_user_id, wr.guest_session_id, wr.amount::float8 AS amount, wr.created_at
+      `SELECT wr.id, wr.wish_id, wr.wishlist_id, wr.contributor_name, wr.contributor_contact, wr.contributor_user_id, wr.guest_session_id, wr.amount::float8 AS amount, wr.created_at
        FROM wish_reservations wr
        JOIN wishlists wl ON wl.id = wr.wishlist_id
        WHERE wl.share_token = $1 AND wl.is_public = true

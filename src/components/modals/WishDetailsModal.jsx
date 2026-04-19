@@ -6,6 +6,7 @@ export function WishDetailsModal({
   target,
   donated,
   participants,
+  coordinator,
   isCurrentUserParticipant,
   onRemoveMyParticipation,
   onOpenReservation,
@@ -50,6 +51,13 @@ export function WishDetailsModal({
 
         <div className="wish-modal-participants">
           <span className="wish-participants-label">Участвуют</span>
+          {coordinator?.contact ? (
+            <p className="wish-coordinator-note">
+              Распределитель подарка: {coordinator.name}
+              {" · "}
+              {coordinator.contact}
+            </p>
+          ) : null}
           {participants.length === 0 ? (
             <p className="wish-participants-empty">Пока никого</p>
           ) : (
