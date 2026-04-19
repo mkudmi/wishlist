@@ -9,6 +9,10 @@ export function DonationModal({
   donationContact,
   isFirstContributor,
   isCoordinatorConfirmed,
+  isNameInvalid,
+  isAmountInvalid,
+  isContactInvalid,
+  isCoordinatorConfirmInvalid,
   donationError,
   isDonationSubmitting,
   target,
@@ -29,6 +33,9 @@ export function DonationModal({
   return (
     <div className="donation-modal-backdrop" onClick={onClose}>
       <div className="donation-modal" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="donation-close-button" onClick={onClose} aria-label="Закрыть" disabled={isDonationSubmitting}>
+          <span aria-hidden="true">×</span>
+        </button>
         <h3>{mode === "reserve" ? "Забронировать подарок" : "Поучаствовать в подарке"}</h3>
         <p className="donation-modal-title">{wish.title}</p>
         <p className="donation-modal-subtitle">
@@ -39,7 +46,7 @@ export function DonationModal({
 
         <form className="donation-form" onSubmit={mode === "reserve" ? onSubmitReservation : onSubmitContribution}>
           {mode === "reserve" || !currentUser ? (
-            <label>
+            <label className={isNameInvalid ? "donation-field-invalid" : ""}>
               Твое имя
               <input
                 type="text"
@@ -52,7 +59,7 @@ export function DonationModal({
           ) : null}
 
           {mode !== "reserve" ? (
-            <label>
+            <label className={isAmountInvalid ? "donation-field-invalid" : ""}>
               Сумма
               <input
                 type="text"
@@ -68,11 +75,10 @@ export function DonationModal({
           {mode !== "reserve" && isFirstContributor ? (
             <div className="donation-role-note">
               <p className="donation-role-note-text">
-                Ты будешь первым дарителем и станешь координатором этого подарка. Следующие участники будут
-                ориентироваться на тебя как на Распределителя подарка.
+                Ты первый в сборе, а значит, официально назначен человеком, который "ну давай я всё организую".
+                Оставь контакт для связи с остальными.
               </p>
-              <label>
-                Контакт для связи
+              <label className={isContactInvalid ? "donation-field-invalid" : ""}>
                 <input
                   type="text"
                   value={donationContact}
@@ -80,13 +86,16 @@ export function DonationModal({
                   placeholder="Например: @anya или +7..."
                 />
               </label>
-              <label className="donation-checkbox">
+              <label
+                className={`donation-checkbox${isCoordinatorConfirmInvalid ? " donation-checkbox-invalid" : ""}`}
+              >
                 <input
                   type="checkbox"
                   checked={isCoordinatorConfirmed}
                   onChange={onCoordinatorConfirmChange}
                 />
-                <span>Подтверждаю, что беру координацию подарка на себя</span>
+                <span className="donation-checkbox-visual" aria-hidden="true" />
+                <span className="donation-checkbox-text">Беру командование на себя</span>
               </label>
             </div>
           ) : null}
@@ -102,8 +111,8 @@ export function DonationModal({
             <button type="submit" className="button-primary" disabled={isDonationSubmitting}>
               {isDonationSubmitting ? "Сохраняем..." : mode === "reserve" ? "Забронировать" : "Добавить"}
             </button>
-            <button type="button" className="button-secondary" onClick={onClose} disabled={isDonationSubmitting}>
-              Отмена
+            <button type="button" className="button-secondary donation-close-action" onClick={onClose} disabled={isDonationSubmitting}>
+              Закрыть
             </button>
           </div>
         </form>

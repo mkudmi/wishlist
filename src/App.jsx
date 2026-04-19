@@ -127,6 +127,10 @@ export default function App({ initialRouteOverride = null }) {
   const [donationName, setDonationName] = useState("");
   const [donationContact, setDonationContact] = useState("");
   const [isDonationCoordinatorConfirmed, setIsDonationCoordinatorConfirmed] = useState(false);
+  const [isDonationNameInvalid, setIsDonationNameInvalid] = useState(false);
+  const [isDonationAmountInvalid, setIsDonationAmountInvalid] = useState(false);
+  const [isDonationContactInvalid, setIsDonationContactInvalid] = useState(false);
+  const [isDonationCoordinatorConfirmInvalid, setIsDonationCoordinatorConfirmInvalid] = useState(false);
   const [donationError, setDonationError] = useState("");
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
   const [guestSessionId, setGuestSessionId] = useState(() => getOrCreateGuestSessionId());
@@ -1610,6 +1614,10 @@ export default function App({ initialRouteOverride = null }) {
     setDonationName(currentUser ? getUserDisplayName(currentUser) : "");
     setDonationContact("");
     setIsDonationCoordinatorConfirmed(false);
+    setIsDonationNameInvalid(false);
+    setIsDonationAmountInvalid(false);
+    setIsDonationContactInvalid(false);
+    setIsDonationCoordinatorConfirmInvalid(false);
     setDonationError("");
   }
 
@@ -1620,6 +1628,10 @@ export default function App({ initialRouteOverride = null }) {
     setDonationName("");
     setDonationContact("");
     setIsDonationCoordinatorConfirmed(false);
+    setIsDonationNameInvalid(false);
+    setIsDonationAmountInvalid(false);
+    setIsDonationContactInvalid(false);
+    setIsDonationCoordinatorConfirmInvalid(false);
     setDonationError("");
     setIsDonationSubmitting(false);
   }
@@ -1650,23 +1662,28 @@ export default function App({ initialRouteOverride = null }) {
 
     const contributorName = currentUser ? getUserDisplayName(currentUser) : donationName.trim();
     if (!contributorName) {
-      setDonationError("Укажи имя.");
+      setDonationError("Назовись, путник.");
+      setIsDonationNameInvalid(true);
       return;
     }
 
     const amount = parseDonationAmount(donationAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      setDonationError("Введите корректную сумму больше 0.");
+      setDonationError("Хотя бы чуть-чуть, но не 0.");
+      setIsDonationAmountInvalid(true);
       return;
     }
 
-    if ((contributions[donationWish.id] || []).length === 0 && !donationContact.trim()) {
-      setDonationError("Укажи контакт для связи с Распределителем подарка.");
+    const isFirstContribution = (contributions[donationWish.id] || []).length === 0;
+    if (isFirstContribution && !donationContact.trim()) {
+      setDonationError("Оставь контакт, шеф.");
+      setIsDonationContactInvalid(true);
       return;
     }
 
-    if ((contributions[donationWish.id] || []).length === 0 && !isDonationCoordinatorConfirmed) {
-      setDonationError("Подтверди, что берешь координацию подарка на себя.");
+    if (isFirstContribution && !isDonationCoordinatorConfirmed) {
+      setDonationError("Оставь контакт, шеф.");
+      setIsDonationCoordinatorConfirmInvalid(true);
       return;
     }
 
@@ -1684,7 +1701,15 @@ export default function App({ initialRouteOverride = null }) {
     });
 
     if (error || !data) {
-      setDonationError("Не удалось сохранить участие.");
+      setDonationError(
+        (contributions[donationWish.id] || []).length === 0
+          ? "Оставь контакт, шеф."
+          : "Не удалось сохранить участие."
+      );
+      if ((contributions[donationWish.id] || []).length === 0) {
+        setIsDonationContactInvalid(!donationContact.trim());
+        setIsDonationCoordinatorConfirmInvalid(!isDonationCoordinatorConfirmed);
+      }
       setIsDonationSubmitting(false);
       return;
     }
@@ -2166,30 +2191,46 @@ export default function App({ initialRouteOverride = null }) {
         donationContact={donationContact}
         isFirstContributor={isDonationFirstContributor}
         isCoordinatorConfirmed={isDonationCoordinatorConfirmed}
+        isNameInvalid={isDonationNameInvalid}
+        isAmountInvalid={isDonationAmountInvalid}
+        isContactInvalid={isDonationContactInvalid}
+        isCoordinatorConfirmInvalid={isDonationCoordinatorConfirmInvalid}
         donationError={donationError}
         isDonationSubmitting={isDonationSubmitting}
         target={donationWishTarget}
         remaining={donationWishRemaining}
         onNameChange={(event) => {
           setDonationName(event.target.value);
+          if (event.target.value.trim()) {
+            setIsDonationNameInvalid(false);
+          }
           if (donationError) {
             setDonationError("");
           }
         }}
         onAmountChange={(event) => {
           setDonationAmount(event.target.value);
+          if (parseDonationAmount(event.target.value) > 0) {
+            setIsDonationAmountInvalid(false);
+          }
           if (donationError) {
             setDonationError("");
           }
         }}
         onContactChange={(event) => {
           setDonationContact(event.target.value);
+          if (event.target.value.trim()) {
+            setIsDonationContactInvalid(false);
+          }
           if (donationError) {
             setDonationError("");
           }
         }}
         onCoordinatorConfirmChange={(event) => {
           setIsDonationCoordinatorConfirmed(event.target.checked);
+          if (event.target.checked) {
+            setIsDonationCoordinatorConfirmInvalid(false);
+          }
           if (donationError) {
             setDonationError("");
           }

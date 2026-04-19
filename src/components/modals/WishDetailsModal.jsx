@@ -90,14 +90,14 @@ export function WishDetailsModal({
                 onClick={onOpenReservation}
                 disabled={!target}
               >
-                {!target ? "Нет суммы" : "Забронировать"}
+                {!target ? "Нет суммы" : "Дарю целиком"}
               </button>
               <button
                 type="button"
                 className="wish-donate-button"
                 onClick={onOpenContribution}
               >
-                Поучаствовать
+                Скинуться
               </button>
             </>
           ) : null}
