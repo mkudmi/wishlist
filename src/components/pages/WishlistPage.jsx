@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { celebrationOptions, defaultWishlistTheme, wishlistThemes } from "../../config/constants";
 import {
   formatMoney,
@@ -7,6 +7,24 @@ import {
   parseTargetFromPrice,
   toGenitiveFirstName
 } from "../../lib/helpers";
+
+const sharedPromoVariants = [
+  {
+    kicker: "Блин, прикольно",
+    title: "Надо тоже такой сделать",
+    copy: "Собери свои хотелки в одном месте, а не держи всё в заметках и в голове."
+  },
+  {
+    kicker: "Айфон хочу",
+    title: "А вдруг подарят?",
+    copy: "Создай свой вишлист и добавляй даже самые безумные желания."
+  },
+  {
+    kicker: "Опять книга?",
+    title: "В следующий раз скажу прямо",
+    copy: "Создай вишлист, и тебе не подарят четвёртый плед. Если, конечно, ты сам его не хочешь."
+  }
+];
 
 export function WishlistPage({
   wishes,
@@ -195,6 +213,25 @@ export function WishlistPage({
 
     return priceSortDirection === "desc" ? rightPrice - leftPrice : leftPrice - rightPrice;
   });
+  const shouldShowInlineSharedPromo = !canEdit && sortedWishes.length > 3;
+  const sharedPromoRandom = useMemo(
+    () => ({
+      variantIndex: Math.floor(Math.random() * sharedPromoVariants.length),
+      insertOffset: Math.random()
+    }),
+    []
+  );
+  const sharedPromoVariant = shouldShowInlineSharedPromo ? sharedPromoVariants[sharedPromoRandom.variantIndex] : null;
+  const sharedPromoInsertIndex = shouldShowInlineSharedPromo
+    ? 1 + Math.floor(sharedPromoRandom.insertOffset * (sortedWishes.length - 1))
+    : -1;
+  const wishGridItems = shouldShowInlineSharedPromo
+    ? [
+        ...sortedWishes.slice(0, sharedPromoInsertIndex),
+        { id: "shared-inline-promo", isSharedPromo: true },
+        ...sortedWishes.slice(sharedPromoInsertIndex)
+      ]
+    : sortedWishes;
 
   useEffect(() => {
     if (!canEdit || !currentWishlist?.id) {
@@ -477,7 +514,20 @@ export function WishlistPage({
             </button>
           ) : null}
 
-          {sortedWishes.map((wish) => {
+          {wishGridItems.map((wish) => {
+            if (wish.isSharedPromo) {
+              return (
+                <article className="wish-card wish-card-promo shared-promo-card" key={wish.id}>
+                  <p className="shared-promo-kicker">{sharedPromoVariant.kicker}</p>
+                  <h3>{sharedPromoVariant.title}</h3>
+                  <p className="wish-card-promo-copy">{sharedPromoVariant.copy}</p>
+                  <button type="button" className="wish-open-button" onClick={onOpenLandingRegister}>
+                    Создать вишлист
+                  </button>
+                </article>
+              );
+            }
+
             const target = parseTargetFromPrice(wish.price);
             const donated = getWishDonated(contributions, wish.id);
             const progressPercent = target ? Math.min(100, Math.round((donated / target) * 100)) : 0;

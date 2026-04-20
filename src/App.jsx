@@ -61,6 +61,8 @@ import {
   updateWishlistRecord,
   updateWishRecord
 } from "./lib/wishlistApi";
+import { AuthFormCard } from "./components/auth/AuthFormCard";
+import { AuthModal } from "./components/auth/AuthModal";
 import { AuthPage } from "./components/pages/AuthPage";
 import { BirthdayPickerModal } from "./components/BirthdayPickerModal";
 import { DashboardPage } from "./components/pages/DashboardPage";
@@ -75,6 +77,9 @@ import { WishDetailsModal } from "./components/modals/WishDetailsModal";
 import { NotFoundPage } from "./components/pages/NotFoundPage";
 import { seoLandingPageMap, seoSite } from "./config/seoPages";
 import { useAccountPanel } from "./hooks/useAccountPanel";
+import { useAuthModalBehavior } from "./hooks/useAuthModalBehavior";
+import { useGoogleIdentity } from "./hooks/useGoogleIdentity";
+import { useYandexAuth } from "./hooks/useYandexAuth";
 export default function App({ initialRouteOverride = null }) {
   const initialRoute = initialRouteOverride || getRouteFromLocation();
   const emptyDashboardStats = [
@@ -110,6 +115,7 @@ export default function App({ initialRouteOverride = null }) {
   const [authForm, setAuthForm] = useState(emptyAuthForm);
   const [authError, setAuthError] = useState("");
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+  const [isSharedAuthModalOpen, setIsSharedAuthModalOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingWishId, setEditingWishId] = useState(null);
   const [isWishEditorOpen, setIsWishEditorOpen] = useState(false);
@@ -136,8 +142,34 @@ export default function App({ initialRouteOverride = null }) {
   const [guestSessionId, setGuestSessionId] = useState(() => getOrCreateGuestSessionId());
   const toastTimeoutRef = useRef(null);
   const authExpiryHandledRef = useRef(false);
+  const sharedAuthModalRef = useRef(null);
   const wishPreviewRequestsRef = useRef(new Set());
   const siteOrigin = seoSite.origin;
+  const googleClientId = import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
+  const yandexClientId = import.meta.env?.VITE_YANDEX_CLIENT_ID || "";
+  const { googleButtonRef } = useGoogleIdentity({
+    googleClientId,
+    onGoogleAuth: submitGoogleAuth,
+    isAuthModalOpen: isSharedAuthModalOpen
+  });
+  const { openYandexAuth } = useYandexAuth({
+    onYandexAuth: completeYandexAuth,
+    onYandexError: () => onAuthModeChange("login")
+  });
+
+  useAuthModalBehavior({
+    isOpen: isSharedAuthModalOpen,
+    submitting: isAuthSubmitting,
+    modalRef: sharedAuthModalRef,
+    onClose: closeSharedAuthModal
+  });
+
+  useEffect(() => {
+    if (page !== "shared" && isSharedAuthModalOpen) {
+      setIsSharedAuthModalOpen(false);
+    }
+  }, [isSharedAuthModalOpen, page]);
+
   const {
     isProfileOpen,
     profileForm,
@@ -888,10 +920,29 @@ export default function App({ initialRouteOverride = null }) {
     setAuthForm(emptyAuthForm);
   }
 
-  function openLandingRegister() {
+  function closeSharedAuthModal() {
+    if (isAuthSubmitting) {
+      return;
+    }
+
+    setIsSharedAuthModalOpen(false);
+  }
+
+  async function openLandingRegister() {
+    if (page === "shared" && currentUser) {
+      await continueAuthenticatedFromLanding();
+      return;
+    }
+
     setAuthMode("register");
     setAuthError("");
     setAuthForm(emptyAuthForm);
+
+    if (page === "shared") {
+      setIsSharedAuthModalOpen(true);
+      return;
+    }
+
     navigate("/");
   }
 
@@ -2129,6 +2180,25 @@ export default function App({ initialRouteOverride = null }) {
           onClose={closeWishModal}
         />
       ) : null}
+
+      <AuthModal isOpen={isSharedAuthModalOpen} submitting={isAuthSubmitting} modalRef={sharedAuthModalRef} onClose={closeSharedAuthModal}>
+        <AuthFormCard
+          mode={authMode}
+          form={authForm}
+          error={authError}
+          submitting={isAuthSubmitting}
+          isOpen={isSharedAuthModalOpen}
+          googleClientId={googleClientId}
+          yandexClientId={yandexClientId}
+          googleButtonRef={googleButtonRef}
+          onModeChange={onAuthModeChange}
+          onErrorReset={resetAuthError}
+          onInputChange={onAuthInputChange}
+          onSubmit={submitAuth}
+          onOpenYandexAuth={openYandexAuth}
+          onClose={closeSharedAuthModal}
+        />
+      </AuthModal>
 
       <ProfileModal
         isOpen={isProfileOpen}
