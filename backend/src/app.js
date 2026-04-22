@@ -28,6 +28,27 @@ function normalizeName(value) {
   return String(value || "").trim();
 }
 
+function parseTargetFromPrice(price) {
+  if (!price) {
+    return null;
+  }
+
+  const matches = [...String(price).matchAll(/\d[\d\s]*/g)];
+  if (matches.length === 0) {
+    return null;
+  }
+
+  const values = matches
+    .map((match) => Number(match[0].replace(/\s/g, "")))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  if (values.length === 0) {
+    return null;
+  }
+
+  return values[values.length - 1];
+}
+
 function splitDisplayName(fullName) {
   const normalized = normalizeName(fullName);
   if (!normalized) {
@@ -1534,7 +1555,7 @@ app.post("/api/reservations", async (req, res, next) => {
     }
 
     const { rows: checkRows } = await pool.query(
-      `SELECT wl.id, wl.is_public
+      `SELECT wl.id, wl.is_public, w.price
        FROM wishlists wl
        JOIN wishes w ON w.wishlist_id = wl.id
        WHERE wl.id = $1 AND w.id = $2`,
@@ -1566,7 +1587,10 @@ app.post("/api/reservations", async (req, res, next) => {
       [wishId]
     );
 
-    if (!existingRows[0] && !contributorContact) {
+    const wishTarget = parseTargetFromPrice(checkRows[0].price);
+    const isFullFirstContribution = !existingRows[0] && Number.isFinite(wishTarget) && amount >= wishTarget;
+
+    if (!existingRows[0] && !contributorContact && !isFullFirstContribution) {
       return res.status(400).json({ error: "contributor_contact is required for first contribution" });
     }
 

@@ -1843,16 +1843,6 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
-    if ((contributions[donationWish.id] || []).length === 0 && !donationContact.trim()) {
-      setDonationError("Укажи контакт для связи с Распределителем подарка.");
-      return;
-    }
-
-    if ((contributions[donationWish.id] || []).length === 0 && !isDonationCoordinatorConfirmed) {
-      setDonationError("Подтверди, что берешь координацию подарка на себя.");
-      return;
-    }
-
     setIsDonationSubmitting(true);
     setDonationError("");
 
@@ -1861,7 +1851,6 @@ export default function App({ initialRouteOverride = null }) {
       wish_id: donationWish.id,
       wishlist_id: wishlistId,
       contributor_name: contributorName,
-      contributor_contact: donationContact.trim() || null,
       contributor_user_id: currentUser?.id || null,
       amount: remaining
     });
