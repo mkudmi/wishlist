@@ -34,6 +34,7 @@ import { buildAppUser } from "./lib/authUser";
 import {
   AUTH_EXPIRED_EVENT,
   AUTH_TOKEN_KEY,
+  copyUnreservedWishesToWishlist,
   createWishRecord,
   createWishlistRecord,
   createWishReservationRecord,
@@ -1503,6 +1504,28 @@ export default function App({ initialRouteOverride = null }) {
     setIsWishlistSubmitting(false);
   }
 
+  async function copyUnreservedWishes(sourceWishlistId, targetWishlistId) {
+    if (!sourceWishlistId || !targetWishlistId || sourceWishlistId === targetWishlistId) {
+      showToast("Выбери другой вишлист.", "error");
+      return false;
+    }
+
+    setIsWishlistSubmitting(true);
+
+    const { data, error } = await copyUnreservedWishesToWishlist(sourceWishlistId, targetWishlistId);
+
+    setIsWishlistSubmitting(false);
+
+    if (error) {
+      showToast("Не удалось перенести подарки.", "error");
+      return false;
+    }
+
+    const copied = Number(data?.copied || 0);
+    showToast(copied > 0 ? `Перенесено: ${copied}` : "Нет свободных подарков для переноса");
+    return true;
+  }
+
   function onWishInputChange(event) {
     const { name, value } = event.target;
     setForm((prev) => ({
@@ -2132,6 +2155,7 @@ export default function App({ initialRouteOverride = null }) {
             onOpenWishlistLink={openWishlistByShareLink}
             onCopyShareLink={openWishlistShareSheet}
             onDeleteWishlist={requestDeleteWishlist}
+            onCopyUnreservedWishes={copyUnreservedWishes}
           />
         ) : (
           <WishlistPage

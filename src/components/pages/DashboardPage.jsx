@@ -14,7 +14,8 @@ export function DashboardPage({
   onOpenWishlist,
   onOpenWishlistLink,
   onCopyShareLink,
-  onDeleteWishlist
+  onDeleteWishlist,
+  onCopyUnreservedWishes
 }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newWishlistTitle, setNewWishlistTitle] = useState("");
@@ -24,6 +25,8 @@ export function DashboardPage({
   const [isCelebrationMenuOpen, setIsCelebrationMenuOpen] = useState(false);
   const [isEventDatePickerOpen, setIsEventDatePickerOpen] = useState(false);
   const [openWishlistMenuId, setOpenWishlistMenuId] = useState(null);
+  const [transferWishlist, setTransferWishlist] = useState(null);
+  const [transferTargetWishlistId, setTransferTargetWishlistId] = useState("");
   const celebrationMenuRef = useRef(null);
   const wishlistMenuRef = useRef(null);
 
@@ -77,7 +80,7 @@ export function DashboardPage({
   }, [openWishlistMenuId]);
 
   useEffect(() => {
-    if (typeof document === "undefined" || !isCreateModalOpen) {
+    if (typeof document === "undefined" || (!isCreateModalOpen && !transferWishlist)) {
       return undefined;
     }
 
@@ -92,7 +95,7 @@ export function DashboardPage({
       documentElement.style.overflow = previousHtmlOverflow;
       body.style.overflow = previousBodyOverflow;
     };
-  }, [isCreateModalOpen]);
+  }, [isCreateModalOpen, transferWishlist]);
 
   function getCelebrationLabel(wishlist) {
     if (!wishlist) {
@@ -198,6 +201,21 @@ export function DashboardPage({
     setIsCreateModalOpen(false);
   }
 
+  function openTransferModal(wishlist) {
+    const firstTarget = wishlists.find((item) => item.id !== wishlist.id);
+    setTransferWishlist(wishlist);
+    setTransferTargetWishlistId(firstTarget?.id || "");
+    setOpenWishlistMenuId(null);
+  }
+
+  function closeTransferModal() {
+    if (isSubmitting) {
+      return;
+    }
+    setTransferWishlist(null);
+    setTransferTargetWishlistId("");
+  }
+
   function selectCelebration(value) {
     setCelebrationType(value);
     setIsCelebrationMenuOpen(false);
@@ -249,6 +267,24 @@ export function DashboardPage({
       closeCreateModal();
     }
   }
+
+  async function submitTransfer(event) {
+    event.preventDefault();
+
+    if (!transferWishlist?.id || !transferTargetWishlistId || isSubmitting) {
+      return;
+    }
+
+    const success = await onCopyUnreservedWishes(transferWishlist.id, transferTargetWishlistId);
+
+    if (success) {
+      closeTransferModal();
+    }
+  }
+
+  const transferTargetWishlists = transferWishlist
+    ? wishlists.filter((wishlist) => wishlist.id !== transferWishlist.id)
+    : [];
 
   return (
     <section className="admin-section dashboard-workspace" id="dashboard">
@@ -307,6 +343,14 @@ export function DashboardPage({
 
                   {openWishlistMenuId === wishlist.id ? (
                     <div className="wishlist-tile-menu-dropdown">
+                      <button
+                        type="button"
+                        className="wishlist-tile-menu-item"
+                        onClick={() => openTransferModal(wishlist)}
+                        disabled={isSubmitting || wishlists.length < 2}
+                      >
+                        Перенести подарки
+                      </button>
                       <button
                         type="button"
                         className="wishlist-tile-menu-item wishlist-tile-menu-item-danger"
@@ -451,6 +495,50 @@ export function DashboardPage({
                   {isSubmitting ? "Создаем..." : "Создать"}
                 </button>
                 <button type="button" className="button-secondary" onClick={closeCreateModal}>
+                  Отмена
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {transferWishlist ? (
+        <div className="donation-modal-backdrop" onClick={closeTransferModal}>
+          <div className="donation-modal wishlist-transfer-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Перенести неподаренные подарки</h3>
+            <p className="donation-modal-title">Скопируем подарки без участников из «{transferWishlist.title}».</p>
+
+            <form className="donation-form" onSubmit={submitTransfer}>
+              <label>
+                В какой вишлист
+                <select
+                  value={transferTargetWishlistId}
+                  onChange={(event) => setTransferTargetWishlistId(event.target.value)}
+                  required
+                  disabled={isSubmitting || transferTargetWishlists.length === 0}
+                >
+                  {transferTargetWishlists.map((wishlist) => (
+                    <option value={wishlist.id} key={wishlist.id}>
+                      {wishlist.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {transferTargetWishlists.length === 0 ? (
+                <p className="wishlist-transfer-empty">Сначала создай еще один вишлист.</p>
+              ) : null}
+
+              <div className="donation-actions">
+                <button
+                  type="submit"
+                  className="button-primary"
+                  disabled={isSubmitting || !transferTargetWishlistId || transferTargetWishlists.length === 0}
+                >
+                  {isSubmitting ? "Переносим..." : "Перенести"}
+                </button>
+                <button type="button" className="button-secondary" onClick={closeTransferModal} disabled={isSubmitting}>
                   Отмена
                 </button>
               </div>

@@ -1342,6 +1342,73 @@ app.get("/api/wishlists/:wishlistId/wishes", requireAuth, async (req, res, next)
   }
 });
 
+app.post("/api/wishlists/:wishlistId/copy-unreserved-wishes", requireAuth, async (req, res, next) => {
+  const client = await pool.connect();
+
+  try {
+    const { wishlistId } = req.params;
+    const targetWishlistId = req.body?.target_wishlist_id;
+
+    if (!targetWishlistId || targetWishlistId === wishlistId) {
+      return res.status(400).json({ error: "target wishlist is required" });
+    }
+
+    await client.query("BEGIN");
+
+    const access = await client.query(
+      `SELECT id
+       FROM wishlists
+       WHERE owner_id = $1 AND id = ANY($2::uuid[]);`,
+      [req.authUser.id, [wishlistId, targetWishlistId]]
+    );
+    const accessibleIds = new Set(access.rows.map((row) => row.id));
+
+    if (!accessibleIds.has(wishlistId) || !accessibleIds.has(targetWishlistId)) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "wishlist not found" });
+    }
+
+    const hasImageCol = await hasWishImageColumn();
+    const result = hasImageCol
+      ? await client.query(
+          `INSERT INTO wishes (wishlist_id, title, note, tag, price, url, image_url)
+           SELECT $2, w.title, w.note, w.tag, w.price, w.url, w.image_url
+           FROM wishes w
+           WHERE w.wishlist_id = $1
+             AND NOT EXISTS (
+               SELECT 1
+               FROM wish_reservations wr
+               WHERE wr.wish_id = w.id
+             )
+           ORDER BY w.created_at DESC
+           RETURNING id, wishlist_id, title, note, tag, price, url, image_url, created_at;`,
+          [wishlistId, targetWishlistId]
+        )
+      : await client.query(
+          `INSERT INTO wishes (wishlist_id, title, note, tag, price, url)
+           SELECT $2, w.title, w.note, w.tag, w.price, w.url
+           FROM wishes w
+           WHERE w.wishlist_id = $1
+             AND NOT EXISTS (
+               SELECT 1
+               FROM wish_reservations wr
+               WHERE wr.wish_id = w.id
+             )
+           ORDER BY w.created_at DESC
+           RETURNING id, wishlist_id, title, note, tag, price, url, '' AS image_url, created_at;`,
+          [wishlistId, targetWishlistId]
+        );
+
+    await client.query("COMMIT");
+    return res.json({ copied: result.rowCount, wishes: result.rows });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return next(error);
+  } finally {
+    client.release();
+  }
+});
+
 app.get("/api/wishlists/:wishlistId/rules", requireAuth, async (req, res, next) => {
   try {
     const { wishlistId } = req.params;

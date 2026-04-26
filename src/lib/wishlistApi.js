@@ -363,6 +363,13 @@ export function updateWishlistRecord(wishlistId, payload) {
   });
 }
 
+export function copyUnreservedWishesToWishlist(sourceWishlistId, targetWishlistId) {
+  return request(`/api/wishlists/${sourceWishlistId}/copy-unreserved-wishes`, {
+    method: "POST",
+    body: { target_wishlist_id: targetWishlistId }
+  });
+}
+
 export function createWishReservationRecord(payload) {
   return request("/api/reservations", {
     method: "POST",
