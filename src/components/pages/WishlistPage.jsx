@@ -586,16 +586,24 @@ export function WishlistPage({
         </div>
       </section>
 
-      <section className="guide-section guide-section-single" id="gift-guide">
-        <div className="guide-card contact-card guide-card-single">
-          <h2>Ничего не выбрал?</h2>
-          <p>Даже если подаришь что-то не из списка, мне всё равно будет приятно. Главное, чтобы от души.</p>
-        </div>
-      </section>
+      {canEdit ? (
+        <section className="guide-section guide-section-single" id="gift-guide">
+          <div className="guide-card contact-card guide-card-single">
+            <h2>Ничего не выбрал?</h2>
+            <p>Даже если подаришь что-то не из списка, мне всё равно будет приятно. Главное, чтобы от души.</p>
+          </div>
+        </section>
+      ) : (
+        <section className="shared-closing-section" id="gift-guide" aria-label="Завершение вишлиста">
+          <div className="guide-card contact-card guide-card-single shared-closing-note">
+            <h2>Ничего не выбрал?</h2>
+            <p>Даже если подаришь что-то не из списка, мне всё равно будет приятно. Главное, чтобы от души.</p>
+          </div>
 
-      {!canEdit ? (
-        <section className="shared-promo-section" aria-label="Создание своего вишлиста">
-          <div className="shared-promo-card">
+          <div className="shared-promo-card shared-closing-promo">
+            <span className="shared-closing-mark shared-closing-mark-gift" aria-hidden="true">
+              <img src="/branding/wishlist-note-promo.webp" alt="" loading="lazy" width={96} height={96} />
+            </span>
             <h2>Хочешь такой же вишлист?</h2>
             <p>Создай свой и поделись ссылкой с близкими.</p>
             <button type="button" className="button-primary shared-promo-button" onClick={onOpenLandingRegister}>
@@ -603,7 +611,7 @@ export function WishlistPage({
             </button>
           </div>
         </section>
-      ) : null}
+      )}
 
       {canEdit && isRulesEditorOpen ? (
         <div className="donation-modal-backdrop" onClick={closeRulesEditor}>
