@@ -12,8 +12,10 @@ import {
   createShareToken,
   formatMoney,
   getRouteFromLocation,
+  getBirthdayEventDate,
   getLastActiveWishlistId,
   getWishlistEditPath,
+  getWishlistEventDate,
   getUserDisplayName,
   getWishDonated,
   getWishParticipants,
@@ -1335,7 +1337,10 @@ export default function App({ initialRouteOverride = null }) {
       setWishlistsError("Укажи свой вариант праздника.");
       return false;
     }
-    if (celebrationType !== "birthday" && !eventDate) {
+    const targetEventDate =
+      celebrationType === "birthday" ? eventDate || getBirthdayEventDate(currentUser.birthday) : eventDate;
+
+    if (!targetEventDate) {
       setWishlistsError("Укажи дату события.");
       return false;
     }
@@ -1348,7 +1353,7 @@ export default function App({ initialRouteOverride = null }) {
       title,
       celebration_type: celebrationType,
       custom_celebration: celebrationType === "custom" ? customCelebration : null,
-      event_date: celebrationType === "birthday" ? null : eventDate,
+      event_date: targetEventDate,
       theme: defaultWishlistTheme
     });
 
@@ -1358,7 +1363,7 @@ export default function App({ initialRouteOverride = null }) {
       return false;
     }
 
-    const next = [...wishlists, data];
+    const next = [data, ...wishlists];
     setWishlists(next);
     await loadDashboardStats(next);
     await selectWishlist(data);
@@ -1385,7 +1390,13 @@ export default function App({ initialRouteOverride = null }) {
       setWishlistsError("Укажи свой вариант праздника.");
       return false;
     }
-    if (celebrationType !== "birthday" && !eventDate) {
+    const existingWishlist = wishlists.find((wishlist) => wishlist.id === wishlistId) || null;
+    const targetEventDate =
+      celebrationType === "birthday"
+        ? eventDate || getWishlistEventDate(existingWishlist, currentUser.birthday) || getBirthdayEventDate(currentUser.birthday)
+        : eventDate;
+
+    if (!targetEventDate) {
       setWishlistsError("Укажи дату события.");
       return false;
     }
@@ -1397,7 +1408,7 @@ export default function App({ initialRouteOverride = null }) {
       title,
       celebration_type: celebrationType,
       custom_celebration: celebrationType === "custom" ? customCelebration : null,
-      event_date: celebrationType === "birthday" ? null : eventDate,
+      event_date: targetEventDate,
       theme
     });
 
@@ -2013,9 +2024,8 @@ export default function App({ initialRouteOverride = null }) {
     sharedCelebrationType === "custom"
       ? sharedWishlistMeta?.custom_celebration || "Мой праздник"
       : celebrationOptions.find((item) => item.value === sharedCelebrationType)?.label || "Мой день рождения";
-  const countdownDate = currentCelebrationType === "birthday" ? currentUser?.birthday || "" : currentWishlist?.event_date || "";
-  const sharedCountdownDate =
-    sharedCelebrationType === "birthday" ? sharedWishlistMeta?.owner_birthday || "" : sharedWishlistMeta?.event_date || "";
+  const countdownDate = getWishlistEventDate(currentWishlist, currentUser?.birthday || "");
+  const sharedCountdownDate = getWishlistEventDate(sharedWishlistMeta, sharedWishlistMeta?.owner_birthday || "");
   const sharedOwnerFirstName = sharedWishlistMeta?.owner_first_name || "";
   const activeWishlistThemeId =
     page === "shared"
@@ -2130,7 +2140,7 @@ export default function App({ initialRouteOverride = null }) {
             currentWishlist={currentWishlist}
             onOpenWish={openWishModal}
             countdownDate={page === "shared" ? sharedCountdownDate : countdownDate}
-            isRecurringEvent={page === "shared" ? sharedCelebrationType === "birthday" : currentCelebrationType === "birthday"}
+            isRecurringEvent={false}
             eventTitle={page === "shared" ? sharedCelebrationTitle : celebrationTitle}
             ownerFirstName={page === "shared" ? sharedOwnerFirstName : currentUser?.firstName || ""}
             canEdit={page !== "shared"}

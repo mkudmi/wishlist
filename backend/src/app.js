@@ -1222,7 +1222,7 @@ app.get("/api/wishlists", requireAuth, async (req, res, next) => {
       `SELECT id, title, celebration_type, custom_celebration, event_date, theme, share_token, created_at
        FROM wishlists
        WHERE owner_id = $1
-       ORDER BY created_at ASC;`,
+       ORDER BY created_at DESC;`,
       [req.authUser.id]
     );
     res.json(rows);
@@ -1385,15 +1385,15 @@ app.post("/api/wishes", requireAuth, async (req, res, next) => {
   try {
     const wishlistId = req.body?.wishlist_id;
     const title = normalizeName(req.body?.title);
-    const note = normalizeName(req.body?.note);
+    const note = normalizeName(String(req.body?.note || ""));
     const tag = normalizeName(req.body?.tag) || "Без категории";
     const price = String(req.body?.price || "").trim();
     const url = String(req.body?.url || "").trim();
     const imageUrlFromBody = typeof req.body?.image_url === "string" ? req.body.image_url : null;
     const imageUrl = imageUrlFromBody !== null ? imageUrlFromBody : (url ? await fetchWishPreviewImageUrl(url) : "");
 
-    if (!wishlistId || !title || !note) {
-      return res.status(400).json({ error: "wishlist_id, title and note are required" });
+    if (!wishlistId || !title) {
+      return res.status(400).json({ error: "wishlist_id and title are required" });
     }
 
     const access = await pool.query("SELECT id FROM wishlists WHERE id = $1 AND owner_id = $2", [wishlistId, req.authUser.id]);
@@ -1642,7 +1642,7 @@ app.get("/api/link-preview-image", async (req, res, next) => {
 app.get("/api/shared/:token/meta", async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT wl.id, wl.title, wl.celebration_type, wl.custom_celebration, wl.event_date, wl.theme,
+      `SELECT wl.id, wl.title, wl.celebration_type, wl.custom_celebration, wl.event_date, wl.theme, wl.created_at,
               u.first_name AS owner_first_name, u.birthday AS owner_birthday
        FROM wishlists wl
        JOIN users u ON u.id = wl.owner_id

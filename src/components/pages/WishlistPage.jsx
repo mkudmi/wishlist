@@ -538,7 +538,7 @@ export function WishlistPage({
                   {renderWishImageBlock(wish.title, wish.imageUrl)}
                   <div className="wish-topline">
                     <span className="wish-tag">{wish.tag}</span>
-                    <span className="wish-price">{wish.price || "Цена не указана"}</span>
+                    <span className="wish-price">{wish.price ? `≈ ${wish.price}` : "Цена не указана"}</span>
                   </div>
                   <h3>{wish.title}</h3>
                   <p className="wish-note">{wish.note}</p>

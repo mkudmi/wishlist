@@ -548,8 +548,14 @@
 }
 
 .wish-editor-image-wrap .wish-image-placeholder-gift {
-  width: 54px;
-  transform: scale(1.22);
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  object-position: center;
+  transform: translateY(-50%);
 }
 
 .wish-editor-image-wrap .wish-image-placeholder-cta {

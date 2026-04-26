@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BirthdayPickerModal } from "../BirthdayPickerModal";
 import { celebrationOptions } from "../../config/constants";
-import { formatDateToDdMmYyyy, normalizeStorageDate } from "../../lib/helpers";
+import { formatDateToDdMmYyyy, getWishlistEventDate, normalizeStorageDate } from "../../lib/helpers";
 
 export function DashboardPage({
   wishlists,
@@ -120,7 +120,7 @@ export function DashboardPage({
   }
 
   function getDaysUntilEvent(wishlist, { includePast = false } = {}) {
-    const eventSourceDate = wishlist?.celebration_type === "birthday" ? userBirthday : wishlist?.event_date;
+    const eventSourceDate = getWishlistEventDate(wishlist, userBirthday);
     const normalizedDate = normalizeStorageDate(eventSourceDate);
     if (!normalizedDate) {
       return null;
@@ -130,12 +130,6 @@ export function DashboardPage({
     const now = new Date();
     const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
     const dayMs = 24 * 60 * 60 * 1000;
-
-    if (wishlist?.celebration_type === "birthday") {
-      const thisYearTargetUtc = Date.UTC(now.getFullYear(), month - 1, day);
-      const nextTargetUtc = thisYearTargetUtc >= todayUtc ? thisYearTargetUtc : Date.UTC(now.getFullYear() + 1, month - 1, day);
-      return Math.round((nextTargetUtc - todayUtc) / dayMs);
-    }
 
     const targetUtc = Date.UTC(year, month - 1, day);
     const diffDays = Math.round((targetUtc - todayUtc) / dayMs);

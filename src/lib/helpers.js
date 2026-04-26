@@ -174,6 +174,53 @@ export function parseDdMmYyyyToStorageDate(displayDate) {
   return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+export function getBirthdayEventDate(birthdayValue, referenceDateValue = new Date()) {
+  const birthdayDate = normalizeStorageDate(birthdayValue);
+  if (!birthdayDate) {
+    return "";
+  }
+
+  const referenceDate = normalizeStorageDate(referenceDateValue) || new Date().toISOString().slice(0, 10);
+  const [, monthString, dayString] = birthdayDate.split("-");
+  const [referenceYearString] = referenceDate.split("-");
+  const referenceYear = Number(referenceYearString);
+  const month = Number(monthString);
+  const day = Number(dayString);
+
+  if (!Number.isFinite(referenceYear) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return "";
+  }
+
+  const referenceStart = new Date(referenceYear, Number(referenceDate.slice(5, 7)) - 1, Number(referenceDate.slice(8, 10)));
+  let target = new Date(referenceYear, month - 1, day);
+
+  if (target < referenceStart) {
+    target = new Date(referenceYear + 1, month - 1, day);
+  }
+
+  const targetYear = target.getFullYear();
+  const targetMonth = String(target.getMonth() + 1).padStart(2, "0");
+  const targetDay = String(target.getDate()).padStart(2, "0");
+  return `${targetYear}-${targetMonth}-${targetDay}`;
+}
+
+export function getWishlistEventDate(wishlist, userBirthday) {
+  if (!wishlist) {
+    return "";
+  }
+
+  const eventDate = normalizeStorageDate(wishlist.event_date);
+  if (eventDate) {
+    return eventDate;
+  }
+
+  if (wishlist.celebration_type === "birthday") {
+    return getBirthdayEventDate(userBirthday, wishlist.created_at || new Date());
+  }
+
+  return "";
+}
+
 export function toGenitiveFirstName(name) {
   const value = String(name || "").trim();
   if (!value) {

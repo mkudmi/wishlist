@@ -75,8 +75,10 @@
   }
 
   .wish-editor-image-wrap .wish-image-placeholder-gift {
-    width: 46px;
-    transform: scale(1.22);
+    left: 14px;
+    width: 58px;
+    height: 58px;
+    transform: translateY(-50%);
   }
 
   .wish-editor-image-wrap .wish-image-placeholder-plus {
