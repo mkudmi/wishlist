@@ -12,12 +12,14 @@ const sharedPromoVariants = [
   {
     kicker: "Блин, прикольно",
     title: "Надо тоже такой сделать",
-    copy: "Собери свои хотелки в одном месте, а не держи всё в заметках и в голове."
+    copy: "Собери свои хотелки в одном месте, а не держи всё в заметках и в голове.",
+    image: "/branding/wishlist-note-promo.webp"
   },
   {
     kicker: "Айфон хочу",
     title: "А вдруг подарят?",
-    copy: "Создай свой вишлист и добавляй даже самые безумные желания."
+    copy: "Создай свой вишлист и добавляй даже самые безумные желания.",
+    image: "/branding/wishlist-phone-promo.webp"
   },
   {
     kicker: "Опять книга?",
@@ -518,12 +520,23 @@ export function WishlistPage({
             if (wish.isSharedPromo) {
               return (
                 <article className="wish-card wish-card-promo shared-promo-card" key={wish.id}>
-                  <p className="shared-promo-kicker">{sharedPromoVariant.kicker}</p>
-                  <h3>{sharedPromoVariant.title}</h3>
-                  <p className="wish-card-promo-copy">{sharedPromoVariant.copy}</p>
-                  <button type="button" className="wish-open-button" onClick={onOpenLandingRegister}>
-                    Создать вишлист
-                  </button>
+                  <div className="shared-promo-content">
+                    <p className="shared-promo-kicker">{sharedPromoVariant.kicker}</p>
+                    <h3>{sharedPromoVariant.title}</h3>
+                    <p className="wish-card-promo-copy">{sharedPromoVariant.copy}</p>
+                    <button type="button" className="wish-open-button" onClick={onOpenLandingRegister}>
+                      Создать вишлист
+                    </button>
+                  </div>
+                  <div className="shared-promo-visual" aria-hidden="true">
+                    <img
+                      src={sharedPromoVariant.image || "/branding/gift-box.webp"}
+                      alt=""
+                      loading="lazy"
+                      width={220}
+                      height={220}
+                    />
+                  </div>
                 </article>
               );
             }
