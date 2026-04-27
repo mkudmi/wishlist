@@ -14,9 +14,14 @@ const YANDEX_USER_INFO_URL = "https://login.yandex.ru/info?format=json";
 const WISHLIST_THEME_VALUES = new Set(["sand", "sage", "berry", "sky", "midnight"]);
 let wishImageColumnAvailable = null;
 
+app.set("etag", false);
 app.use(cors({ origin: config.corsOrigin === "*" ? true : config.corsOrigin }));
 app.use(express.json({ limit: "5mb" }));
 app.use(morgan("combined"));
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 
 const SESSION_TTL_DAYS = 30;
 
