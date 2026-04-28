@@ -174,13 +174,22 @@ export function parseDdMmYyyyToStorageDate(displayDate) {
   return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function getLocalStorageDate(dateValue = new Date()) {
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return `${String(date.getFullYear()).padStart(4, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export function getBirthdayEventDate(birthdayValue, referenceDateValue = new Date()) {
   const birthdayDate = normalizeStorageDate(birthdayValue);
   if (!birthdayDate) {
     return "";
   }
 
-  const referenceDate = normalizeStorageDate(referenceDateValue) || new Date().toISOString().slice(0, 10);
+  const referenceDate = normalizeStorageDate(referenceDateValue) || getLocalStorageDate();
   const [, monthString, dayString] = birthdayDate.split("-");
   const [referenceYearString] = referenceDate.split("-");
   const referenceYear = Number(referenceYearString);
@@ -210,7 +219,7 @@ export function getWishlistEventDate(wishlist, userBirthday) {
   }
 
   if (wishlist.celebration_type === "birthday") {
-    return getBirthdayEventDate(userBirthday);
+    return getBirthdayEventDate(userBirthday, wishlist.created_at || new Date());
   }
 
   const eventDate = normalizeStorageDate(wishlist.event_date);
