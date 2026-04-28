@@ -12,7 +12,6 @@ import {
   createShareToken,
   formatMoney,
   getRouteFromLocation,
-  getBirthdayEventDate,
   getLastActiveWishlistId,
   getWishlistEditPath,
   getWishlistEventDate,
@@ -1338,10 +1337,9 @@ export default function App({ initialRouteOverride = null }) {
       setWishlistsError("Укажи свой вариант праздника.");
       return false;
     }
-    const targetEventDate =
-      celebrationType === "birthday" ? eventDate || getBirthdayEventDate(currentUser.birthday) : eventDate;
+    const targetEventDate = celebrationType === "birthday" ? null : eventDate;
 
-    if (!targetEventDate) {
+    if (celebrationType !== "birthday" && !targetEventDate) {
       setWishlistsError("Укажи дату события.");
       return false;
     }
@@ -1391,13 +1389,9 @@ export default function App({ initialRouteOverride = null }) {
       setWishlistsError("Укажи свой вариант праздника.");
       return false;
     }
-    const existingWishlist = wishlists.find((wishlist) => wishlist.id === wishlistId) || null;
-    const targetEventDate =
-      celebrationType === "birthday"
-        ? eventDate || getWishlistEventDate(existingWishlist, currentUser.birthday) || getBirthdayEventDate(currentUser.birthday)
-        : eventDate;
+    const targetEventDate = celebrationType === "birthday" ? null : eventDate;
 
-    if (!targetEventDate) {
+    if (celebrationType !== "birthday" && !targetEventDate) {
       setWishlistsError("Укажи дату события.");
       return false;
     }

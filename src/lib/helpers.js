@@ -209,13 +209,13 @@ export function getWishlistEventDate(wishlist, userBirthday) {
     return "";
   }
 
+  if (wishlist.celebration_type === "birthday") {
+    return getBirthdayEventDate(userBirthday);
+  }
+
   const eventDate = normalizeStorageDate(wishlist.event_date);
   if (eventDate) {
     return eventDate;
-  }
-
-  if (wishlist.celebration_type === "birthday") {
-    return getBirthdayEventDate(userBirthday, wishlist.created_at || new Date());
   }
 
   return "";

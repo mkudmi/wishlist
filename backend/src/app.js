@@ -1279,7 +1279,8 @@ app.patch("/api/wishlists/:id", requireAuth, async (req, res, next) => {
     const title = req.body?.title;
     const celebrationType = req.body?.celebration_type;
     const customCelebration = req.body?.custom_celebration;
-    const eventDate = req.body?.event_date;
+    const hasEventDate = Object.prototype.hasOwnProperty.call(req.body || {}, "event_date");
+    const eventDate = hasEventDate ? req.body.event_date || null : null;
     const theme = normalizeWishlistTheme(req.body?.theme, { allowMissing: true });
     const shareToken = req.body?.share_token;
 
@@ -1292,12 +1293,12 @@ app.patch("/api/wishlists/:id", requireAuth, async (req, res, next) => {
          title = COALESCE($3, title),
          celebration_type = COALESCE($4, celebration_type),
          custom_celebration = COALESCE($5, custom_celebration),
-         event_date = COALESCE($6, event_date),
+         event_date = CASE WHEN $9 THEN $6::date ELSE event_date END,
          theme = COALESCE($7, theme),
          share_token = COALESCE($8, share_token)
        WHERE id = $1 AND owner_id = $2
        RETURNING id, title, celebration_type, custom_celebration, event_date, theme, share_token, created_at;`,
-      [id, req.authUser.id, title, celebrationType, customCelebration, eventDate, theme, shareToken]
+      [id, req.authUser.id, title, celebrationType, customCelebration, eventDate, theme, shareToken, hasEventDate]
     );
 
     res.json(rows[0]);
