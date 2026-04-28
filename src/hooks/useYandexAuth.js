@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { getApiBase, setAuthToken } from "../lib/wishlistApi";
+import { getApiBase } from "../lib/wishlistApi";
 
 export function useYandexAuth({ onYandexAuth, onYandexError }) {
   useEffect(() => {
@@ -17,9 +17,8 @@ export function useYandexAuth({ onYandexAuth, onYandexError }) {
         return;
       }
 
-      if (payload.token) {
-        setAuthToken(payload.token);
-        await onYandexAuth(payload.token);
+      if (payload.authenticated) {
+        await onYandexAuth();
         return;
       }
 

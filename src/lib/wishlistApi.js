@@ -1,6 +1,6 @@
-export const AUTH_TOKEN_KEY = "wishlist-auth-token-v1";
-export const AUTH_EXPIRED_EVENT = "wishlist:auth-expired";
-const GUEST_SESSION_KEY = "wishlist-guest-session-v1";
+const GUEST_COOKIE_NAME = "wishlist_guest";
+const CSRF_COOKIE_NAME = "wishlist_csrf";
+const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 function getApiBaseUrl() {
   const envUrl = import.meta.env?.VITE_API_URL;
@@ -30,22 +30,30 @@ function getApiBaseUrl() {
 
 const API_BASE = getApiBaseUrl();
 
-export function getAuthToken() {
-  if (typeof window === "undefined") {
-    return null;
+function getCookieValue(name) {
+  if (typeof document === "undefined") {
+    return "";
   }
-  return localStorage.getItem(AUTH_TOKEN_KEY);
+
+  const value = document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${name}=`))
+    ?.slice(name.length + 1) || "";
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
-export function setAuthToken(token) {
-  if (typeof window === "undefined") {
+function setClientCookie(name, value, maxAgeSeconds) {
+  if (typeof document === "undefined") {
     return;
   }
-  if (!token) {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    return;
-  }
-  localStorage.setItem(AUTH_TOKEN_KEY, token);
+
+  const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secureFlag}`;
 }
 
 function makeGuestSessionId() {
@@ -59,12 +67,12 @@ export function getOrCreateGuestSessionId() {
   if (typeof window === "undefined") {
     return null;
   }
-  const existing = localStorage.getItem(GUEST_SESSION_KEY);
-  if (existing) {
-    return existing;
+  const cookieGuestSessionId = getCookieValue(GUEST_COOKIE_NAME);
+  if (cookieGuestSessionId) {
+    return cookieGuestSessionId;
   }
   const created = makeGuestSessionId();
-  localStorage.setItem(GUEST_SESSION_KEY, created);
+  setClientCookie(GUEST_COOKIE_NAME, created, 365 * 24 * 60 * 60);
   return created;
 }
 
@@ -74,8 +82,20 @@ export function resetGuestSessionId() {
   }
 
   const next = makeGuestSessionId();
-  localStorage.setItem(GUEST_SESSION_KEY, next);
+  setClientCookie(GUEST_COOKIE_NAME, next, 365 * 24 * 60 * 60);
   return next;
+}
+
+async function ensureSessionContext() {
+  const response = await fetch(`${API_BASE}/api/session/context`, {
+    method: "GET",
+    credentials: "include"
+  });
+  if (!response.ok) {
+    return null;
+  }
+
+  return response.json();
 }
 
 function toApiError(message, extra = {}) {
@@ -86,24 +106,33 @@ function toApiError(message, extra = {}) {
 }
 
 async function request(path, options = {}) {
-  const token = getAuthToken();
-  const guestSessionId = getOrCreateGuestSessionId();
+  const method = options.method || "GET";
+  const isSafeMethod = CSRF_SAFE_METHODS.has(method.toUpperCase());
+  if (!isSafeMethod && !getCookieValue(CSRF_COOKIE_NAME)) {
+    await ensureSessionContext();
+  }
+
+  const guestSessionId = getCookieValue(GUEST_COOKIE_NAME) || getOrCreateGuestSessionId();
   const headers = {
     ...(options.body ? { "Content-Type": "application/json" } : {}),
     ...(options.headers || {})
   };
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  if (!token && guestSessionId) {
+  if (guestSessionId) {
     headers["X-Guest-Session-Id"] = guestSessionId;
+  }
+  if (!isSafeMethod) {
+    const csrfToken = getCookieValue(CSRF_COOKIE_NAME);
+    if (csrfToken) {
+      headers["X-CSRF-Token"] = csrfToken;
+    }
   }
 
   try {
     const response = await fetch(`${API_BASE}${path}`, {
-      method: options.method || "GET",
+      method,
       headers,
+      credentials: "include",
       body: options.body ? JSON.stringify(options.body) : undefined
     });
 
@@ -119,13 +148,6 @@ async function request(path, options = {}) {
 
     if (!response.ok) {
       const errorCode = payload?.error || null;
-
-      if (response.status === 401 && token) {
-        setAuthToken(null);
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
-        }
-      }
 
       return {
         data: null,
@@ -153,9 +175,6 @@ export async function registerUser(payload) {
     method: "POST",
     body: payload
   });
-  if (result.data?.token) {
-    setAuthToken(result.data.token);
-  }
   return {
     data: result.data?.user || null,
     error: result.error
@@ -167,9 +186,6 @@ export async function loginUser(payload) {
     method: "POST",
     body: payload
   });
-  if (result.data?.token) {
-    setAuthToken(result.data.token);
-  }
   return {
     data: result.data?.user || null,
     error: result.error
@@ -205,9 +221,6 @@ export async function loginWithGoogleCredential(credential) {
     method: "POST",
     body: { credential }
   });
-  if (result.data?.token) {
-    setAuthToken(result.data.token);
-  }
   return {
     data: result.data?.user || null,
     error: result.error
@@ -238,24 +251,18 @@ export async function startYandexIdentityLink(origin) {
 }
 
 export async function logoutUser() {
-  const result = await request("/api/auth/logout", { method: "POST" });
-  setAuthToken(null);
-  return result;
+  return request("/api/auth/logout", { method: "POST" });
 }
 
 export async function deleteCurrentUserAccount() {
-  const result = await request("/api/auth/me", { method: "DELETE" });
-  if (!result.error) {
-    setAuthToken(null);
-  }
-  return result;
+  return request("/api/auth/me", { method: "DELETE" });
 }
 
 export function getApiBase() {
   return API_BASE;
 }
 
-export function fetchCurrentUser() {
+export async function fetchCurrentUser() {
   return request("/api/auth/me");
 }
 

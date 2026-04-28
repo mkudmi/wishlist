@@ -13,9 +13,16 @@ const YANDEX_OAUTH_TOKEN_URL = "https://oauth.yandex.com/token";
 const YANDEX_USER_INFO_URL = "https://login.yandex.ru/info?format=json";
 const WISHLIST_THEME_VALUES = new Set(["sand", "sage", "berry", "sky", "midnight"]);
 let wishImageColumnAvailable = null;
+const SESSION_COOKIE_NAME = "wishlist_session";
+const GUEST_COOKIE_NAME = "wishlist_guest";
+const CSRF_COOKIE_NAME = "wishlist_csrf";
+const SESSION_TTL_DAYS = 30;
+const GUEST_TTL_DAYS = 365;
+const CSRF_SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const COOKIE_SECURE = config.nodeEnv === "production";
 
 app.set("etag", false);
-app.use(cors({ origin: config.corsOrigin === "*" ? true : config.corsOrigin }));
+app.use(cors({ origin: config.corsOrigin === "*" ? true : config.corsOrigin, credentials: true }));
 app.use(express.json({ limit: "5mb" }));
 app.use(morgan("combined"));
 app.use("/api", (_req, res, next) => {
@@ -23,7 +30,8 @@ app.use("/api", (_req, res, next) => {
   next();
 });
 
-const SESSION_TTL_DAYS = 30;
+app.use("/api", ensureBrowserCookies);
+app.use("/api", verifyCsrfToken);
 
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
@@ -98,8 +106,109 @@ function createSessionToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function createBrowserToken(byteLength = 24) {
+  return crypto.randomBytes(byteLength).toString("base64url");
+}
+
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function parseCookies(req) {
+  const header = String(req.headers.cookie || "");
+  if (!header) {
+    return {};
+  }
+
+  return header.split(";").reduce((cookies, part) => {
+    const index = part.indexOf("=");
+    if (index === -1) {
+      return cookies;
+    }
+
+    const key = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    if (!key) {
+      return cookies;
+    }
+
+    try {
+      cookies[key] = decodeURIComponent(value);
+    } catch {
+      cookies[key] = value;
+    }
+    return cookies;
+  }, {});
+}
+
+function getCookie(req, name) {
+  return parseCookies(req)[name] || "";
+}
+
+function getCookieOptions({ httpOnly = true, maxAgeDays = SESSION_TTL_DAYS } = {}) {
+  return {
+    httpOnly,
+    secure: COOKIE_SECURE,
+    sameSite: "lax",
+    path: "/",
+    maxAge: maxAgeDays * 24 * 60 * 60 * 1000
+  };
+}
+
+function getClearCookieOptions({ httpOnly = true } = {}) {
+  return {
+    httpOnly,
+    secure: COOKIE_SECURE,
+    sameSite: "lax",
+    path: "/"
+  };
+}
+
+function setSessionCookie(res, token) {
+  res.cookie(SESSION_COOKIE_NAME, token, getCookieOptions({ httpOnly: true, maxAgeDays: SESSION_TTL_DAYS }));
+}
+
+function clearSessionCookie(res) {
+  res.clearCookie(SESSION_COOKIE_NAME, getClearCookieOptions({ httpOnly: true }));
+}
+
+function setGuestCookie(res, guestSessionId) {
+  res.cookie(GUEST_COOKIE_NAME, guestSessionId, getCookieOptions({ httpOnly: false, maxAgeDays: GUEST_TTL_DAYS }));
+}
+
+function setCsrfCookie(res, csrfToken) {
+  res.cookie(CSRF_COOKIE_NAME, csrfToken, getCookieOptions({ httpOnly: false, maxAgeDays: SESSION_TTL_DAYS }));
+}
+
+function ensureBrowserCookies(req, res, next) {
+  let guestSessionId = getCookie(req, GUEST_COOKIE_NAME);
+  if (!guestSessionId) {
+    guestSessionId = String(req.headers["x-guest-session-id"] || "").trim() || createBrowserToken();
+    setGuestCookie(res, guestSessionId);
+  }
+
+  let csrfToken = getCookie(req, CSRF_COOKIE_NAME);
+  if (!csrfToken) {
+    csrfToken = createBrowserToken();
+    setCsrfCookie(res, csrfToken);
+  }
+
+  req.guestSessionId = guestSessionId;
+  req.csrfToken = csrfToken;
+  return next();
+}
+
+function verifyCsrfToken(req, res, next) {
+  if (CSRF_SAFE_METHODS.has(req.method)) {
+    return next();
+  }
+
+  const headerToken = String(req.headers["x-csrf-token"] || "").trim();
+  if (!headerToken || headerToken !== req.csrfToken) {
+    return res.status(403).json({ error: "csrf_failed" });
+  }
+
+  return next();
 }
 
 function createOauthState(payload, secret) {
@@ -445,18 +554,15 @@ async function createSession(userId) {
   return token;
 }
 
-function getBearerToken(req) {
-  const auth = req.headers.authorization || "";
-  if (!auth.startsWith("Bearer ")) {
-    return null;
-  }
-  return auth.slice(7).trim() || null;
+function getSessionToken(req) {
+  return getCookie(req, SESSION_COOKIE_NAME) || null;
 }
 
 function getGuestSessionId(req) {
   const fromHeader = String(req.headers["x-guest-session-id"] || "").trim();
   const fromBody = String(req.body?.guest_session_id || "").trim();
-  return fromHeader || fromBody || null;
+  const fromCookie = req.guestSessionId || getCookie(req, GUEST_COOKIE_NAME);
+  return fromHeader || fromBody || fromCookie || null;
 }
 
 async function getAuthUserFromToken(token) {
@@ -488,7 +594,7 @@ async function getAuthUserFromToken(token) {
 
 async function requireAuth(req, res, next) {
   try {
-    const token = getBearerToken(req);
+    const token = getSessionToken(req);
     if (!token) {
       return res.status(401).json({ error: "unauthorized" });
     }
@@ -710,6 +816,13 @@ app.get("/api/health", async (_req, res, next) => {
   }
 });
 
+app.get("/api/session/context", (req, res) => {
+  res.json({
+    csrf_token: req.csrfToken,
+    guest_session_id: req.guestSessionId
+  });
+});
+
 app.post("/api/auth/register", async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body?.email);
@@ -745,7 +858,8 @@ app.post("/api/auth/register", async (req, res, next) => {
     await ensurePasswordIdentity(pool, rows[0].id, email);
 
     const token = await createSession(rows[0].id);
-    return res.status(201).json({ token, user: await mapUserWithIdentities(pool, rows[0]) });
+    setSessionCookie(res, token);
+    return res.status(201).json({ user: await mapUserWithIdentities(pool, rows[0]) });
   } catch (error) {
     next(error);
   }
@@ -777,7 +891,8 @@ app.post("/api/auth/login", async (req, res, next) => {
 
     await ensurePasswordIdentity(pool, rows[0].id, email);
     const token = await createSession(rows[0].id);
-    return res.json({ token, user: await mapUserWithIdentities(pool, rows[0]) });
+    setSessionCookie(res, token);
+    return res.json({ user: await mapUserWithIdentities(pool, rows[0]) });
   } catch (error) {
     next(error);
   }
@@ -831,6 +946,7 @@ app.post("/api/auth/change-password", async (req, res, next) => {
 
     await ensurePasswordIdentity(pool, user.id, email);
 
+    clearSessionCookie(res);
     return res.json({ ok: true });
   } catch (error) {
     return next(error);
@@ -875,9 +991,12 @@ app.post("/api/auth/verify-password", async (req, res, next) => {
 
 app.post("/api/auth/logout", requireAuth, async (req, res, next) => {
   try {
-    const token = getBearerToken(req);
-    const tokenHash = hashToken(token);
-    await pool.query("DELETE FROM user_sessions WHERE token_hash = $1", [tokenHash]);
+    const token = getSessionToken(req);
+    if (token) {
+      const tokenHash = hashToken(token);
+      await pool.query("DELETE FROM user_sessions WHERE token_hash = $1", [tokenHash]);
+    }
+    clearSessionCookie(res);
     return res.status(204).end();
   } catch (error) {
     next(error);
@@ -991,7 +1110,8 @@ app.post("/api/auth/google", async (req, res, next) => {
     });
     await client.query("COMMIT");
     const token = await createSession(userRow.id);
-    return res.json({ token, user: await mapUserWithIdentities(pool, userRow) });
+    setSessionCookie(res, token);
+    return res.json({ user: await mapUserWithIdentities(pool, userRow) });
   } catch (error) {
     await client.query("ROLLBACK");
     if (error?.message === "invalid google credential" || error?.message === "google auth is not configured") {
@@ -1146,7 +1266,8 @@ app.get("/api/auth/yandex/callback", async (req, res, next) => {
     });
 
     const token = await createSession(userRow.id);
-    redirectUrl.searchParams.set("token", token);
+    setSessionCookie(res, token);
+    redirectUrl.searchParams.set("authenticated", "true");
     return res.redirect(redirectUrl.toString());
   } catch (callbackError) {
     if (callbackError?.message === "invalid yandex code") {
@@ -1212,6 +1333,7 @@ app.delete("/api/auth/me", requireAuth, async (req, res, next) => {
     }
 
     await client.query("COMMIT");
+    clearSessionCookie(res);
     return res.status(204).end();
   } catch (error) {
     await client.query("ROLLBACK");
@@ -1587,7 +1709,7 @@ app.get("/api/wishlists/:wishlistId/reservations", requireAuth, async (req, res,
 
 app.delete("/api/wishes/:wishId/my-reservations", async (req, res, next) => {
   try {
-    const token = getBearerToken(req);
+    const token = getSessionToken(req);
     const authUser = await getAuthUserFromToken(token);
     const guestSessionId = getGuestSessionId(req);
 
@@ -1639,7 +1761,7 @@ app.post("/api/reservations", async (req, res, next) => {
       return res.status(404).json({ error: "wishlist or wish not found" });
     }
 
-    const token = getBearerToken(req);
+    const token = getSessionToken(req);
     const authUser = await getAuthUserFromToken(token);
 
     if (!checkRows[0].is_public && !authUser) {

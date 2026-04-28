@@ -31,8 +31,6 @@ import {
 } from "./lib/helpers";
 import { buildAppUser } from "./lib/authUser";
 import {
-  AUTH_EXPIRED_EVENT,
-  AUTH_TOKEN_KEY,
   copyUnreservedWishesToWishlist,
   createWishRecord,
   createWishlistRecord,
@@ -44,7 +42,6 @@ import {
   fetchWishPreviewImage,
   getOrCreateGuestSessionId,
   resetGuestSessionId,
-  setAuthToken,
   loginUser,
   loginWithGoogleCredential,
   logoutUser,
@@ -67,6 +64,7 @@ import { AuthFormCard } from "./components/auth/AuthFormCard";
 import { AuthModal } from "./components/auth/AuthModal";
 import { AuthPage } from "./components/pages/AuthPage";
 import { BirthdayPickerModal } from "./components/BirthdayPickerModal";
+import { CookieNotice } from "./components/app/CookieNotice";
 import { DashboardPage } from "./components/pages/DashboardPage";
 import { WishlistPage } from "./components/pages/WishlistPage";
 import { UserBar } from "./components/app/UserBar";
@@ -143,7 +141,6 @@ export default function App({ initialRouteOverride = null }) {
   const [isDonationSubmitting, setIsDonationSubmitting] = useState(false);
   const [guestSessionId, setGuestSessionId] = useState(() => getOrCreateGuestSessionId());
   const toastTimeoutRef = useRef(null);
-  const authExpiryHandledRef = useRef(false);
   const sharedAuthModalRef = useRef(null);
   const wishPreviewRequestsRef = useRef(new Set());
   const siteOrigin = seoSite.origin;
@@ -268,17 +265,6 @@ export default function App({ initialRouteOverride = null }) {
 
     navigate("/dashboard");
     return true;
-  }
-
-  function handleUnauthorizedSession() {
-    if (authExpiryHandledRef.current) {
-      return;
-    }
-
-    authExpiryHandledRef.current = true;
-    clearAuthenticatedState();
-    navigate("/", { replace: true });
-    showToast("Сессия истекла. Войдите снова.", "error", 3000);
   }
 
   async function hydrateSession({ withWishlistSelection = true } = {}) {
@@ -720,45 +706,12 @@ export default function App({ initialRouteOverride = null }) {
   }, []);
 
   useEffect(() => {
-    async function handleStorage(event) {
-      if (event.key !== AUTH_TOKEN_KEY) {
-        return;
-      }
-
-      if (!event.newValue) {
-        clearAuthenticatedState();
-        return;
-      }
-
-      await hydrateSession();
-    }
-
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
-
-  useEffect(() => {
-    function handleAuthExpired() {
-      handleUnauthorizedSession();
-    }
-
-    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
-    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
-  }, []);
-
-  useEffect(() => {
     return () => {
       if (toastTimeoutRef.current) {
         window.clearTimeout(toastTimeoutRef.current);
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (currentUser) {
-      authExpiryHandledRef.current = false;
-    }
-  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -1148,17 +1101,11 @@ export default function App({ initialRouteOverride = null }) {
     }
   }
 
-  async function completeYandexAuth(token) {
+  async function completeYandexAuth() {
     setAuthError("");
     setIsAuthSubmitting(true);
 
     try {
-      if (!token) {
-        throw new Error("Яндекс не вернул локальную сессию.");
-      }
-
-      setAuthToken(token);
-
       const current = await fetchCurrentUser();
       const user = current.data ? buildAppUser(current.data) : null;
       if (!user) {
@@ -1190,7 +1137,7 @@ export default function App({ initialRouteOverride = null }) {
     }
 
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
+    const authenticated = params.get("authenticated");
     const error = params.get("error");
     const linked = params.get("linked");
 
@@ -1198,7 +1145,7 @@ export default function App({ initialRouteOverride = null }) {
       window.opener.postMessage(
         {
           type: "wishlist:yandex-auth-result",
-          token,
+          authenticated,
           error,
           linked
         },
@@ -1208,10 +1155,15 @@ export default function App({ initialRouteOverride = null }) {
       return;
     }
 
-    if (token || linked) {
+    if (authenticated || linked) {
       setAuthError("");
     } else if (error) {
       setAuthError("Не удалось войти через Яндекс.");
+    }
+
+    if (authenticated) {
+      void completeYandexAuth();
+      return;
     }
 
     navigate("/dashboard", { replace: true });
@@ -2353,6 +2305,8 @@ export default function App({ initialRouteOverride = null }) {
           {toast.message}
         </div>
       ) : null}
+
+      {page === "shared" ? <CookieNotice surface="shared" /> : null}
     </div>
   );
 }

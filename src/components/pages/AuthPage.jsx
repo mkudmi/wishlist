@@ -3,9 +3,10 @@ import * as gsapBundle from "gsap";
 import { useGSAP } from "@gsap/react";
 import * as scrollTriggerBundle from "gsap/ScrollTrigger";
 import { seoLandingPages } from "../../config/seoPages";
-import { getApiBase, setAuthToken } from "../../lib/wishlistApi";
+import { getApiBase } from "../../lib/wishlistApi";
 import { AuthFormCard } from "../auth/AuthFormCard";
 import { AuthModal } from "../auth/AuthModal";
+import { CookieNotice } from "../app/CookieNotice";
 import { featureList as defaultFeatureList, flowSteps as defaultFlowSteps, legalLinks } from "../auth/authContent";
 import { useAuthModalBehavior } from "../../hooks/useAuthModalBehavior";
 import { useGoogleIdentity } from "../../hooks/useGoogleIdentity";
@@ -464,6 +465,8 @@ export function AuthPage({
           onClose={closeAuthModal}
         />
       </AuthModal>
+
+      <CookieNotice surface="landing" />
 
       {isPrimaryCtaLoading && currentUser ? (
         <div className="snap-login-wait-backdrop" role="status" aria-live="polite">

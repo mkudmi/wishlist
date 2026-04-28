@@ -1,3 +1,105 @@
+/* Cookie notice */
+.cookie-notice {
+  position: fixed;
+  right: clamp(14px, 3vw, 28px);
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  z-index: 1200;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  width: min(620px, calc(100vw - 28px));
+  padding: 18px 20px;
+  border: 1px solid rgba(125, 88, 43, 0.18);
+  border-radius: 20px;
+  background: rgba(255, 250, 242, 0.96);
+  box-shadow: 0 24px 60px rgba(89, 55, 22, 0.18);
+  backdrop-filter: blur(18px);
+  color: #241f1a;
+}
+
+.cookie-notice-copy {
+  min-width: 0;
+}
+
+.cookie-notice-copy strong {
+  display: block;
+  font-size: 1rem;
+  line-height: 1.25;
+  color: #241f1a;
+}
+
+.cookie-notice-copy p {
+  margin: 6px 0 0;
+  color: #54483d;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.cookie-notice-copy .cookie-notice-meta {
+  font-size: 0.78rem;
+  color: #6b5b4c;
+}
+
+.cookie-notice a {
+  color: #944717;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+}
+
+.cookie-notice a:hover {
+  color: #c96a2c;
+}
+
+.cookie-notice-button {
+  align-self: center;
+  min-height: 44px;
+  padding: 0 22px;
+  border: 1px solid #944717;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ec9552 0%, #c96a2c 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(201, 106, 44, 0.32);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.cookie-notice-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(201, 106, 44, 0.4);
+  filter: brightness(1.04);
+}
+
+.cookie-notice-button:active {
+  transform: translateY(0);
+}
+
+.cookie-notice-button:focus-visible {
+  outline: 2px solid #944717;
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .cookie-notice {
+    left: 10px;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: auto;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .cookie-notice-button {
+    width: 100%;
+  }
+}
+
 :root {
   --color-ink: #241f1a;
   --color-muted: #54483d;
