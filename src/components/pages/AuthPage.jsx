@@ -464,6 +464,24 @@ export function AuthPage({
           onClose={closeAuthModal}
         />
       </AuthModal>
+
+      {isPrimaryCtaLoading && currentUser ? (
+        <div className="snap-login-wait-backdrop" role="status" aria-live="polite">
+          <div className="snap-login-wait-card">
+            <img
+              className="snap-login-wait-image"
+              src="/branding/wishlist-note-promo.webp"
+              alt=""
+              aria-hidden="true"
+              width={112}
+              height={112}
+            />
+            <p className="snap-login-wait-kicker">Уже входим</p>
+            <strong>Ловим твой вишлист за ленточку</strong>
+            <p>Секундочку: подбираем ключик и несем тебя к желаниям.</p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
