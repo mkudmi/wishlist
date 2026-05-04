@@ -336,13 +336,7 @@ export function AuthFormCard({
         <h3 className="snap-auth-title">{title}</h3>
         <p className="auth-subtitle snap-auth-subtitle">{subtitle}</p>
 
-        {isPasswordChange ? (
-          <div className="auth-inline-actions">
-            <button type="button" className="button-secondary auth-inline-button" onClick={() => switchMode("login")} disabled={submitting}>
-              Назад ко входу
-            </button>
-          </div>
-        ) : (
+        {isPasswordChange ? null : (
           <div className="auth-switch snap-auth-switch">
             <button type="button" className={isLogin ? "button-primary" : "button-secondary"} onClick={() => switchMode("login")}>
               Вход
@@ -406,7 +400,7 @@ export function AuthFormCard({
           </div>
 
           {showOauthBlock ? (
-            <div className={`auth-oauth-block${isLogin ? "" : " auth-oauth-block-hidden"}`} aria-hidden={!isLogin}>
+            <div className="auth-oauth-block">
               <div className="auth-divider auth-divider-after-submit" aria-hidden="true" />
 
               <p className="auth-oauth-label">Быстрый вход</p>
@@ -416,8 +410,6 @@ export function AuthFormCard({
                     type="button"
                     className="button-secondary auth-oauth-button auth-yandex-button"
                     onClick={onOpenYandexAuth}
-                    disabled={!isLogin}
-                    tabIndex={isLogin ? 0 : -1}
                     aria-label="Войти через Яндекс ID"
                   >
                     <img className="auth-provider-logo auth-yandex-logo" src={yandexIconSrc} alt="" aria-hidden="true" width={24} height={24} />
@@ -444,8 +436,13 @@ export function AuthFormCard({
               </button>
             ) : null}
 
-            <button type="button" className="auth-dismiss-button" onClick={onClose} disabled={submitting}>
-              Не сейчас
+            <button
+              type="button"
+              className="auth-dismiss-button"
+              onClick={isPasswordChange ? () => switchMode("login") : onClose}
+              disabled={submitting}
+            >
+              {isPasswordChange ? "Назад" : "Не сейчас"}
             </button>
           </div>
         </form>

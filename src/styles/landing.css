@@ -825,9 +825,9 @@ span.snap-accent-word {
 }
 
 .snap-auth-modal {
-  width: min(560px, calc(100vw - 24px));
-  padding: 30px;
-  border-radius: 32px;
+  width: min(500px, calc(100vw - 20px));
+  padding: 22px;
+  border-radius: 28px;
   position: relative;
   overflow: hidden;
   background: linear-gradient(
@@ -853,11 +853,16 @@ span.snap-accent-word {
   display: none;
 }
 
+.snap-auth-card .snap-auth-title {
+  font-size: clamp(2.2rem, 4.2vw, 3.15rem);
+  line-height: 0.94;
+}
+
 .snap-auth-card .auth-switch .button-primary,
 .snap-auth-card .auth-switch .button-secondary {
-  min-height: 46px;
+  min-height: 42px;
   border-radius: 999px;
-  font-size: 0.96rem;
+  font-size: 0.9rem;
   font-weight: 600;
   box-shadow: inset 0 0 0 1px rgba(112, 145, 181, 0.16);
 }
@@ -891,29 +896,29 @@ span.snap-accent-word {
 
 .snap-auth-modal .auth-form {
   display: grid;
-  gap: 14px;
-  margin-top: 4px;
+  gap: 10px;
+  margin-top: 2px;
 }
 
 .snap-auth-modal .auth-form label {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   color: #33475d;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .snap-auth-modal .auth-form input {
   width: 100%;
-  min-height: 54px;
-  border-radius: 18px;
+  min-height: 46px;
+  border-radius: 16px;
   border: 1px solid rgba(112, 145, 181, 0.18);
   background: rgba(255, 255, 255, 0.48);
   color: #203145;
-  padding: 0 16px;
-  font-size: 1rem;
+  padding: 0 14px;
+  font-size: 0.94rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
@@ -930,12 +935,12 @@ span.snap-accent-word {
 }
 
 .snap-auth-modal .auth-form .donation-actions {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .snap-auth-modal .auth-login-actions,
 .snap-auth-modal .auth-register-actions {
-  gap: 10px;
+  gap: 8px;
 }
 
 .snap-auth-modal .auth-login-actions .button-primary,
@@ -950,18 +955,18 @@ span.snap-accent-word {
 
 .snap-auth-modal .auth-form .button-primary,
 .snap-auth-modal .auth-register-nav-button {
-  min-height: 52px;
+  min-height: 46px;
 }
 
 .snap-auth-modal .auth-register-progress {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 2px;
+  gap: 8px;
+  margin-top: 0;
 }
 
 .snap-auth-modal .auth-register-progress span {
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
   background: rgba(132, 173, 219, 0.18);
   overflow: hidden;
@@ -972,19 +977,19 @@ span.snap-accent-word {
 }
 
 .snap-auth-modal .auth-register-step-label {
-  margin: -2px 0 2px;
+  margin: -1px 0 1px;
   color: rgba(95, 113, 136, 0.82);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
 }
 
 .snap-auth-modal .auth-divider {
   position: relative;
   display: flex;
   justify-content: center;
-  margin: 8px 0 0;
+  margin: 4px 0 0;
 }
 
 .snap-auth-modal .auth-divider::before {
@@ -997,24 +1002,24 @@ span.snap-accent-word {
 .snap-auth-modal .auth-oauth-label {
   margin: 0;
   color: rgba(95, 113, 136, 0.82);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
 }
 
 .snap-auth-modal .auth-oauth-row {
   display: grid;
   grid-template-columns: repeat(2, 48px);
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
 .auth-inline-actions {
   display: flex;
   justify-content: flex-start;
-  margin: 12px 0 4px;
+  margin: 8px 0 2px;
 }
 
 .auth-inline-button {
@@ -1038,7 +1043,7 @@ span.snap-accent-word {
 
 .snap-auth-modal .auth-oauth-block {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .snap-auth-modal .auth-oauth-block-hidden {
@@ -1055,7 +1060,7 @@ span.snap-accent-word {
   background: transparent;
   color: #1f1f1f;
   box-shadow: none;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 20px;
   letter-spacing: 0.01em;
@@ -1152,11 +1157,12 @@ span.snap-accent-word {
 
 .snap-auth-modal .donation-error {
   margin: 2px 0 0;
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: 10px 12px;
+  border-radius: 14px;
   background: rgba(255, 237, 235, 0.88);
   border: 1px solid rgba(219, 113, 102, 0.18);
   color: #b04d45;
+  font-size: 0.88rem;
 }
 
 .snap-auth-modal .auth-dismiss-button {
@@ -1164,9 +1170,9 @@ span.snap-accent-word {
   border: 0;
   background: transparent;
   color: rgba(67, 88, 112, 0.74);
-  min-height: 36px;
+  min-height: 30px;
   padding: 0 10px;
-  font-size: 0.92rem;
+  font-size: 0.86rem;
   cursor: pointer;
 }
 
@@ -1179,8 +1185,29 @@ span.snap-accent-word {
 .snap-auth-modal .auth-dismiss-actions {
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .snap-auth-modal {
+    width: min(100vw - 16px, 420px);
+    padding: 18px 14px;
+    border-radius: 24px;
+  }
+
+  .snap-auth-card .snap-auth-title {
+    font-size: clamp(1.9rem, 8vw, 2.45rem);
+  }
+
+  .snap-auth-modal .auth-form input {
+    min-height: 42px;
+  }
+
+  .snap-auth-modal .auth-form .button-primary,
+  .snap-auth-modal .auth-register-nav-button {
+    min-height: 42px;
+  }
 }
 
 .snap-login-wait-backdrop {
