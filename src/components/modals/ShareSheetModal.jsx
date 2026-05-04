@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const shareBrandIcons = {
   telegram: "https://cdn.simpleicons.org/telegram/229ED9",
@@ -70,6 +70,14 @@ export function ShareSheetModal({
   isQrVisible,
   onToggleQr
 }) {
+  const [isQrLoading, setIsQrLoading] = useState(false);
+  const [isQrReady, setIsQrReady] = useState(false);
+  const [qrLoadError, setQrLoadError] = useState(false);
+
+  const qrImageUrl = shareUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(shareUrl)}`
+    : "";
+
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -85,6 +93,46 @@ export function ShareSheetModal({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen || !qrImageUrl) {
+      setIsQrLoading(false);
+      setIsQrReady(false);
+      setQrLoadError(false);
+      return undefined;
+    }
+
+    let isCancelled = false;
+    const image = new Image();
+
+    setIsQrLoading(true);
+    setIsQrReady(false);
+    setQrLoadError(false);
+
+    image.onload = () => {
+      if (isCancelled) {
+        return;
+      }
+      setIsQrLoading(false);
+      setIsQrReady(true);
+    };
+
+    image.onerror = () => {
+      if (isCancelled) {
+        return;
+      }
+      setIsQrLoading(false);
+      setQrLoadError(true);
+    };
+
+    image.src = qrImageUrl;
+
+    return () => {
+      isCancelled = true;
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [isOpen, qrImageUrl]);
+
   if (!isOpen) {
     return null;
   }
@@ -96,10 +144,6 @@ export function ShareSheetModal({
     { key: "whatsapp", label: "Вотсап", icon: "whatsapp", onClick: onShareWhatsapp },
     { key: "qr", label: "Сгенерировать QR код", icon: "qr", onClick: onToggleQr }
   ];
-
-  const qrImageUrl = shareUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(shareUrl)}`
-    : "";
 
   return (
     <div className="share-sheet-backdrop" onClick={onClose}>
@@ -135,7 +179,20 @@ export function ShareSheetModal({
         {isQrVisible && shareUrl ? (
           <div className="share-sheet-qr-popup-backdrop" onClick={onToggleQr}>
             <div className="share-sheet-qr-popup" onClick={(event) => event.stopPropagation()}>
-              <img src={qrImageUrl} alt="QR код для ссылки на вишлист" />
+              {isQrLoading ? (
+                <div className="share-sheet-qr-loading" role="status" aria-live="polite">
+                  <span className="share-sheet-qr-spinner" aria-hidden="true" />
+                  <span>Готовим QR-код…</span>
+                </div>
+              ) : null}
+
+              {!isQrLoading && qrLoadError ? (
+                <div className="share-sheet-qr-error" role="status" aria-live="polite">
+                  Не удалось загрузить QR-код. Попробуйте ещё раз.
+                </div>
+              ) : null}
+
+              {isQrReady ? <img src={qrImageUrl} alt="QR код для ссылки на вишлист" /> : null}
             </div>
           </div>
         ) : null}

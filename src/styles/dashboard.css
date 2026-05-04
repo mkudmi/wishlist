@@ -685,7 +685,7 @@
 }
 
 .app-shell-plain {
-  background: #f7fbff;
+  background: var(--page-background);
 }
 
 .profile-modal-head {

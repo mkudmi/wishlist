@@ -6,16 +6,21 @@
   align-items: flex-end;
   justify-content: center;
   padding: 20px;
-  background: rgba(22, 35, 57, 0.28);
+  background: color-mix(in srgb, var(--color-ink) 22%, transparent);
   backdrop-filter: blur(10px);
 }
 
 .share-sheet {
   width: min(560px, 100%);
   border-radius: 28px 28px 0 0;
-  border: 1px solid rgba(112, 145, 181, 0.18);
-  background: #f7fbff;
-  box-shadow: 0 -18px 52px rgba(45, 78, 117, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-surface-strong) 96%, transparent),
+      color-mix(in srgb, var(--color-surface) 88%, transparent)
+    );
+  box-shadow: 0 -18px 52px color-mix(in srgb, var(--color-ink) 16%, transparent);
   padding: 14px 14px 18px;
   animation: share-sheet-in 0.22s ease-out;
 }
@@ -24,7 +29,7 @@
   width: 46px;
   height: 5px;
   border-radius: 999px;
-  background: rgba(82, 112, 148, 0.22);
+  background: color-mix(in srgb, var(--color-ink) 14%, transparent);
   margin: 0 auto 14px;
 }
 
@@ -38,7 +43,7 @@
 
 .share-sheet-kicker {
   margin: 0 0 4px;
-  color: #5f86b0;
+  color: var(--color-accent);
   font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -46,7 +51,7 @@
 }
 
 .share-sheet-head h3 {
-  color: #203145;
+  color: var(--color-ink);
   font-size: 1.4rem;
   line-height: 1.05;
 }
@@ -55,10 +60,10 @@
   width: 38px;
   height: 38px;
   flex: 0 0 auto;
-  border: 1px solid rgba(112, 145, 181, 0.16);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #36526f;
+  background: color-mix(in srgb, var(--color-surface-strong) 90%, transparent);
+  color: var(--color-accent-deep);
   cursor: pointer;
 }
 
@@ -75,12 +80,17 @@
   width: 100%;
   min-height: 58px;
   padding: 10px 12px;
-  border: 1px solid rgba(112, 145, 181, 0.14);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #28425d;
+  background: color-mix(in srgb, var(--color-surface-strong) 82%, transparent);
+  color: var(--color-accent-deep);
   text-align: left;
   cursor: pointer;
+}
+
+.share-sheet-action:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--color-surface-strong) 94%, transparent);
 }
 
 .share-sheet-action span:last-child {
@@ -109,8 +119,8 @@
 }
 
 .share-sheet-action-icon-copy {
-  background: rgba(95, 146, 207, 0.14);
-  color: #4c76a3;
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent-deep);
 }
 
 .share-sheet-action-icon-telegram {
@@ -129,15 +139,15 @@
 }
 
 .share-sheet-action-icon-qr {
-  background: rgba(56, 80, 106, 0.1);
-  color: #38506a;
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  color: var(--color-accent-deep);
 }
 
 .share-sheet-qr-popup-backdrop {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(22, 35, 57, 0.32);
+  background: color-mix(in srgb, var(--color-ink) 28%, transparent);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -148,11 +158,14 @@
 .share-sheet-qr-popup {
   position: relative;
   width: min(300px, 100%);
+  min-height: 300px;
   padding: 18px;
   border-radius: 24px;
   background: #ffffff;
   border: 1px solid rgba(112, 145, 181, 0.16);
   box-shadow: 0 18px 40px rgba(45, 78, 117, 0.2);
+  display: grid;
+  place-items: center;
 }
 
 .share-sheet-qr-popup img {
@@ -160,6 +173,29 @@
   height: auto;
   display: block;
   border-radius: 18px;
+}
+
+.share-sheet-qr-loading,
+.share-sheet-qr-error {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+  color: var(--color-accent-deep);
+  font-weight: 600;
+}
+
+.share-sheet-qr-error {
+  color: #b04d45;
+}
+
+.share-sheet-qr-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 3px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-top-color: var(--color-accent);
+  animation: share-sheet-spin 0.72s linear infinite;
 }
 
 @keyframes share-sheet-in {
@@ -171,6 +207,12 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes share-sheet-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
