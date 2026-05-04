@@ -596,8 +596,18 @@ h3 {
   padding: 30px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 82% 50%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0) 32%),
-    linear-gradient(135deg, rgba(216, 235, 255, 0.94), rgba(183, 218, 252, 0.92));
+    radial-gradient(
+      circle at 82% 50%,
+      color-mix(in srgb, var(--color-surface-strong) 84%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-surface-strong) 92%, var(--color-accent) 8%),
+      color-mix(in srgb, var(--color-surface) 88%, var(--color-accent-strong) 12%)
+    ),
+    color-mix(in srgb, var(--color-surface) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
 }
 .wish-card.wish-card-promo .shared-promo-content {
   display: grid;
@@ -607,7 +617,7 @@ h3 {
 }
 .wish-card.wish-card-promo .shared-promo-kicker {
   margin: 0;
-  color: #99531f;
+  color: var(--color-accent-deep);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -646,8 +656,13 @@ h3 {
   aspect-ratio: 1;
   border-radius: 999px;
   background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.28) 62%, rgba(255, 255, 255, 0) 70%),
-    rgba(255, 255, 255, 0.28);
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--color-surface-strong) 96%, transparent),
+      color-mix(in srgb, var(--color-surface-strong) 24%, transparent) 62%,
+      transparent 70%
+    ),
+    color-mix(in srgb, var(--color-surface-strong) 24%, transparent);
   filter: blur(0.2px);
 }
 .shared-promo-visual img {
@@ -655,7 +670,7 @@ h3 {
   width: min(70%, 190px);
   height: auto;
   display: block;
-  filter: drop-shadow(0 26px 36px rgba(68, 112, 156, 0.26));
+  filter: drop-shadow(0 26px 36px color-mix(in srgb, var(--color-accent) 24%, transparent));
 }
 .wish-topline {
   display: flex;
