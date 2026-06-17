@@ -43,7 +43,6 @@ import {
   getOrCreateGuestSessionId,
   resetGuestSessionId,
   loginUser,
-  loginWithGoogleCredential,
   logoutUser,
   registerUser,
   changeUserPassword,
@@ -78,7 +77,6 @@ import { NotFoundPage } from "./components/pages/NotFoundPage";
 import { seoLandingPageMap, seoSite } from "./config/seoPages";
 import { useAccountPanel } from "./hooks/useAccountPanel";
 import { useAuthModalBehavior } from "./hooks/useAuthModalBehavior";
-import { useGoogleIdentity } from "./hooks/useGoogleIdentity";
 import { useYandexAuth } from "./hooks/useYandexAuth";
 export default function App({ initialRouteOverride = null }) {
   const initialRoute = initialRouteOverride || getRouteFromLocation();
@@ -144,13 +142,7 @@ export default function App({ initialRouteOverride = null }) {
   const sharedAuthModalRef = useRef(null);
   const wishPreviewRequestsRef = useRef(new Set());
   const siteOrigin = seoSite.origin;
-  const googleClientId = import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
   const yandexClientId = import.meta.env?.VITE_YANDEX_CLIENT_ID || "";
-  const { googleButtonRef } = useGoogleIdentity({
-    googleClientId,
-    onGoogleAuth: submitGoogleAuth,
-    isAuthModalOpen: isSharedAuthModalOpen
-  });
   const { openYandexAuth } = useYandexAuth({
     onYandexAuth: completeYandexAuth,
     onYandexError: () => onAuthModeChange("login")
@@ -189,7 +181,6 @@ export default function App({ initialRouteOverride = null }) {
     refreshCurrentUserIdentities,
     canUnlinkIdentity,
     handleIdentityUnlink,
-    startGoogleLink,
     startYandexLink,
     openProfileModal,
     closeProfileModal,
@@ -1062,45 +1053,6 @@ export default function App({ initialRouteOverride = null }) {
     }
   }
 
-  async function submitGoogleAuth(credential) {
-    setAuthError("");
-    setIsAuthSubmitting(true);
-
-    try {
-      if (!credential) {
-        throw new Error("Google не вернул токен входа.");
-      }
-
-      const { error } = await loginWithGoogleCredential(credential);
-      if (error) {
-        throw new Error("Не удалось войти через Google.");
-      }
-
-      const current = await fetchCurrentUser();
-      const user = current.data ? buildAppUser(current.data) : null;
-      if (!user) {
-        throw new Error("Не удалось получить пользователя.");
-      }
-      setCurrentUser(user);
-
-      const lists = await loadWishlistsForUser();
-      if (lists.length > 0) {
-        await selectWishlist(lists[0]);
-      } else {
-        setCurrentWishlistId(null);
-        setCurrentShareToken(null);
-        setWishes([]);
-      }
-
-      navigate("/dashboard");
-      setAuthForm(emptyAuthForm);
-    } catch (error) {
-      setAuthError(error.message || "Ошибка входа через Google.");
-    } finally {
-      setIsAuthSubmitting(false);
-    }
-  }
-
   async function completeYandexAuth() {
     setAuthError("");
     setIsAuthSubmitting(true);
@@ -1935,7 +1887,6 @@ export default function App({ initialRouteOverride = null }) {
         onErrorReset={resetAuthError}
         onInputChange={onAuthInputChange}
         onSubmit={submitAuth}
-        onGoogleAuth={submitGoogleAuth}
         onYandexAuth={completeYandexAuth}
         onContinueAuthenticated={continueAuthenticatedFromLanding}
         seoPage={activeSeoPage}
@@ -1955,7 +1906,6 @@ export default function App({ initialRouteOverride = null }) {
         onErrorReset={resetAuthError}
         onInputChange={onAuthInputChange}
         onSubmit={submitAuth}
-        onGoogleAuth={submitGoogleAuth}
         onYandexAuth={completeYandexAuth}
         onContinueAuthenticated={continueAuthenticatedFromLanding}
         seoPage={activeSeoPage}
@@ -2157,9 +2107,7 @@ export default function App({ initialRouteOverride = null }) {
           error={authError}
           submitting={isAuthSubmitting}
           isOpen={isSharedAuthModalOpen}
-          googleClientId={googleClientId}
           yandexClientId={yandexClientId}
-          googleButtonRef={googleButtonRef}
           onModeChange={onAuthModeChange}
           onErrorReset={resetAuthError}
           onInputChange={onAuthInputChange}
@@ -2205,9 +2153,7 @@ export default function App({ initialRouteOverride = null }) {
         isIdentitySubmitting={isIdentitySubmitting}
         canUnlinkIdentity={canUnlinkIdentity}
         onClose={() => setIsIdentityModalOpen(false)}
-        onStartGoogleLink={startGoogleLink}
         onStartYandexLink={startYandexLink}
-        onUnlinkGoogle={() => handleIdentityUnlink("google")}
         onUnlinkYandex={() => handleIdentityUnlink("yandex")}
       />
 

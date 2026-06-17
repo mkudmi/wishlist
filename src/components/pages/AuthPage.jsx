@@ -9,7 +9,6 @@ import { AuthModal } from "../auth/AuthModal";
 import { CookieNotice } from "../app/CookieNotice";
 import { featureList as defaultFeatureList, flowSteps as defaultFlowSteps, legalLinks } from "../auth/authContent";
 import { useAuthModalBehavior } from "../../hooks/useAuthModalBehavior";
-import { useGoogleIdentity } from "../../hooks/useGoogleIdentity";
 import { useYandexAuth } from "../../hooks/useYandexAuth";
 
 const gsap = gsapBundle.gsap || gsapBundle.default?.gsap || gsapBundle.default || gsapBundle;
@@ -29,14 +28,12 @@ export function AuthPage({
   onErrorReset,
   onInputChange,
   onSubmit,
-  onGoogleAuth,
   onYandexAuth,
   onContinueAuthenticated,
   seoPage = seoLandingPages[0]
 }) {
   const featureList = seoPage.featureList || defaultFeatureList;
   const flowSteps = seoPage.flowSteps || defaultFlowSteps;
-  const googleClientId = import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
   const yandexClientId = import.meta.env?.VITE_YANDEX_CLIENT_ID || "";
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isPrimaryCtaLoading, setIsPrimaryCtaLoading] = useState(false);
@@ -47,11 +44,6 @@ export function AuthPage({
   const flowGiftTargetRef = useRef(null);
   const authGiftTargetRef = useRef(null);
   const authModalRef = useRef(null);
-  const { googleButtonRef } = useGoogleIdentity({
-    googleClientId,
-    onGoogleAuth,
-    isAuthModalOpen
-  });
   const { openYandexAuth } = useYandexAuth({
     onYandexAuth,
     onYandexError: () => onModeChange("login")
@@ -454,9 +446,7 @@ export function AuthPage({
           error={error}
           submitting={submitting}
           isOpen={isAuthModalOpen}
-          googleClientId={googleClientId}
           yandexClientId={yandexClientId}
-          googleButtonRef={googleButtonRef}
           onModeChange={onModeChange}
           onErrorReset={onErrorReset}
           onInputChange={onInputChange}

@@ -30,7 +30,6 @@
 - `DEPLOY_PATH`: `/var/www/wishlist`
 - `DEPLOY_SSH_KEY`: приватный SSH-ключ для деплоя
 - `VITE_API_URL`: origin backend API, например `https://списокжеланий.рф`
-- `VITE_GOOGLE_CLIENT_ID`: Google Web Client ID
 
 ## Сервер
 

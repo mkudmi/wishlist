@@ -1010,7 +1010,7 @@ span.snap-accent-word {
 
 .snap-auth-modal .auth-oauth-row {
   display: grid;
-  grid-template-columns: repeat(2, 48px);
+  grid-template-columns: 48px;
   justify-content: center;
   gap: 10px;
   align-items: center;
@@ -1102,40 +1102,6 @@ span.snap-accent-word {
   height: 24px;
   object-fit: contain;
   flex: 0 0 auto;
-}
-
-.snap-auth-modal .auth-google-button-shell {
-  position: relative;
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px;
-  justify-self: center;
-}
-
-.snap-auth-modal .auth-google-button-host {
-  position: absolute;
-  inset: 0;
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px;
-}
-
-.snap-auth-modal .auth-google-button-visual {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.snap-auth-modal .auth-google-button-host > div,
-.snap-auth-modal .auth-google-button-host iframe {
-  width: 40px !important;
-  height: 40px !important;
-  opacity: 0.01 !important;
 }
 
 .snap-auth-modal .auth-oauth-button-text {

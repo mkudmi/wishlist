@@ -216,28 +216,6 @@ export async function verifyUserPassword(payload) {
   };
 }
 
-export async function loginWithGoogleCredential(credential) {
-  const result = await request("/api/auth/google", {
-    method: "POST",
-    body: { credential }
-  });
-  return {
-    data: result.data?.user || null,
-    error: result.error
-  };
-}
-
-export async function linkGoogleIdentity(credential) {
-  const result = await request("/api/auth/google/link", {
-    method: "POST",
-    body: { credential }
-  });
-  return {
-    data: result.data?.identities || [],
-    error: result.error
-  };
-}
-
 export async function startYandexIdentityLink(origin) {
   const result = await request("/api/auth/yandex/link/start", {
     method: "POST",

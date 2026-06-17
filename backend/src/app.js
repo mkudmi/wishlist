@@ -2,12 +2,10 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import crypto from "crypto";
-import { OAuth2Client } from "google-auth-library";
 import { pool } from "./db.js";
 import { config } from "./config.js";
 
 const app = express();
-const googleAuthClient = config.googleClientId ? new OAuth2Client(config.googleClientId) : null;
 const YANDEX_OAUTH_AUTHORIZE_URL = "https://oauth.yandex.com/authorize";
 const YANDEX_OAUTH_TOKEN_URL = "https://oauth.yandex.com/token";
 const YANDEX_USER_INFO_URL = "https://login.yandex.ru/info?format=json";
@@ -750,22 +748,6 @@ async function resolveOauthUser(client, { provider, providerUserId, providerEmai
   return user;
 }
 
-async function verifyGoogleCredential(credential) {
-  if (!googleAuthClient || !config.googleClientId) {
-    throw new Error("google auth is not configured");
-  }
-
-  const ticket = await googleAuthClient.verifyIdToken({
-    idToken: credential,
-    audience: config.googleClientId
-  });
-  const payload = ticket.getPayload();
-  if (!payload?.sub || !payload?.email || payload.email_verified !== true) {
-    throw new Error("invalid google credential");
-  }
-  return payload;
-}
-
 async function exchangeYandexCodeForToken(code) {
   const body = new URLSearchParams({
     grant_type: "authorization_code",
@@ -1047,7 +1029,7 @@ app.delete("/api/auth/identities/:provider", requireAuth, async (req, res, next)
   try {
     const provider = String(req.params?.provider || "").trim().toLowerCase();
 
-    if (!["google", "yandex"].includes(provider)) {
+    if (!["yandex"].includes(provider)) {
       return res.status(400).json({ error: "invalid identity provider" });
     }
 
@@ -1072,96 +1054,6 @@ app.delete("/api/auth/identities/:provider", requireAuth, async (req, res, next)
     return res.json({ identities: await fetchUserIdentities(pool, req.authUser.id) });
   } catch (error) {
     await client.query("ROLLBACK");
-    return next(error);
-  } finally {
-    client.release();
-  }
-});
-
-app.post("/api/auth/google", async (req, res, next) => {
-  const client = await pool.connect();
-
-  try {
-    const credential = String(req.body?.credential || "").trim();
-    if (!credential) {
-      return res.status(400).json({ error: "credential is required" });
-    }
-    if (!googleAuthClient || !config.googleClientId) {
-      return res.status(503).json({ error: "google auth is not configured" });
-    }
-
-    const googlePayload = await verifyGoogleCredential(credential);
-    const googleId = String(googlePayload.sub);
-    const email = normalizeEmail(googlePayload.email);
-    const givenName = normalizeName(googlePayload.given_name);
-    const familyName = normalizeName(googlePayload.family_name);
-    const fallbackName = splitDisplayName(googlePayload.name);
-    const firstName = givenName || fallbackName.firstName || email.split("@")[0] || "Google";
-    const lastName = familyName || fallbackName.lastName || "";
-
-    await client.query("BEGIN");
-    const userRow = await resolveOauthUser(client, {
-      provider: "google",
-      providerUserId: googleId,
-      providerEmail: email,
-      emailVerified: true,
-      firstName,
-      lastName
-    });
-    await client.query("COMMIT");
-    const token = await createSession(userRow.id);
-    setSessionCookie(res, token);
-    return res.json({ user: await mapUserWithIdentities(pool, userRow) });
-  } catch (error) {
-    await client.query("ROLLBACK");
-    if (error?.message === "invalid google credential" || error?.message === "google auth is not configured") {
-      return res.status(error.message === "invalid google credential" ? 401 : 503).json({ error: error.message });
-    }
-    if (error?.code === "23505") {
-      return res.status(409).json({ error: "identity_link_conflict" });
-    }
-    return next(error);
-  } finally {
-    client.release();
-  }
-});
-
-app.post("/api/auth/google/link", requireAuth, async (req, res, next) => {
-  const client = await pool.connect();
-
-  try {
-    const credential = String(req.body?.credential || "").trim();
-    if (!credential) {
-      return res.status(400).json({ error: "credential is required" });
-    }
-    if (!googleAuthClient || !config.googleClientId) {
-      return res.status(503).json({ error: "google auth is not configured" });
-    }
-
-    const googlePayload = await verifyGoogleCredential(credential);
-    const providerUserId = String(googlePayload.sub);
-    const providerEmail = normalizeEmail(googlePayload.email);
-
-    await client.query("BEGIN");
-    const owner = await findUserByIdentity(client, "google", providerUserId);
-    if (owner && owner.id !== req.authUser.id) {
-      await client.query("ROLLBACK");
-      return res.status(409).json({ error: "identity_link_conflict" });
-    }
-
-    await linkIdentity(client, req.authUser.id, {
-      provider: "google",
-      providerUserId,
-      providerEmail,
-      emailVerified: true
-    });
-    await client.query("COMMIT");
-    return res.json({ identities: await fetchUserIdentities(pool, req.authUser.id) });
-  } catch (error) {
-    await client.query("ROLLBACK");
-    if (error?.message === "invalid google credential" || error?.message === "google auth is not configured") {
-      return res.status(error.message === "invalid google credential" ? 401 : 503).json({ error: error.message });
-    }
     return next(error);
   } finally {
     client.release();

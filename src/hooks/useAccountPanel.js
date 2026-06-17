@@ -4,39 +4,10 @@ import { getProfileFormFromUser, normalizeName, parseDdMmYyyyToStorageDate } fro
 import {
   deleteCurrentUserAccount,
   fetchCurrentUserIdentities,
-  linkGoogleIdentity,
   startYandexIdentityLink,
   unlinkIdentity,
   updateProfileRecord
 } from "../lib/wishlistApi";
-
-async function ensureGoogleSdkLoaded() {
-  if (typeof window === "undefined") {
-    throw new Error("Google SDK недоступен.");
-  }
-
-  if (window.google?.accounts?.id) {
-    return;
-  }
-
-  await new Promise((resolve, reject) => {
-    const existingScript = document.querySelector('script[data-google-gsi="true"]');
-    if (existingScript) {
-      existingScript.addEventListener("load", resolve, { once: true });
-      existingScript.addEventListener("error", reject, { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.dataset.googleGsi = "true";
-    script.addEventListener("load", resolve, { once: true });
-    script.addEventListener("error", reject, { once: true });
-    document.head.appendChild(script);
-  });
-}
 
 export function useAccountPanel({ currentUser, setCurrentUser, clearAuthenticatedState, navigate }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -109,72 +80,6 @@ export function useAccountPanel({ currentUser, setCurrentUser, clearAuthenticate
       setCurrentUser((prev) => (prev ? { ...prev, identities: data || [] } : prev));
     } catch (error) {
       setProfileError(error.message || "Не удалось отвязать способ входа.");
-    } finally {
-      setIsIdentitySubmitting(false);
-    }
-  }
-
-  async function startGoogleLink() {
-    if (!currentUser) {
-      return;
-    }
-
-    const googleClientId = import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
-    if (!googleClientId) {
-      setProfileError("Google вход не настроен.");
-      return;
-    }
-
-    setProfileError("");
-    setIsIdentitySubmitting(true);
-
-    try {
-      await ensureGoogleSdkLoaded();
-
-      const credential = await new Promise((resolve, reject) => {
-        if (!window.google?.accounts?.id) {
-          reject(new Error("Google SDK недоступен."));
-          return;
-        }
-
-        let settled = false;
-        const finish = (handler, value) => {
-          if (settled) {
-            return;
-          }
-          settled = true;
-          handler(value);
-        };
-
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: (response) => {
-            if (response?.credential) {
-              finish(resolve, response.credential);
-              return;
-            }
-            finish(reject, new Error("Google не вернул токен входа."));
-          }
-        });
-
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
-            finish(reject, new Error("Не удалось открыть вход через Google."));
-          }
-        });
-      });
-
-      const { error } = await linkGoogleIdentity(credential);
-      if (error) {
-        if (error.message === "identity_link_conflict") {
-          throw new Error("Этот Google-аккаунт уже привязан к другому профилю.");
-        }
-        throw new Error("Не удалось привязать Google.");
-      }
-
-      await refreshCurrentUserIdentities();
-    } catch (error) {
-      setProfileError(error.message || "Не удалось привязать Google.");
     } finally {
       setIsIdentitySubmitting(false);
     }
@@ -337,7 +242,6 @@ export function useAccountPanel({ currentUser, setCurrentUser, clearAuthenticate
     refreshCurrentUserIdentities,
     canUnlinkIdentity,
     handleIdentityUnlink,
-    startGoogleLink,
     startYandexLink,
     openProfileModal,
     closeProfileModal,
